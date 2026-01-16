@@ -1,5 +1,9 @@
 # ZEJZL.NET
 
+[![Tests](https://github.com/zejzl/zejzlAI/actions/workflows/tests.yml/badge.svg)](https://github.com/zejzl/zejzlAI/actions/workflows/tests.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 **Multi-Agent AI Framework with 9-Agent Pantheon Orchestration System**
 
 An async message bus AI framework that orchestrates multiple AI models through a specialized 9-agent system for complex task decomposition, execution, validation, and continuous learning.
@@ -65,7 +69,7 @@ cd zejzlAI
 
 2. Install dependencies:
 ```bash
-pip install aiohttp toml redis aiosqlite python-dotenv
+pip install -r requirements.txt
 ```
 
 3. Configure environment:
@@ -224,11 +228,11 @@ zejzl_net/
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit issues or pull requests.
+Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting pull requests.
 
 ## License
 
-This project is open source. License details to be added.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 

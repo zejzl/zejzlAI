@@ -1,0 +1,70 @@
+name: Tests
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ master, main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run 9-agent pantheon test
+      run: |
+        python -c "import asyncio; exec(open('9agent_pantheon_test.py').read()); asyncio.run(run_pantheon_demo('CI test task'))"
+
+    - name: Run single session test
+      run: |
+        echo "Build a REST API" | python -c "import asyncio; exec(open('single_session_test_loop.py').read()); asyncio.run(run_single_agent_with_validation())"
+
+    - name: Run interactive session example
+      run: |
+        echo "Create a calculator" | python -c "import asyncio; exec(open('interactive_session_example.py').read()); asyncio.run(run_single_agent_demo())"
+
+    - name: Check Python syntax
+      run: |
+        python -m py_compile ai_framework.py
+        python -m py_compile main.py
+        python -m py_compile 9agent_pantheon_test.py
+        find src -name "*.py" -exec python -m py_compile {} \;
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install flake8
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8
+
+    - name: Lint with flake8
+      run: |
+        # Stop build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Exit-zero treats all errors as warnings
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      continue-on-error: true
