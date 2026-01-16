@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import asyncio; from src.agents.observer import ObserverAgent; from src.agents.reasoner import ReasonerAgent; from src.agents.actor import ActorAgent; from src.agents.validator import ValidatorAgent; from src.agents.memory import MemoryAgent; from src.agents.executor import ExecutorAgent; from src.agents.analyzer import AnalyzerAgent; from src.agents.learner import LearnerAgent; from src.agents.improver import ImproverAgent; exec\\(open\\(''9agent_pantheon_test.py''\\).read\\(\\)\\); asyncio.run\\(run_pantheon_demo\\(''Test task: Create a simple hello world program''\\)\\)\")",
+      "Bash(python -c \"import asyncio; from src.agents.observer import ObserverAgent; from src.agents.reasoner import ReasonerAgent; from src.agents.actor import ActorAgent; from src.agents.validator import ValidatorAgent; from src.agents.memory import MemoryAgent; exec\\(open\\(''single_session_test_loop.py''\\).read\\(\\)\\); asyncio.run\\(run_single_agent_with_validation\\(\\)\\)\")",
+      "Bash(python -c \"import asyncio; from src.agents.observer import ObserverAgent; from src.agents.reasoner import ReasonerAgent; from src.agents.actor import ActorAgent; exec\\(open\\(''interactive_session_example.py''\\).read\\(\\)\\); asyncio.run\\(run_single_agent_demo\\(\\)\\)\")",
+      "Bash(git init:*)",
+      "Bash(gh repo create:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

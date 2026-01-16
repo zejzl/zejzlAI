@@ -1,0 +1,9 @@
+# /c/PortableApps/zejzl/zejzl_net/pyproject.toml
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zejzl_net"
+version = "0.0.1"
