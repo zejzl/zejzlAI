@@ -1,2 +1,0 @@
-# zejzlAI
-Rock on
