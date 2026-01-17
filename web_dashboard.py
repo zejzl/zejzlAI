@@ -9,6 +9,8 @@ import json
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Any
+from pathlib import Path
+from dataclasses import asdict
 from fastapi import FastAPI, WebSocket, Request, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -21,6 +23,7 @@ from base import get_ai_provider_bus
 from src.magic import FairyMagic
 from telemetry import get_telemetry
 from src.performance import record_metric
+from src.logging_debug import debug_monitor, logger as debug_logger
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +110,9 @@ dashboard = DashboardServer()
 @app.on_event("startup")
 async def startup_event():
     """Initialize dashboard on startup"""
+    debug_logger.info("Starting ZEJZL.NET Web Dashboard")
     await dashboard.initialize()
+    debug_logger.info("Dashboard initialization complete")
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
@@ -145,6 +150,93 @@ async def get_metrics():
     if telemetry:
         return await telemetry.get_metrics()
     return {}
+
+@app.get("/api/debug/snapshot")
+async def get_debug_snapshot():
+    """Get current system debug snapshot"""
+    snapshot = await debug_monitor.create_snapshot(dashboard.bus)
+    return asdict(snapshot)
+
+@app.get("/api/debug/logs")
+async def get_recent_logs(lines: int = 50):
+    """Get recent debug logs"""
+    try:
+        log_dir = Path.home() / ".zejzl" / "logs"
+        log_file = log_dir / "debug.log"
+
+        if log_file.exists():
+            with open(log_file, 'r', encoding='utf-8') as f:
+                all_lines = f.readlines()
+                return {"logs": all_lines[-lines:]}
+        else:
+            return {"logs": [], "message": "No debug logs found"}
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/api/debug/performance")
+async def get_performance_data():
+    """Get performance monitoring data"""
+    return {
+        "performance_history": debug_monitor.performance_history[-100:],
+        "active_requests": list(debug_monitor.active_requests.values()),
+        "total_requests": len(debug_monitor.performance_history),
+        "active_request_count": len(debug_monitor.active_requests)
+    }
+
+@app.post("/api/debug/log-level")
+async def set_log_level(level: str):
+    """Set logging level (DEBUG, INFO, WARNING, ERROR)"""
+    try:
+        import logging
+        numeric_level = getattr(logging, level.upper(), logging.INFO)
+        logging.getLogger().setLevel(numeric_level)
+
+        debug_logger.info(f"Log level changed to {level}", new_level=level)
+        return {"success": True, "level": level}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/health/detailed")
+async def detailed_health_check():
+    """Detailed health check with system information"""
+    try:
+        import psutil
+        import platform
+
+        health_data = {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "system": {
+                "platform": platform.platform(),
+                "python_version": platform.python_version(),
+                "cpu_count": psutil.cpu_count(),
+                "cpu_percent": psutil.cpu_percent(interval=1),
+                "memory": {
+                    "total": psutil.virtual_memory().total,
+                    "available": psutil.virtual_memory().available,
+                    "percent": psutil.virtual_memory().percent
+                },
+                "disk": {
+                    "total": psutil.disk_usage('/').total,
+                    "free": psutil.disk_usage('/').free,
+                    "percent": psutil.disk_usage('/').percent
+                }
+            },
+            "zejzl": {
+                "bus_status": "connected" if dashboard.bus else "disconnected",
+                "magic_energy": dashboard.magic.energy_level if dashboard.magic else 0,
+                "providers_count": len(dashboard.bus.providers) if dashboard.bus else 0,
+                "active_requests": len(debug_monitor.active_requests)
+            }
+        }
+
+        return health_data
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
 
 @app.post("/api/magic/{action}")
 async def magic_action(action: str, background_tasks: BackgroundTasks):

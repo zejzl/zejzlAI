@@ -324,6 +324,20 @@
                     <p>Loading personalities...</p>
                 </div>
             </div>
+
+            <!-- Debug Panel -->
+            <div class="card">
+                <h3>🔧 Debug & Monitoring</h3>
+                <div class="debug-controls">
+                    <button class="magic-btn btn-boost" onclick="showDebugSnapshot()">📊 System Snapshot</button>
+                    <button class="magic-btn btn-shield" onclick="showRecentLogs()">📝 Debug Logs</button>
+                    <button class="magic-btn btn-heal" onclick="showPerformanceData()">⚡ Performance</button>
+                    <button class="magic-btn" style="background: linear-gradient(45deg, #ff9f43, #ee5a24);" onclick="showDetailedHealth()">🏥 Health Check</button>
+                </div>
+                <div id="debug-output" class="activity-list" style="margin-top: 15px; max-height: 300px;">
+                    <div class="activity-item">Click buttons above to view debug information</div>
+                </div>
+            </div>
         </div>
 
         <!-- Chat Interface -->
@@ -537,6 +551,60 @@
                 `;
                 container.appendChild(personalityDiv);
             });
+        }
+
+        // Debug functions
+        async function showDebugSnapshot() {
+            try {
+                const response = await fetch('/api/debug/snapshot');
+                const data = await response.json();
+                displayDebugData('System Snapshot', data);
+            } catch (error) {
+                displayDebugData('Error', {error: error.message});
+            }
+        }
+
+        async function showRecentLogs() {
+            try {
+                const response = await fetch('/api/debug/logs?lines=20');
+                const data = await response.json();
+                displayDebugData('Recent Debug Logs', data);
+            } catch (error) {
+                displayDebugData('Error', {error: error.message});
+            }
+        }
+
+        async function showPerformanceData() {
+            try {
+                const response = await fetch('/api/debug/performance');
+                const data = await response.json();
+                displayDebugData('Performance Data', data);
+            } catch (error) {
+                displayDebugData('Error', {error: error.message});
+            }
+        }
+
+        async function showDetailedHealth() {
+            try {
+                const response = await fetch('/api/health/detailed');
+                const data = await response.json();
+                displayDebugData('Detailed Health Check', data);
+            } catch (error) {
+                displayDebugData('Error', {error: error.message});
+            }
+        }
+
+        function displayDebugData(title, data) {
+            const container = document.getElementById('debug-output');
+            container.innerHTML = `<div class="activity-item"><strong>${title}:</strong></div>`;
+
+            const dataDiv = document.createElement('div');
+            dataDiv.className = 'activity-item';
+            dataDiv.style.fontFamily = 'monospace';
+            dataDiv.style.fontSize = '0.8em';
+            dataDiv.style.whiteSpace = 'pre-wrap';
+            dataDiv.textContent = JSON.stringify(data, null, 2);
+            container.appendChild(dataDiv);
         }
 
         function handleKeyPress(event) {

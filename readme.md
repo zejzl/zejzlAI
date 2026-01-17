@@ -68,12 +68,22 @@ An async message bus AI framework that orchestrates multiple AI models through a
 ### Phase 5 Enhancements (Advanced AI & User Experience)
 - **Streaming AI Responses**: Real-time token streaming from AI providers with WebSocket support
 - **Web UI Dashboard**: Beautiful real-time monitoring interface with magic system controls
-- **Docker Containerization**: Production-ready container orchestration with health checks
+- **Docker Containerization**: Production-ready deployment with health checks
 - **Multi-Provider Consensus**: Enhanced accuracy through intelligent AI response aggregation
 - **Agent Personalization Framework**: 6 unique agent personalities with specialized traits and communication styles
 - **Advanced WebSocket Integration**: Live system status updates and real-time chat
 - **Personality-Enhanced Prompts**: Dynamic AI prompts based on agent personality and expertise
 - **Consensus Mode Web Interface**: Toggle multi-provider consensus in the dashboard chat
+
+### Phase 6 Enhancements (Enterprise Debugging & Observability)
+- **Comprehensive Logging System**: Structured JSON logging with multiple log levels and rotation
+- **Advanced Debugging Framework**: Request tracing, performance profiling, and system snapshots
+- **Real-time Debug Dashboard**: Live debugging interface with system introspection
+- **Performance Monitoring**: Detailed metrics collection and analysis
+- **Debug CLI Tool**: Command-line interface for system debugging and monitoring
+- **Health Check Endpoints**: Detailed system health monitoring with metrics
+- **Log Aggregation**: Centralized logging with searchable debug information
+- **Request Tracing**: End-to-end request monitoring and performance analysis
 
 ## Architecture
 
@@ -213,7 +223,39 @@ Features:
 - **Interactive Chat**: Chat with AI agents using single or consensus mode
 - **Magic Controls**: Apply vitality boosts, shield activation, and healing spells
 - **Agent Personalities**: View personality traits and expertise areas
+- **Debug Panel**: System snapshots, logs, performance metrics, and health checks
 - **WebSocket Updates**: Live status updates without page refresh
+
+### Debug CLI Tool
+
+Command-line interface for advanced debugging and monitoring:
+
+```bash
+# System status overview
+python debug_cli.py status
+
+# View recent debug logs (last 20 entries)
+python debug_cli.py logs
+
+# View performance metrics
+python debug_cli.py performance
+
+# Create system snapshot
+python debug_cli.py snapshot
+
+# Clear debug logs
+python debug_cli.py clear-logs
+
+# Set logging level
+python debug_cli.py set-level --log-level DEBUG
+```
+
+Debug Features:
+- **System Snapshots**: Complete system state captures for analysis
+- **Request Tracing**: Track individual requests through the system
+- **Performance Profiling**: Detailed timing and resource usage metrics
+- **Log Analysis**: Structured logging with search and filtering
+- **Health Monitoring**: Comprehensive system health checks
 
 ### Interactive Menu
 
@@ -314,6 +356,7 @@ zejzl_net/
 ├── messagebus.py                # Inter-agent message bus
 ├── base.py                      # PantheonAgent base class
 ├── web_dashboard.py             # FastAPI web dashboard (Phase 5)
+├── debug_cli.py                 # Debug CLI tool (Phase 6)
 ├── rate_limiter.py              # Rate limiting system (Phase 3)
 ├── telemetry.py                 # Performance tracking (Phase 3)
 ├── main.py                      # Interactive CLI entry point
@@ -345,6 +388,7 @@ zejzl_net/
 └── src/
     ├── magic.py                 # Fairy magic self-healing system (Phase 4)
     ├── agent_personality.py     # Agent personality framework (Phase 5)
+    ├── logging_debug.py         # Enhanced logging and debugging system (Phase 6)
     ├── agents/                  # 9 agent implementations with personalities
     │   ├── observer.py          # Enhanced with analytical personality
     │   ├── reasoner.py          # Enhanced with logical personality
@@ -478,4 +522,4 @@ python test_magic_integration.py  # Test magic system
 
 ---
 
-**Status**: Advanced AI Orchestration Framework | **Version**: 0.0.3 | **Phase**: 5 Complete
+**Status**: Advanced AI Orchestration Framework | **Version**: 0.0.4 | **Phase**: 6 Complete

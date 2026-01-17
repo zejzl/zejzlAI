@@ -41,6 +41,7 @@ from telemetry import get_telemetry
 from src.magic import FairyMagic
 from src.security import EnterpriseSecurity
 from src.performance import record_metric
+from src.logging_debug import logger, debug_monitor, log_execution, log_ai_interaction, setup_logging
 
 # (The sys.path fix you added)
 project_root = os.path.dirname(os.path.abspath(__file__))
@@ -651,12 +652,15 @@ class ChatGPTProvider(AIProvider):
             headers={"Authorization": f"Bearer {self.api_key}"}
         )
     
+    @log_ai_interaction("chatgpt", "generate_response")
     async def generate_response(self, message: str, history: List[Dict] = None) -> str:
         if not self.session:
             await self.initialize()
 
         messages = history or []
         messages.append({"role": "user", "content": message})
+
+        logger.debug(f"ChatGPT API call", message_length=len(message), history_length=len(messages))
 
         url = "https://api.openai.com/v1/chat/completions"
         data = {
@@ -669,12 +673,15 @@ class ChatGPTProvider(AIProvider):
             async with self.session.post(url, json=data) as response:
                 if response.status == 200:
                     result = await response.json()
-                    return result["choices"][0]["message"]["content"]
+                    response_content = result["choices"][0]["message"]["content"]
+                    logger.debug(f"ChatGPT API success", response_length=len(response_content), model=self.model)
+                    return response_content
                 else:
                     error_text = await response.text()
+                    logger.error(f"ChatGPT API error", status=response.status, error=error_text[:200])
                     raise Exception(f"API error {response.status}: {error_text}")
         except Exception as e:
-            logger.error(f"Error in {self.name} API call: {str(e)}")
+            logger.error(f"Error in {self.name} API call", error=str(e), model=self.model)
             raise
 
     async def generate_response_stream(self, message: str, history: List[Dict] = None):
@@ -949,23 +956,31 @@ class AsyncMessageBus:
             del self.providers[provider_name]
             logger.info(f"Unregistered provider: {provider_name}")
     
+    @log_execution("debug")
     async def send_message(self, content: str, provider_name: str = None,
                           conversation_id: str = "default", stream: bool = False,
                           consensus: bool = False, consensus_providers: List[str] = None) -> str:
         """Send a message to a specific provider and return the response"""
+        logger.debug("Starting message send", content_length=len(content),
+                    provider=provider_name, consensus=consensus, stream=stream)
+
         provider_name = provider_name or self.config.get("default_provider", "chatgpt")
         provider_name = provider_name.lower()
 
         # Handle consensus mode
         if consensus:
+            logger.info("Using consensus mode", provider=provider_name, consensus_providers=consensus_providers)
             return await self._send_consensus_message(content, provider_name, conversation_id,
                                                      consensus_providers, stream)
 
         if provider_name not in self.providers:
+            logger.error("Provider not registered", provider=provider_name, available=list(self.providers.keys()))
             raise ValueError(f"Provider {provider_name} not registered")
 
         # Performance monitoring: request start
         request_start = asyncio.get_event_loop().time()
+
+        logger.debug("Provider validated", provider=provider_name, request_start=request_start)
 
         # Rate limiting check
         rate_limiter = get_rate_limiter()
@@ -1212,10 +1227,13 @@ class AsyncMessageBus:
 
     async def start(self):
         """Start the message bus"""
+        logger.info("Starting ZEJZL.NET AsyncMessageBus")
         self.running = True
-        
+
         # Initialize persistence
+        logger.debug("Initializing persistence layer")
         await self.persistence.initialize()
+        logger.info("Persistence layer initialized")
         
         # Load configuration
         self.config = await self.load_config()
