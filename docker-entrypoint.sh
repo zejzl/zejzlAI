@@ -6,10 +6,25 @@ echo "====================================="
 
 # Wait for Redis to be ready
 echo "Waiting for Redis..."
-while ! redis-cli -h redis ping > /dev/null 2>&1; do
-    echo "Redis not ready, waiting..."
-    sleep 2
-done
+python3 -c "
+import asyncio
+import redis.asyncio as redis
+import time
+
+async def check_redis():
+    try:
+        r = redis.Redis(host='redis', port=6379, decode_responses=True)
+        await r.ping()
+        return True
+    except:
+        return False
+
+while True:
+    if asyncio.run(check_redis()):
+        break
+    print('Redis not ready, waiting...')
+    time.sleep(2)
+"
 echo "✓ Redis is ready"
 
 # Create data directories

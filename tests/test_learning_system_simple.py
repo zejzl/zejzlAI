@@ -12,7 +12,7 @@ import time
 from src.learning_loop import LearningLoop
 from src.agents.learner import LearnerAgent
 from src.agents.profiling import AgentProfiler
-from src.agents.consensus import ConsensusManager
+from src.agents.consensus import ConsensusManager, ConflictType
 from src.agents.memory import MemoryAgent
 from src.improvement_applicator import ImprovementApplicator
 from src.magic import FairyMagic
@@ -44,9 +44,13 @@ class TestLearningSystemSimple:
         assert "test_agent" in report["agent_metrics"]
 
         metrics = report["agent_metrics"]["test_agent"]
+        # Check that we have metrics dict with expected keys
+        assert "total_calls" in metrics
+        assert "success_rate" in metrics
+        assert "avg_response_time" in metrics
         assert metrics["total_calls"] == 2
-        assert metrics["successful_calls"] == 1
         assert metrics["success_rate"] == 0.5
+        assert metrics["avg_response_time"] == 1.8
 
     @pytest.mark.asyncio
     async def test_memory_functionality(self):
@@ -128,7 +132,7 @@ class TestLearningSystemSimple:
 
         # Test with empty opinions
         result = await consensus.resolve_conflict(
-            consensus.ConflictType.PLANNING_DISPUTE, []
+            ConflictType.PLANNING_DISPUTE, []
         )
         assert not result.resolved
 
