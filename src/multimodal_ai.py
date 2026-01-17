@@ -43,6 +43,14 @@ class AudioFormat(Enum):
     OGG = "ogg"
 
 
+class DocumentFormat(Enum):
+    """Supported document formats"""
+    PDF = "pdf"
+    DOCX = "docx"
+    TXT = "txt"
+    MD = "md"
+
+
 @dataclass
 class MultiModalContent:
     """Unified content structure for multi-modal AI interactions"""
@@ -136,6 +144,125 @@ class MultiModalContent:
                 "duration": None  # Would need audio processing library to detect
             }
         )
+
+    @classmethod
+    def from_pdf_file(cls, file_path: Union[str, Path], extract_text: bool = True) -> 'MultiModalContent':
+        """Create document content from PDF file"""
+        path = Path(file_path)
+        if not path.exists():
+            raise FileNotFoundError(f"PDF file not found: {file_path}")
+
+        with open(path, 'rb') as f:
+            content = f.read()
+
+        text_content = ""
+        if extract_text:
+            try:
+                text_content = cls._extract_pdf_text(content)
+            except Exception as e:
+                logger.warning(f"Failed to extract text from PDF {file_path}: {e}")
+                text_content = f"[PDF text extraction failed: {e}]"
+
+        return cls(
+            modality=ModalityType.DOCUMENT,
+            content=content if not extract_text else text_content,
+            encoding="bytes" if not extract_text else "text",
+            metadata={
+                "format": "pdf",
+                "filename": path.name,
+                "size": len(content),
+                "pages": cls._get_pdf_page_count(content),
+                "has_text": bool(text_content.strip()),
+                "text_length": len(text_content)
+            }
+        )
+
+    @classmethod
+    def from_document_file(cls, file_path: Union[str, Path]) -> 'MultiModalContent':
+        """Create document content from various document formats"""
+        path = Path(file_path)
+        if not path.exists():
+            raise FileNotFoundError(f"Document file not found: {file_path}")
+
+        ext = path.suffix.lower().lstrip('.')
+        if ext == 'pdf':
+            return cls.from_pdf_file(file_path)
+        else:
+            # For other document types, read as text
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    text_content = f.read()
+                return cls(
+                    modality=ModalityType.DOCUMENT,
+                    content=text_content,
+                    encoding="text",
+                    metadata={
+                        "format": ext,
+                        "filename": path.name,
+                        "size": path.stat().st_size,
+                        "text_length": len(text_content)
+                    }
+                )
+            except UnicodeDecodeError:
+                # Binary document format, store as bytes
+                with open(path, 'rb') as f:
+                    content = f.read()
+                return cls(
+                    modality=ModalityType.DOCUMENT,
+                    content=content,
+                    encoding="bytes",
+                    metadata={
+                        "format": ext,
+                        "filename": path.name,
+                        "size": len(content)
+                    }
+                )
+
+    @staticmethod
+    def _extract_pdf_text(pdf_bytes: bytes) -> str:
+        """Extract text content from PDF bytes"""
+        try:
+            import pdfplumber
+            text_parts = []
+
+            with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+                for page in pdf.pages:
+                    text = page.extract_text()
+                    if text:
+                        text_parts.append(text)
+
+            return "\n\n".join(text_parts)
+        except ImportError:
+            # Fallback to PyPDF2
+            try:
+                from PyPDF2 import PdfReader
+                text_parts = []
+
+                pdf_file = io.BytesIO(pdf_bytes)
+                pdf_reader = PdfReader(pdf_file)
+
+                for page in pdf_reader.pages:
+                    text = page.extract_text()
+                    if text:
+                        text_parts.append(text)
+
+                return "\n\n".join(text_parts)
+            except ImportError:
+                raise ImportError("Neither pdfplumber nor PyPDF2 is available for PDF text extraction")
+        except Exception as e:
+            logger.error(f"PDF text extraction failed: {e}")
+            return f"[PDF text extraction error: {e}]"
+
+    @staticmethod
+    def _get_pdf_page_count(pdf_bytes: bytes) -> int:
+        """Get the number of pages in a PDF"""
+        try:
+            from PyPDF2 import PdfReader
+            pdf_file = io.BytesIO(pdf_bytes)
+            pdf_reader = PdfReader(pdf_file)
+            return len(pdf_reader.pages)
+        except Exception:
+            return 0  # Unknown page count
 
     def to_base64(self) -> str:
         """Convert content to base64 string"""

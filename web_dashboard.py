@@ -7,11 +7,12 @@ Real-time monitoring and control interface for the AI framework
 import asyncio
 import json
 import logging
+import base64
 from datetime import datetime, timedelta
 from typing import Dict, List, Any
 from pathlib import Path
 from dataclasses import asdict
-from fastapi import FastAPI, WebSocket, Request, BackgroundTasks
+from fastapi import FastAPI, WebSocket, Request, BackgroundTasks, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -32,8 +33,9 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="ZEJZL.NET Dashboard", version="1.0.0")
 
-# Templates and static files (we'll create these)
+# Templates and static files
 templates = Jinja2Templates(directory="web/templates")
+app.mount("/static", StaticFiles(directory="web/static"), name="static")
 
 class DashboardServer:
     """Web dashboard for ZEJZL.NET monitoring and control"""
@@ -559,6 +561,81 @@ async def describe_image_endpoint(request: Request):
         }
     except Exception as e:
         logger.error(f"Image description endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/multimodal/analyze-pdf")
+async def analyze_pdf_endpoint(request: Request):
+    """Analyze a PDF document with AI"""
+    try:
+        data = await request.json()
+        pdf_data = data.get("pdf_data")  # base64 encoded PDF
+        query = data.get("query", "Summarize this document")
+        provider = data.get("provider", "gpt4vision")
+
+        if not pdf_data:
+            return {"success": False, "error": "No PDF data provided"}
+
+        # For now, we'll treat PDF as text content (placeholder until full PDF processing)
+        # TODO: Implement proper PDF content extraction and multi-modal analysis
+        pdf_content = MultiModalContent(
+            modality=ModalityType.DOCUMENT,
+            content=f"[PDF Analysis Request] Query: {query}",
+            encoding="text",
+            metadata={"format": "pdf", "base64_size": len(pdf_data)}
+        )
+
+        # Create multi-modal message
+        multimodal_msg = create_multimodal_message([pdf_content])
+
+        # Process through multi-modal system
+        response = await multimodal_processor.process_multimodal_message(multimodal_msg, provider)
+
+        # Format response
+        if isinstance(response, MultiModalMessage):
+            text_response = response.get_text_content()
+        else:
+            text_response = response.response or "No analysis generated"
+
+        return {
+            "success": True,
+            "analysis": text_response,
+            "provider": provider,
+            "document_type": "pdf",
+            "note": "PDF processing is in development - currently returns basic analysis"
+        }
+    except Exception as e:
+        logger.error(f"PDF analysis endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/multimodal/extract-pdf-text")
+async def extract_pdf_text_endpoint(request: Request):
+    """Extract text content from a PDF"""
+    try:
+        data = await request.json()
+        pdf_data = data.get("pdf_data")  # base64 encoded PDF
+
+        if not pdf_data:
+            return {"success": False, "error": "No PDF data provided"}
+
+        # Decode base64 PDF data
+        try:
+            pdf_bytes = base64.b64decode(pdf_data)
+        except Exception as e:
+            return {"success": False, "error": f"Invalid base64 PDF data: {e}"}
+
+        # Extract text using our PDF processing
+        extracted_text = MultiModalContent._extract_pdf_text(pdf_bytes)
+        page_count = MultiModalContent._get_pdf_page_count(pdf_bytes)
+
+        return {
+            "success": True,
+            "text": extracted_text,
+            "page_count": page_count,
+            "text_length": len(extracted_text),
+            "has_content": bool(extracted_text.strip())
+        }
+    except Exception as e:
+        logger.error(f"PDF text extraction endpoint error: {e}")
         return {"success": False, "error": str(e)}
 
 
