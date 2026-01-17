@@ -38,5 +38,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 # Set entrypoint
 ENTRYPOINT ["./docker-entrypoint.sh"]
 
-# Default command - run demo
-CMD ["python", "docker-demo.py"]
+# Default command - run web dashboard
+CMD ["python", "web_dashboard.py"]

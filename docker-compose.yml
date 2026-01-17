@@ -4,8 +4,6 @@ services:
   # Redis for message persistence and caching
   redis:
     image: redis:7-alpine
-    ports:
-      - "6380:6379"
     volumes:
       - redis_data:/data
     restart: unless-stopped

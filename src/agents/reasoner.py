@@ -7,33 +7,26 @@ logger = logging.getLogger("ReasonerAgent")
 
 
 class ReasonerAgent:
-    """
-    Reasoner Agent for Pantheon 9-Agent System.
-    Responsible for generating plans and breaking tasks into subtasks.
-
-    Specialization: Strategic Planning & Task Decomposition
-    Responsibilities:
-    - Analyze observations to understand task requirements
-    - Generate comprehensive execution plans
-    - Break complex tasks into manageable subtasks
-    - Optimize task sequences for efficiency
-
-    Expertise Areas:
-    - Strategic planning and roadmap development
-    - Task decomposition and workflow design
-    - Resource allocation and scheduling
-    - Risk assessment and contingency planning
-    """
+    """Develops strategic plans and logical reasoning for task execution"""
 
     def __init__(self):
+        from src.agent_personality import AGENT_PERSONALITIES
         self.name = "Reasoner"
-        self.specialization = "Strategic Planning & Task Decomposition"
+        self.specialization = "Strategic Planning & Logical Reasoning"
         self.responsibilities = [
-            "Analyze observations to understand task requirements",
-            "Generate comprehensive execution plans",
-            "Break complex tasks into manageable subtasks",
-            "Optimize task sequences for efficiency"
+            "Analyze task observations to develop comprehensive plans",
+            "Identify logical dependencies and execution sequences",
+            "Assess risks and develop mitigation strategies",
+            "Create structured, actionable execution plans"
         ]
+        self.expertise_areas = [
+            "Strategic planning",
+            "Risk assessment",
+            "Logical reasoning",
+            "Dependency analysis"
+        ]
+        # Load personality
+        self.personality = AGENT_PERSONALITIES.get("Reasoner")
         self.expertise_areas = [
             "Strategic planning and roadmap development",
             "Task decomposition and workflow design",
@@ -53,11 +46,14 @@ class ReasonerAgent:
             from base import get_ai_provider_bus
             ai_bus = await get_ai_provider_bus()
 
+            # Get personality-enhanced prompt
+            personality_prompt = self.personality.get_personality_prompt() if self.personality else ""
+
             # Create prompt for reasoning
             task = observation.get('task', 'Unknown task')
             context = observation.get('context', '')
 
-            prompt = f"""You are the Reasoner agent in a 9-agent AI pantheon system. Your role is strategic planning and task decomposition.
+            prompt = f"""{personality_prompt}
 
 Observation: {task}
 Context: {context}
@@ -80,7 +76,7 @@ Provide your response as a JSON object with this structure:
     "approach": "Overall strategy for execution"
 }}
 
-Be thorough but practical. Focus on actionable steps."""
+{self.personality.get_communication_prompt() if self.personality else 'Be thorough but practical'}. Focus on actionable steps."""
 
             # Call AI
             response = await ai_bus.send_message(

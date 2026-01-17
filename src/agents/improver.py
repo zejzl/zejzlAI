@@ -7,33 +7,26 @@ logger = logging.getLogger("ImproverAgent")
 
 
 class ImproverAgent:
-    """
-    Improver Agent for Pantheon 9-Agent System.
-    Responsible for suggesting improvements and self-healing using magic system.
-
-    Specialization: System Improvement & Self-Healing
-    Responsibilities:
-    - Analyze system weaknesses and bottlenecks
-    - Implement self-healing mechanisms using magic system
-    - Suggest architectural and process improvements
-    - Monitor and enhance system resilience
-
-    Expertise Areas:
-    - Self-healing system design
-    - Magic system integration and rituals
-    - System resilience and fault tolerance
-    - Continuous improvement strategies
-    """
+    """Identifies optimization opportunities and drives system improvements"""
 
     def __init__(self):
+        from src.agent_personality import AGENT_PERSONALITIES
         self.name = "Improver"
-        self.specialization = "System Improvement & Self-Healing"
+        self.specialization = "System Optimization & Continuous Improvement"
         self.responsibilities = [
-            "Analyze system weaknesses and bottlenecks",
-            "Implement self-healing mechanisms using magic system",
-            "Suggest architectural and process improvements",
-            "Monitor and enhance system resilience"
+            "Identify optimization opportunities",
+            "Develop improvement strategies",
+            "Implement system enhancements",
+            "Monitor improvement effectiveness"
         ]
+        self.expertise_areas = [
+            "System optimization",
+            "Process improvement",
+            "Performance enhancement",
+            "Innovation implementation"
+        ]
+        # Load personality
+        self.personality = AGENT_PERSONALITIES.get("Improver")
         self.expertise_areas = [
             "Self-healing system design",
             "Magic system integration and rituals",
@@ -59,7 +52,10 @@ class ImproverAgent:
             recommendations = analysis.get("recommendations", [])
             alerts = analysis.get("alerts", [])
 
-            prompt = f"""You are the Improver agent in a 9-agent AI pantheon system. Your role is system improvement and self-healing using a magic system.
+            # Get personality-enhanced prompt
+            personality_prompt = self.personality.get_personality_prompt() if self.personality else ""
+
+            prompt = f"""{personality_prompt}
 
 System Analysis:
 - Health Score: {health_score}/100
@@ -115,7 +111,7 @@ Provide your response as a JSON object with this structure:
     "long_term_vision": "Strategic improvement direction"
 }}
 
-Focus on practical, implementable suggestions that leverage the magic system capabilities."""
+{self.personality.get_communication_prompt() if self.personality else 'Focus on practical, implementable suggestions'} that leverage the magic system capabilities."""
 
             # Call AI
             response = await ai_bus.send_message(

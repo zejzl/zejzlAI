@@ -4,7 +4,8 @@
 aiohttp>=3.9.0
 
 # Configuration management
-toml>=0.10.2
+python-toon>=0.1.0
+toml>=0.10.2  # Fallback compatibility
 python-dotenv>=1.0.0
 
 # Async Redis client (optional - will fallback to SQLite)
@@ -20,6 +21,14 @@ pytest-cov>=4.1.0
 
 # Security and cryptography
 cryptography>=42.0.0
+
+# Web framework
+fastapi>=0.104.0
+uvicorn>=0.24.0
+jinja2>=3.1.0
+
+# WebSocket support for real-time updates
+websockets>=12.0
 
 # Standard library (included with Python 3.10+)
 # - asyncio

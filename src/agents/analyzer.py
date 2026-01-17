@@ -7,33 +7,26 @@ logger = logging.getLogger("AnalyzerAgent")
 
 
 class AnalyzerAgent:
-    """
-    Analyzer Agent for Pantheon 9-Agent System.
-    Responsible for gathering metrics and performance analytics.
-
-    Specialization: Metrics Collection & Performance Analysis
-    Responsibilities:
-    - Collect system and agent performance metrics
-    - Analyze trends and identify patterns
-    - Generate performance reports and insights
-    - Monitor system health and efficiency
-
-    Expertise Areas:
-    - Performance metrics collection
-    - Data analysis and trend identification
-    - Report generation and visualization
-    - System health monitoring
-    """
+    """Analyzes system performance and generates insights"""
 
     def __init__(self):
+        from src.agent_personality import AGENT_PERSONALITIES
         self.name = "Analyzer"
-        self.specialization = "Metrics Collection & Performance Analysis"
+        self.specialization = "Performance Analysis & Insights"
         self.responsibilities = [
-            "Collect system and agent performance metrics",
-            "Analyze trends and identify patterns",
-            "Generate performance reports and insights",
+            "Analyze system performance metrics",
+            "Identify patterns and trends in data",
+            "Generate insights for optimization",
             "Monitor system health and efficiency"
         ]
+        self.expertise_areas = [
+            "Performance analysis",
+            "Data pattern recognition",
+            "System optimization",
+            "Metrics interpretation"
+        ]
+        # Load personality
+        self.personality = AGENT_PERSONALITIES.get("Analyzer")
         self.expertise_areas = [
             "Performance metrics collection",
             "Data analysis and trend identification",
@@ -64,8 +57,11 @@ class AnalyzerAgent:
                 if "timestamp" in event:
                     timestamps.append(event["timestamp"])
 
+            # Get personality-enhanced prompt
+            personality_prompt = self.personality.get_personality_prompt() if self.personality else ""
+
             # Create analysis prompt
-            prompt = f"""You are the Analyzer agent in a 9-agent AI pantheon system. Your role is performance analysis and metrics generation.
+            prompt = f"""{personality_prompt}
 
 Analyzing {len(memory_events)} system events with the following breakdown:
 {metrics}
@@ -107,7 +103,7 @@ Provide your response as a JSON object with this structure:
     "alerts": ["Any critical issues"]
 }}
 
-Be analytical and provide actionable insights based on the event data."""
+{self.personality.get_communication_prompt() if self.personality else 'Be analytical and provide actionable insights'} based on the event data."""
 
             # Call AI
             response = await ai_bus.send_message(

@@ -7,33 +7,26 @@ logger = logging.getLogger("ActorAgent")
 
 
 class ActorAgent:
-    """
-    Actor Agent for Pantheon 9-Agent System.
-    Responsible for executing subtasks provided by Reasoner.
-
-    Specialization: Action Execution & Tool Integration
-    Responsibilities:
-    - Execute planned subtasks in sequence
-    - Integrate with external tools and services
-    - Handle execution errors and retries
-    - Provide detailed execution feedback
-
-    Expertise Areas:
-    - Tool integration and API calling
-    - Sequential task execution
-    - Error handling and recovery
-    - Execution monitoring and logging
-    """
+    """Executes plans and coordinates task implementation"""
 
     def __init__(self):
+        from src.agent_personality import AGENT_PERSONALITIES
         self.name = "Actor"
-        self.specialization = "Action Execution & Tool Integration"
+        self.specialization = "Plan Execution & Task Coordination"
         self.responsibilities = [
-            "Execute planned subtasks in sequence",
-            "Integrate with external tools and services",
-            "Handle execution errors and retries",
-            "Provide detailed execution feedback"
+            "Execute planned subtasks in proper sequence",
+            "Coordinate with other agents as needed",
+            "Monitor execution progress and quality",
+            "Adapt execution based on real-time feedback"
         ]
+        self.expertise_areas = [
+            "Task execution",
+            "Process coordination",
+            "Quality monitoring",
+            "Adaptive execution"
+        ]
+        # Load personality
+        self.personality = AGENT_PERSONALITIES.get("Actor")
         self.expertise_areas = [
             "Tool integration and API calling",
             "Sequential task execution",
@@ -57,10 +50,13 @@ class ActorAgent:
             results = []
 
             for i, subtask in enumerate(subtasks):
+                # Get personality-enhanced prompt
+                personality_prompt = self.personality.get_personality_prompt() if self.personality else ""
+
                 # Create prompt for action execution
                 subtask_desc = subtask if isinstance(subtask, str) else subtask.get("description", str(subtask))
 
-                prompt = f"""You are the Actor agent in a 9-agent AI pantheon system. Your role is action execution and tool integration.
+                prompt = f"""{personality_prompt}
 
 Subtask to execute: {subtask_desc}
 
@@ -83,7 +79,7 @@ Provide your response as a JSON object with this structure:
     "estimated_duration": "Time estimate"
 }}
 
-Be practical and specific. Focus on executable actions rather than abstract planning."""
+{self.personality.get_communication_prompt() if self.personality else 'Be practical and specific'}. Focus on executable actions rather than abstract planning."""
 
                 # Call AI
                 response = await ai_bus.send_message(

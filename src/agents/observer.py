@@ -7,33 +7,26 @@ logger = logging.getLogger("ObserverAgent")
 
 
 class ObserverAgent:
-    """
-    Observer Agent for Pantheon 9-Agent System.
-    Responsible for gathering observations from environment, APIs, or files.
-
-    Specialization: Data Collection & Environmental Monitoring
-    Responsibilities:
-    - Gather real-time data from various sources
-    - Monitor system environment and external APIs
-    - Process and filter relevant information
-    - Provide contextual data for decision making
-
-    Expertise Areas:
-    - API integration and data scraping
-    - Real-time monitoring and alerting
-    - Data preprocessing and filtering
-    - Environmental sensing and telemetry
-    """
+    """Analyzes and decomposes tasks into manageable components"""
 
     def __init__(self):
+        from src.agent_personality import AGENT_PERSONALITIES
         self.name = "Observer"
-        self.specialization = "Data Collection & Environmental Monitoring"
+        self.specialization = "Task Analysis & Decomposition"
         self.responsibilities = [
-            "Gather real-time data from various sources",
-            "Monitor system environment and external APIs",
-            "Process and filter relevant information",
-            "Provide contextual data for decision making"
+            "Analyze incoming tasks for complexity and requirements",
+            "Break down complex tasks into manageable subtasks",
+            "Identify dependencies and constraints",
+            "Provide comprehensive task understanding"
         ]
+        self.expertise_areas = [
+            "Task decomposition",
+            "Requirement analysis",
+            "Complexity assessment",
+            "Dependency mapping"
+        ]
+        # Load personality
+        self.personality = AGENT_PERSONALITIES.get("Observer")
         self.expertise_areas = [
             "API integration and data scraping",
             "Real-time monitoring and alerting",
@@ -54,7 +47,10 @@ class ObserverAgent:
             ai_bus = await get_ai_provider_bus()
 
             # Create observation prompt
-            prompt = f"""You are the Observer agent in a 9-agent AI pantheon system. Your role is initial task perception and analysis.
+            # Get personality-enhanced prompt
+            personality_prompt = self.personality.get_personality_prompt() if self.personality else ""
+
+            prompt = f"""{personality_prompt}
 
 Task to observe: {task}
 
@@ -96,7 +92,7 @@ Provide your response as a JSON object with this structure:
     "estimated_effort": "Rough effort estimate"
 }}
 
-Be thorough and analytical. Your observation will guide the entire pantheon's approach to this task."""
+{self.personality.get_communication_prompt() if self.personality else 'Be thorough and analytical'}. Your observation will guide the entire pantheon's approach to this task."""
 
             # Call AI
             response = await ai_bus.send_message(

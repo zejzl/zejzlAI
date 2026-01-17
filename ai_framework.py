@@ -2,7 +2,7 @@
 """
 Async Message Bus AI Framework with Redis & SQL Fallback
 Supports: Zai, ChatGPT, Claude, Grok, Gemini, DeepSeek, and Qwen
-Configuration: TOML format (Toon-like)
+Configuration: Python-Toon annotated format
 Persistence: Redis (primary) + SQLite (fallback)
 """
 
@@ -27,7 +27,10 @@ import hashlib
 
 # --- 3. Third-Party Library Imports ---
 import aiohttp
-import toml
+try:
+    import toon
+except ImportError:
+    import toml as toon  # Fallback to standard toml
 import redis.asyncio as aioredis
 import aiosqlite
 
@@ -186,8 +189,8 @@ class RedisPersistence(PersistenceLayer):
     async def save_config(self, config: Dict):
         if not self.redis:
             raise RuntimeError("Redis not initialized")
-        
-        config_str = toml.dumps(config)
+
+        config_str = toon.dumps(config)
         await self.redis.set(self.config_key, config_str)
     
     async def load_config(self) -> Dict:
@@ -196,7 +199,7 @@ class RedisPersistence(PersistenceLayer):
 
         config_str = await self.redis.get(self.config_key)
         if config_str:
-            return toml.loads(config_str)
+            return toon.loads(config_str)
         return self.get_default_config()
 
     async def save_magic_state(self, magic_state: Dict):
@@ -428,14 +431,14 @@ class SQLitePersistence(PersistenceLayer):
         return history
     
     async def save_config(self, config: Dict):
-        config_str = toml.dumps(config)
+        config_str = toon.dumps(config)
         with open(self.config_path, "w") as f:
             f.write(config_str)
     
     async def load_config(self) -> Dict:
         if self.config_path.exists():
             with open(self.config_path, "r") as f:
-                return toml.load(f)
+                return toon.load(f)
         return self.get_default_config()
     
     def get_default_config(self) -> Dict:
@@ -621,7 +624,12 @@ class AIProvider(ABC):
     async def generate_response(self, message: str, history: List[Dict] = None) -> str:
         """Generate a response to the given message"""
         pass
-    
+
+    async def generate_response_stream(self, message: str, history: List[Dict] = None):
+        """Generate a streaming response to the given message (default implementation yields full response)"""
+        response = await self.generate_response(message, history)
+        yield response
+
     @abstractmethod
     async def cleanup(self):
         """Clean up resources"""
@@ -646,17 +654,17 @@ class ChatGPTProvider(AIProvider):
     async def generate_response(self, message: str, history: List[Dict] = None) -> str:
         if not self.session:
             await self.initialize()
-        
+
         messages = history or []
         messages.append({"role": "user", "content": message})
-        
+
         url = "https://api.openai.com/v1/chat/completions"
         data = {
             "model": self.model,
             "messages": messages,
             "temperature": 0.7
         }
-        
+
         try:
             async with self.session.post(url, json=data) as response:
                 if response.status == 200:
@@ -667,6 +675,46 @@ class ChatGPTProvider(AIProvider):
                     raise Exception(f"API error {response.status}: {error_text}")
         except Exception as e:
             logger.error(f"Error in {self.name} API call: {str(e)}")
+            raise
+
+    async def generate_response_stream(self, message: str, history: List[Dict] = None):
+        """Generate streaming response from OpenAI API"""
+        if not self.session:
+            await self.initialize()
+
+        messages = history or []
+        messages.append({"role": "user", "content": message})
+
+        url = "https://api.openai.com/v1/chat/completions"
+        data = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": 0.7,
+            "stream": True
+        }
+
+        try:
+            async with self.session.post(url, json=data) as response:
+                if response.status == 200:
+                    async for line in response.content:
+                        line_str = line.decode('utf-8').strip()
+                        if line_str.startswith('data: '):
+                            data_str = line_str[6:]  # Remove 'data: ' prefix
+                            if data_str == '[DONE]':
+                                break
+                            try:
+                                chunk_data = json.loads(data_str)
+                                if 'choices' in chunk_data and chunk_data['choices']:
+                                    delta = chunk_data['choices'][0].get('delta', {})
+                                    if 'content' in delta:
+                                        yield delta['content']
+                            except json.JSONDecodeError:
+                                continue
+                else:
+                    error_text = await response.text()
+                    raise Exception(f"API error {response.status}: {error_text}")
+        except Exception as e:
+            logger.error(f"Error in {self.name} streaming API call: {str(e)}")
             raise
     
     async def cleanup(self):
@@ -902,10 +950,16 @@ class AsyncMessageBus:
             logger.info(f"Unregistered provider: {provider_name}")
     
     async def send_message(self, content: str, provider_name: str = None,
-                          conversation_id: str = "default") -> str:
+                          conversation_id: str = "default", stream: bool = False,
+                          consensus: bool = False, consensus_providers: List[str] = None) -> str:
         """Send a message to a specific provider and return the response"""
         provider_name = provider_name or self.config.get("default_provider", "chatgpt")
         provider_name = provider_name.lower()
+
+        # Handle consensus mode
+        if consensus:
+            return await self._send_consensus_message(content, provider_name, conversation_id,
+                                                     consensus_providers, stream)
 
         if provider_name not in self.providers:
             raise ValueError(f"Provider {provider_name} not registered")
@@ -962,8 +1016,18 @@ class AsyncMessageBus:
 
             for attempt in range(max_retries):
                 try:
-                    response = await provider.generate_response(content, history)
-                    response_time = asyncio.get_event_loop().time() - start_time
+                    if stream:
+                        # Streaming response
+                        response = ""
+                        async for chunk in provider.generate_response_stream(content, history):
+                            response += chunk
+                            # In streaming mode, we could yield chunks here
+                            # For now, accumulate and return complete response
+                        response_time = asyncio.get_event_loop().time() - start_time
+                    else:
+                        # Regular response
+                        response = await provider.generate_response(content, history)
+                        response_time = asyncio.get_event_loop().time() - start_time
 
                     message.response = response
                     message.response_time = response_time
@@ -1039,15 +1103,19 @@ class AsyncMessageBus:
                     # Save message to persistence
                     await self.persistence.save_message(message)
 
-                    # Record successful telemetry after healing
+                    # Record telemetry
                     await telemetry.record_call(
                         component=f"provider_{provider_name}",
                         response_time=response_time,
-                        success=True,
-                        healed=True
+                        success=True
                     )
 
-                    logger.info("Response from %s after healing in %.2fs", provider_name, response_time)
+                    # Performance monitoring: successful request
+                    total_request_time = asyncio.get_event_loop().time() - request_start
+                    record_metric("request_duration", total_request_time * 1000, {"provider": provider_name, "status": "success"})
+                    record_metric("requests_total", 1, {"provider": provider_name, "status": "success"})
+
+                    logger.info(f"Response from {provider_name} after healing in {response_time:.2fs}")
                     return response
 
                 except Exception as retry_error:
@@ -1063,8 +1131,7 @@ class AsyncMessageBus:
             await telemetry.record_call(
                 component=f"provider_{provider_name}",
                 response_time=response_time,
-                success=False,
-                error_type=type(e).__name__
+                success=False
             )
 
             # Performance monitoring: failed request
@@ -1072,9 +1139,77 @@ class AsyncMessageBus:
             record_metric("request_duration", total_request_time * 1000, {"provider": provider_name, "status": "error"})
             record_metric("requests_total", 1, {"provider": provider_name, "status": "error", "error_type": type(e).__name__})
 
-            logger.error("Error getting response from %s: %s", provider_name, str(e))
             raise
-    
+
+    async def _send_consensus_message(self, content: str, primary_provider: str,
+                                    conversation_id: str, consensus_providers: List[str] = None,
+                                    stream: bool = False) -> str:
+        """Send message to multiple providers and return consensus response"""
+
+        # Determine which providers to use for consensus
+        available_providers = list(self.providers.keys())
+        if consensus_providers:
+            providers_to_use = [p for p in consensus_providers if p in available_providers]
+        else:
+            # Use primary provider plus 2-3 others for consensus
+            providers_to_use = [primary_provider]
+            other_providers = [p for p in available_providers if p != primary_provider]
+            providers_to_use.extend(other_providers[:2])  # Add up to 2 more providers
+
+        if len(providers_to_use) < 2:
+            logger.warning("Not enough providers for consensus, falling back to single provider")
+            return await self.send_message(content, primary_provider, conversation_id, stream)
+
+        logger.info(f"Running consensus with providers: {providers_to_use}")
+
+        # Get responses from all providers concurrently
+        tasks = []
+        for provider_name in providers_to_use:
+            task = self.send_message(content, provider_name, conversation_id, stream)
+            tasks.append(task)
+
+        try:
+            responses = await asyncio.gather(*tasks, return_exceptions=True)
+        except Exception as e:
+            logger.error(f"Consensus gathering failed: {e}")
+            # Fallback to primary provider
+            return await self.send_message(content, primary_provider, conversation_id, stream)
+
+        # Filter out exceptions and collect valid responses
+        valid_responses = []
+        provider_responses = []
+
+        for i, response in enumerate(responses):
+            provider_name = providers_to_use[i]
+            if isinstance(response, Exception):
+                logger.warning(f"Provider {provider_name} failed in consensus: {response}")
+                continue
+
+            valid_responses.append(response)
+            provider_responses.append({
+                "provider": provider_name,
+                "response": response,
+                "length": len(response)
+            })
+
+        if not valid_responses:
+            raise RuntimeError("All providers failed in consensus mode")
+
+        # Simple consensus algorithm: choose the most common response (basic similarity)
+        if len(valid_responses) == 1:
+            return valid_responses[0]
+
+        # For now, use a simple approach: return the longest response as it's likely most comprehensive
+        # In a more sophisticated implementation, we could use semantic similarity, voting, etc.
+        best_response = max(valid_responses, key=len)
+
+        # Log consensus results
+        logger.info(f"Consensus completed: {len(valid_responses)}/{len(providers_to_use)} providers succeeded")
+        for resp in provider_responses:
+            logger.debug(f"Provider {resp['provider']}: {resp['length']} chars")
+
+        return best_response
+
     async def start(self):
         """Start the message bus"""
         self.running = True

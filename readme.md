@@ -17,7 +17,9 @@ An async message bus AI framework that orchestrates multiple AI models through a
 - **Async Message Bus**: High-performance async/await architecture for concurrent operations
 - **Hybrid Persistence**: Redis (primary) + SQLite (automatic fallback) for reliable state management
 - **Multiple Operation Modes**: Single agent, collaboration, swarm, and full pantheon orchestration
-- **Flexible Configuration**: TOML-based config with environment variable support
+- **Python-Toon Configuration**: Enhanced annotated configuration format with validation
+- **Multi-Provider Consensus**: Intelligent response aggregation from multiple AI providers
+- **Agent Personalization**: Unique personality traits, communication styles, and expertise areas for each agent
 
 ### Phase 3 Enhancements (Production-Ready)
 - **Rate Limiting**: Multi-tier token bucket algorithm (per-minute/hour/day limits per provider)
@@ -63,6 +65,16 @@ An async message bus AI framework that orchestrates multiple AI models through a
 - **Context-Aware Processing**: Adaptive processing based on conversation context and history
 - **Compliance Ready**: GDPR and enterprise security standards compliant
 
+### Phase 5 Enhancements (Advanced AI & User Experience)
+- **Streaming AI Responses**: Real-time token streaming from AI providers with WebSocket support
+- **Web UI Dashboard**: Beautiful real-time monitoring interface with magic system controls
+- **Docker Containerization**: Production-ready container orchestration with health checks
+- **Multi-Provider Consensus**: Enhanced accuracy through intelligent AI response aggregation
+- **Agent Personalization Framework**: 6 unique agent personalities with specialized traits and communication styles
+- **Advanced WebSocket Integration**: Live system status updates and real-time chat
+- **Personality-Enhanced Prompts**: Dynamic AI prompts based on agent personality and expertise
+- **Consensus Mode Web Interface**: Toggle multi-provider consensus in the dashboard chat
+
 ## Architecture
 
 ```
@@ -88,17 +100,33 @@ An async message bus AI framework that orchestrates multiple AI models through a
 └─────────────────────────────────────────────────┘
 ```
 
-### The 9 Agents
+### The 9 Agents with Personality Framework
 
-1. **Observer** - Perceives and analyzes task requirements
-2. **Reasoner** - Plans and decomposes tasks into subtasks
-3. **Actor** - Executes planned actions
-4. **Validator** - Validates execution correctness and safety
+Each agent now has a unique personality with specialized communication styles and expertise areas:
+
+1. **Observer** (Analytical) - Thorough task analysis with systematic decomposition
+2. **Reasoner** (Logical) - Strategic planning with risk assessment and dependency mapping
+3. **Actor** (Direct) - Practical execution with efficient action planning
+4. **Validator** (Analytical) - Rigorous quality assurance with detailed validation reports
 5. **Executor** - Performs validated tasks with error handling
 6. **Memory** - Stores and recalls execution state and history
-7. **Analyzer** - Generates performance metrics and telemetry
+7. **Analyzer** (Technical) - Deep performance analysis with actionable insights
 8. **Learner** - Identifies patterns, bottlenecks, and generates optimizations (Phase 4: Enhanced)
-9. **Improver** - Suggests magic-based healing and system optimizations (Phase 4: Enhanced)
+9. **Improver** (Creative) - Innovative system optimization with magic-based healing (Phase 4: Enhanced)
+
+### Agent Personalities
+
+- **Communication Styles**: Formal, Casual, Technical, Creative, Empathetic, Direct, Analytical, Storyteller
+- **Expertise Areas**: Specialized knowledge domains for enhanced task performance
+- **Behavioral Traits**: Unique characteristics affecting agent decision-making
+- **Motivational Drivers**: Core motivations guiding agent behavior and responses
+
+### Multi-Provider Consensus
+
+- **Intelligent Aggregation**: Combines responses from multiple AI providers for enhanced accuracy
+- **Fallback Logic**: Gracefully handles provider failures with automatic recovery
+- **Magic Integration**: Applies vitality boosts to consensus API calls
+- **Web Interface**: Toggle consensus mode in the real-time dashboard
 
 ## Installation
 
@@ -127,8 +155,20 @@ cp .env.example .env
 # Edit .env and add your API keys
 ```
 
-4. (Optional) Start Redis:
+4. **Docker Deployment (Recommended):**
 ```bash
+# Quick Docker setup
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Access web dashboard at: http://localhost:8000
+```
+
+5. **Manual Setup (Alternative):**
+```bash
+# (Optional) Start Redis manually
 redis-server
 ```
 
@@ -154,6 +194,27 @@ python ai_framework.py list             # List all providers
 python ai_framework.py set-api-key openai sk-YOUR-KEY
 ```
 
+### Web Dashboard
+
+Access the beautiful real-time web interface:
+
+```bash
+# Start with Docker (recommended)
+docker-compose up -d
+
+# Or run directly
+python web_dashboard.py
+
+# Access at: http://localhost:8000
+```
+
+Features:
+- **Live System Monitoring**: Real-time magic system status and AI provider health
+- **Interactive Chat**: Chat with AI agents using single or consensus mode
+- **Magic Controls**: Apply vitality boosts, shield activation, and healing spells
+- **Agent Personalities**: View personality traits and expertise areas
+- **WebSocket Updates**: Live status updates without page refresh
+
 ### Interactive Menu
 
 Run the full interactive menu with all operation modes:
@@ -166,11 +227,12 @@ Available modes:
 1. **Single Agent** - Simple Observer → Reasoner → Actor loop
 2. **Collaboration Mode** - Grok + Claude dual AI planning
 3. **Swarm Mode** - Multi-agent async coordination
-4. **Pantheon Mode** - Full 9-agent orchestration
-5. **Improver Manual** - Self-improvement on sessions
-6. **Offline Mode** - Cached/local fallback
-7. **Community Vault Sync** - Share evolutions and tools
-8. **Save Game** - Persist session progress
+4. **Pantheon Mode** - Full 9-agent orchestration with personalities
+5. **Consensus Mode** - Multi-provider consensus with fallback logic
+6. **Improver Manual** - Self-improvement on sessions
+7. **Offline Mode** - Cached/local fallback
+8. **Community Vault Sync** - Share evolutions and tools
+9. **Save Game** - Persist session progress
 
 ### Running Tests
 
@@ -248,9 +310,10 @@ LOG_LEVEL=INFO
 
 ```
 zejzl_net/
-├── ai_framework.py              # Core framework with AI providers + magic
+├── ai_framework.py              # Core framework with AI providers + magic + consensus
 ├── messagebus.py                # Inter-agent message bus
 ├── base.py                      # PantheonAgent base class
+├── web_dashboard.py             # FastAPI web dashboard (Phase 5)
 ├── rate_limiter.py              # Rate limiting system (Phase 3)
 ├── telemetry.py                 # Performance tracking (Phase 3)
 ├── main.py                      # Interactive CLI entry point
@@ -264,28 +327,37 @@ zejzl_net/
 ├── test_magic_integration.py    # Magic system tests (Phase 4)
 ├── orchestrate.sh               # Master orchestration script (Phase 4)
 ├── start.sh                     # Quick start script (Phase 4)
+├── Dockerfile                   # Docker containerization (Phase 5)
+├── docker-compose.yml           # Docker orchestration (Phase 5)
+├── docker-entrypoint.sh         # Docker entrypoint script (Phase 5)
 ├── ARCHITECTURE.md              # System architecture docs
 ├── REDIS_SETUP.md               # Redis installation guide
 ├── CLAUDE.md                    # Claude Code documentation
 ├── AGENTS.md                    # Agent system + magic docs
+├── DOCKER_README.md             # Docker deployment guide (Phase 5)
 ├── PHASE2_COMPLETE.md           # Phase 2 summary
 ├── PHASE3_COMPLETE.md           # Phase 3 summary
 ├── PHASE4_COMPLETE.md           # Phase 4 summary
 ├── pyproject.toml               # Build configuration
 ├── requirements.txt             # Python dependencies
 ├── .env.example                 # Environment template
+├── .dockerignore                # Docker ignore patterns (Phase 5)
 └── src/
     ├── magic.py                 # Fairy magic self-healing system (Phase 4)
-    └── agents/                  # 9 agent implementations
-        ├── observer.py
-        ├── reasoner.py
-        ├── actor.py
-        ├── validator.py
-        ├── memory.py
-        ├── executor.py
-        ├── analyzer.py
-        ├── learner.py           # Enhanced with learning loop (Phase 4)
-        └── improver.py          # Enhanced with magic suggestions (Phase 4)
+    ├── agent_personality.py     # Agent personality framework (Phase 5)
+    ├── agents/                  # 9 agent implementations with personalities
+    │   ├── observer.py          # Enhanced with analytical personality
+    │   ├── reasoner.py          # Enhanced with logical personality
+    │   ├── actor.py             # Enhanced with direct personality
+    │   ├── validator.py         # Enhanced with analytical personality
+    │   ├── memory.py
+    │   ├── executor.py
+    │   ├── analyzer.py          # Enhanced with technical personality
+    │   ├── learner.py           # Enhanced with learning loop (Phase 4)
+    │   └── improver.py          # Enhanced with creative personality (Phase 4)
+    └── web/                     # Web dashboard templates (Phase 5)
+        └── templates/
+            └── dashboard.html   # Real-time monitoring interface
 ```
 
 ## Development
@@ -309,30 +381,31 @@ zejzl_net/
 - [x] **Phase 2**: Integration & Testing (dual message bus, AI provider integration, test suite)
 - [x] **Phase 3**: Production enhancements (rate limiting, retry logic, telemetry, pruning)
 - [x] **Phase 4**: Self-healing & learning (magic system, circuit breakers, learning loop optimization)
-- [x] Real AI integration for Pantheon agents
-- [x] Rate limiting and retry logic
-- [x] Circuit breaker pattern for automatic failure recovery
+- [x] **Phase 5**: Advanced AI & User Experience (streaming, web UI, Docker, consensus, personalization)
+- [x] Real AI integration for Pantheon agents (Phase 3)
+- [x] Rate limiting and retry logic (Phase 3)
+- [x] Circuit breaker pattern for automatic failure recovery (Phase 4)
+- [x] Python-Toon configuration system (Phase 5)
+- [x] Streaming AI response support (Phase 5)
+- [x] Web UI dashboard with real-time monitoring (Phase 5)
+- [x] Docker containerization (Phase 5)
+- [x] Multi-provider consensus mode (Phase 5)
+- [x] Agent personalization framework (Phase 5)
 - [x] Comprehensive test coverage (11/11 tests passing)
-- [x] Full documentation (Architecture, Redis Setup, Phase 1-4 summaries)
+- [x] Full documentation (Architecture, Redis Setup, Phase 1-5 summaries)
 - [x] Redis setup and inter-agent pub/sub
 - [x] Learning loop optimization with pattern analysis
 - [x] Self-healing with preference learning
 
-### In Progress
-- [ ] Real AI reasoning implementation for agents (currently using stubs with fallback)
-- [ ] Persistent learning patterns across sessions
-
-### Planned (Phase 5: Enterprise Features)
-- [ ] Streaming response support
-- [ ] Persistent magic state and learned patterns
-- [ ] Multi-provider consensus mode
+### Planned (Phase 6: Enterprise Scale)
 - [ ] Cost tracking and token usage analytics
-- [ ] Web UI dashboard with magic system monitoring
-- [ ] Docker containerization
-- [ ] Community vault for shared patterns
-- [ ] Multi-language support
+- [ ] Community vault for shared patterns and evolutions
+- [ ] Multi-language support and localization
 - [ ] Advanced healing strategies (custom per component)
 - [ ] Learning feedback loop from user input
+- [ ] Multi-modal AI integration (images, audio)
+- [ ] Advanced reasoning engine (causal, abductive reasoning)
+- [ ] Custom AI model training framework
 
 ## Contributing
 
@@ -350,6 +423,27 @@ Built with async Python, leveraging multiple AI providers for enhanced orchestra
 
 ## Quick Start
 
+### Docker Deployment (Recommended)
+```bash
+# 1. Clone and setup
+git clone https://github.com/zejzl/zejzlAI.git
+cd zejzlAI/zejzl_net
+
+# 2. Configure API keys (optional)
+cp .env.example .env
+# Edit .env and add your API keys
+
+# 3. Deploy with Docker
+docker-compose up -d
+
+# 4. Access web dashboard
+# Open: http://localhost:8000
+
+# 5. View logs
+docker-compose logs -f zejzl_net
+```
+
+### Manual Setup
 ```bash
 # 1. Install dependencies
 pip install -r requirements.txt
@@ -361,6 +455,7 @@ cp .env.example .env
 # 3. Run the framework
 ./start.sh                        # Quick start (bash)
 python main.py                    # Interactive menu
+python web_dashboard.py           # Web dashboard (port 8000)
 python example_enhanced.py        # Feature demos
 python token_haze.py              # Interactive onboarding
 python ai_framework.py status     # Check status
@@ -383,4 +478,4 @@ python test_magic_integration.py  # Test magic system
 
 ---
 
-**Status**: Self-Healing AI Framework | **Version**: 0.0.2 | **Phase**: 4 Complete
+**Status**: Advanced AI Orchestration Framework | **Version**: 0.0.3 | **Phase**: 5 Complete

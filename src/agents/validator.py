@@ -7,33 +7,26 @@ logger = logging.getLogger("ValidatorAgent")
 
 
 class ValidatorAgent:
-    """
-    Validator Agent for Pantheon 9-Agent System.
-    Responsible for checking correctness and safety of actions.
-
-    Specialization: Quality Assurance & Safety Validation
-    Responsibilities:
-    - Validate execution results against requirements
-    - Ensure safety and compliance of actions
-    - Identify and report validation failures
-    - Provide corrective feedback for failed validations
-
-    Expertise Areas:
-    - Quality control and validation testing
-    - Safety compliance checking
-    - Error detection and analysis
-    - Corrective action planning
-    """
+    """Validates execution results and ensures quality standards"""
 
     def __init__(self):
+        from src.agent_personality import AGENT_PERSONALITIES
         self.name = "Validator"
-        self.specialization = "Quality Assurance & Safety Validation"
+        self.specialization = "Quality Assurance & Validation"
         self.responsibilities = [
             "Validate execution results against requirements",
-            "Ensure safety and compliance of actions",
-            "Identify and report validation failures",
-            "Provide corrective feedback for failed validations"
+            "Check for completeness and correctness",
+            "Identify quality issues and improvement opportunities",
+            "Provide validation reports and recommendations"
         ]
+        self.expertise_areas = [
+            "Quality assurance",
+            "Validation testing",
+            "Compliance checking",
+            "Risk assessment"
+        ]
+        # Load personality
+        self.personality = AGENT_PERSONALITIES.get("Validator")
         self.expertise_areas = [
             "Quality control and validation testing",
             "Safety compliance checking",
@@ -56,13 +49,21 @@ class ValidatorAgent:
             results = execution_summary.get("results", [])
             plan = execution_summary.get("plan", {})
 
+            # Get personality-enhanced prompt
+            personality_prompt = self.personality.get_personality_prompt() if self.personality else ""
+
             # Create validation prompt
-            prompt = f"""You are the Validator agent in a 9-agent AI pantheon system. Your role is quality assurance and safety validation.
+            prompt = f"""{personality_prompt}
 
-Original Plan: {plan.get('analysis', 'No analysis provided')}
-Subtasks: {len(plan.get('subtasks', []))}
+System Analysis:
+- Health Score: {health_score}/100
+- Bottlenecks: {len(bottlenecks)}
+- Existing Recommendations: {len(recommendations)}
+- Active Alerts: {len(alerts)}
 
-Execution Results: {len(results)}
+Bottlenecks: {bottlenecks[:5]}  # Show first 5
+Current Recommendations: {recommendations[:5]}  # Show first 5
+Alerts: {alerts[:3]}  # Show first 3
 
 Please validate the execution results against the original plan and safety standards. Check for:
 
@@ -96,7 +97,7 @@ Provide your response as a JSON object with this structure:
     "can_proceed": true/false
 }}
 
-Be thorough and identify any real issues with the execution plans."""
+{self.personality.get_communication_prompt() if self.personality else 'Be thorough and identify any real issues'} with the execution plans."""
 
             # Call AI
             response = await ai_bus.send_message(
