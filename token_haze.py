@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Token Haze - Interactive Introduction to Grokputer
+Token Haze - Interactive Introduction to ZEJZL.NET
 
 This script provides an interactive onboarding experience for new users,
-demonstrating Grokputer's capabilities including real token counting,
-MessageBus throughput, Pantheon agent status, and live system metrics.
+demonstrating ZEJZL.NET's capabilities including real token counting,
+AI provider integration, Pantheon agent orchestration, and live system metrics.
 
-Author: Grokputer Team
-Last Updated: 2026-01-11
+Author: ZEJZL.NET Team
+Last Updated: 2026-01-17
 """
 
 import sys
@@ -19,17 +19,17 @@ from typing import Optional
 def print_header():
     """Print ASCII art header (Windows-compatible, no emojis)."""
     print("=" * 70)
-    print("                    GROKPUTER v2.0")
-    print("           AI-Powered Computer Control System")
+    print("                   Z E J Z L . N E T")
+    print("           AI Orchestration Framework v0.0.4")
     print("=" * 70)
     print()
 
 
 def print_welcome():
     """Print a welcoming message for new users."""
-    print("[WELCOME] You're entering the realm of autonomous AI agents.")
-    print("[INFO] Grokputer is a multi-agent system powered by xAI's Grok API.")
-    print("[INFO] Here, tokens are the currency of intelligence.")
+    print("[WELCOME] You're entering the realm of intelligent AI orchestration.")
+    print("[INFO] ZEJZL.NET is a multi-agent AI framework with 9 specialized agents.")
+    print("[INFO] Here, tokens power the communication between AI providers and agents.")
     print()
 
 
@@ -38,8 +38,8 @@ def explain_tokens():
     print("[TOKEN BASICS]")
     print("- Tokens are units of text that AI models process")
     print("- They can be words, subwords, or characters")
-    print("- Grokputer uses tokens to communicate with AI models")
-    print("- Efficient token usage = better performance and cost savings")
+    print("- ZEJZL.NET uses tokens to communicate with multiple AI providers")
+    print("- Efficient token usage = better performance and cost optimization")
     print()
 
     # Try to use tiktoken for real token counting
@@ -51,7 +51,7 @@ def explain_tokens():
         demo_texts = [
             "Hello, world!",
             "The quick brown fox jumps over the lazy dog.",
-            "Grokputer is an AI-powered computer control system.",
+            "ZEJZL.NET is an AI orchestration framework with 9 agents.",
         ]
 
         for text in demo_texts:
@@ -61,7 +61,7 @@ def explain_tokens():
             print()
     except ImportError:
         print("[SIMPLE TOKEN ESTIMATION]")
-        text = "Hello, new user! Welcome to the world of AI agents."
+        text = "Hello, new user! Welcome to the world of AI orchestration."
         token_estimate = len(text.split())
         print(f"  Text: '{text}'")
         print(f"  Estimated tokens: {token_estimate} (rough estimate: ~1 token per word)")
@@ -85,49 +85,51 @@ def check_redis_status() -> tuple[bool, Optional[str]]:
 
 
 def check_messagebus_performance():
-    """Display MessageBus performance metrics."""
-    print("[MESSAGEBUS PERFORMANCE]")
+    """Display AsyncMessageBus performance metrics."""
+    print("[ASYNCMESSAGEBUS PERFORMANCE]")
     try:
-        # Try to import and test MessageBus
-        from src.core.message_bus import MessageBus
+        # Try to import and test AsyncMessageBus
+        from ai_framework import AsyncMessageBus
 
-        print("  Status: MessageBus module available")
-        print("  Documented throughput: 18,384 msg/sec")
-        print("  Documented latency: <0.05ms per message")
-        print("  Architecture: Async priority queuing with pub/sub")
+        print("  Status: AsyncMessageBus module available")
+        print("  Architecture: Dual-bus system (AI provider + inter-agent)")
+        print("  Features: Rate limiting, consensus mode, magic self-healing")
+        print("  Providers: ChatGPT, Claude, Grok, Gemini, DeepSeek, Qwen, Zai")
+        print("  Persistence: Redis primary + SQLite fallback")
         print()
     except ImportError as e:
-        print(f"  Status: MessageBus not available ({str(e)})")
-        print("  [NOTE] Run from Grokputer root directory to access modules")
+        print(f"  Status: AsyncMessageBus not available ({str(e)})")
+        print("  [NOTE] Run from ZEJZL.NET root directory to access modules")
         print()
 
 
 def show_pantheon_status():
     """Display Pantheon agent information."""
-    print("[PANTHEON STATUS - 9 Agent System]")
+    print("[PANTHEON STATUS - 9 Agent Orchestration System]")
     agents = [
-        ("Observer", "Screen capture, vision processing, OCR"),
-        ("Reasoner", "Task analysis, delegation planning"),
-        ("Actor", "Command execution, computer control"),
-        ("Validator", "Safety checks, risk assessment"),
-        ("Learner", "Q-learning, adaptive optimization"),
-        ("Memory", "Redis/SQLite persistence"),
-        ("Executor", "Multi-step workflow orchestration"),
-        ("Analyzer", "Performance metrics, bottleneck detection"),
-        ("Improver", "Self-healing, proposal application"),
+        ("Observer", "Task perception, requirement analysis, complexity assessment"),
+        ("Reasoner", "Strategic planning, logical reasoning, risk evaluation"),
+        ("Actor", "Execution planning, tool integration, practical implementation"),
+        ("Validator", "Quality assurance, safety validation, compliance checking"),
+        ("Analyzer", "Performance insights, metrics analysis, system optimization"),
+        ("Improver", "Self-healing, continuous improvement, magic system integration"),
+        ("Learner", "Pattern recognition, learning algorithms, adaptive behavior"),
+        ("Memory", "State persistence, conversation history, data management"),
+        ("Executor", "Workflow orchestration, task coordination, progress monitoring"),
     ]
 
     for name, description in agents:
         print(f"  [{name:<10}] {description}")
     print()
-    print("  Usage: python main.py --pantheon --task 'your task here'")
-    print("  God Mode: python main.py -gp --task 'complex multi-agent task'")
+    print("  Usage: python main.py (interactive menu)")
+    print("  Direct: python 9agent_pantheon_test.py")
+    print("  Web UI: http://localhost:8000 (after docker-compose up)")
     print()
 
 
 def show_system_metrics():
     """Display system metrics and status."""
-    print("[SYSTEM METRICS]")
+    print("[ZEJZL.NET SYSTEM METRICS]")
 
     # Redis status
     redis_connected, redis_msg = check_redis_status()
@@ -136,12 +138,15 @@ def show_system_metrics():
     # Python version
     print(f"  Python: {sys.version.split()[0]}")
 
-    # Check for key dependencies
+    # Check for key ZEJZL.NET dependencies
     dependencies = [
-        ("tiktoken", "Real token counting"),
-        ("redis", "Memory persistence"),
-        ("anthropic", "Claude API"),
-        ("openai", "OpenAI/xAI API"),
+        ("fastapi", "Web dashboard framework"),
+        ("uvicorn", "ASGI web server"),
+        ("jinja2", "Template engine"),
+        ("psutil", "System monitoring"),
+        ("redis", "Message persistence"),
+        ("aiosqlite", "Database fallback"),
+        ("tiktoken", "Token counting"),
     ]
 
     print("\n  [DEPENDENCIES]")
@@ -153,39 +158,58 @@ def show_system_metrics():
             print(f"    [{module_name:<12}] MISSING   - {description}")
     print()
 
+    # Check for AI providers
+    ai_providers = ["openai", "anthropic", "google", "xai"]
+    available_providers = []
+    for provider in ai_providers:
+        try:
+            __import__(provider)
+            available_providers.append(provider)
+        except ImportError:
+            pass
+
+    print(f"  AI Providers Available: {len(available_providers)}")
+    if available_providers:
+        print(f"  Available: {', '.join(available_providers)}")
+    print()
+
 
 def show_quick_start():
     """Show quick start commands."""
-    print("[QUICK START GUIDE]")
-    print("  1. Basic task execution:")
-    print("     python main.py --task 'your task here'")
-    print()
-    print("  2. Pantheon mode (9 agents):")
-    print("     python main.py --pantheon --task 'complex task'")
-    print()
-    print("  3. Multi-provider collaboration:")
-    print("     python main.py --providers grok,claude --task 'analysis task'")
-    print()
-    print("  4. Interactive menu:")
+    print("[ZEJZL.NET QUICK START GUIDE]")
+    print("  1. Interactive menu (recommended):")
     print("     python main.py")
     print()
-    print("  5. Run tests:")
-    print("     pytest --cov")
+    print("  2. Direct 9-agent orchestration:")
+    print("     python 9agent_pantheon_test.py")
     print()
-    print("  6. Launch dashboard:")
-    print("     streamlit run dashboard.py")
+    print("  3. Web dashboard:")
+    print("     docker-compose up -d")
+    print("     # Visit: http://localhost:8000")
+    print()
+    print("  4. Debug CLI:")
+    print("     python debug_cli.py status")
+    print()
+    print("  5. Run tests:")
+    print("     python -m pytest test_basic.py test_integration.py -v")
+    print()
+    print("  6. Master orchestration:")
+    print("     ./orchestrate.sh menu")
+    print()
+    print("  7. Token counting demo:")
+    print("     python token_haze.py --interactive")
     print()
 
 
 def interactive_demo():
     """Run interactive demo with user choices."""
-    print("[INTERACTIVE DEMO]")
+    print("[ZEJZL.NET INTERACTIVE DEMO]")
     print()
     print("What would you like to learn about?")
     print()
     print("  1. Token counting demonstration")
-    print("  2. MessageBus performance")
-    print("  3. Pantheon agent system")
+    print("  2. AsyncMessageBus architecture")
+    print("  3. Pantheon agent orchestration")
     print("  4. System metrics and dependencies")
     print("  5. Quick start commands")
     print("  6. All of the above")
@@ -232,12 +256,13 @@ def interactive_demo():
 def show_next_steps():
     """Show what new users should do next."""
     print("[NEXT STEPS]")
-    print("  1. Read README.md for project overview")
-    print("  2. Review CLAUDE.md for technical reference")
-    print("  3. Check docs/ folder for detailed guides")
-    print("  4. Explore example workflows in examples/")
-    print("  5. Join the community at https://github.com/zejzl/grokputer")
-    print("  6. Start with: python main.py --help")
+    print("  1. Read README.md for complete project overview")
+    print("  2. Explore the web dashboard: docker-compose up -d")
+    print("  3. Try the interactive menu: python main.py")
+    print("  4. Run the 9-agent demo: python 9agent_pantheon_test.py")
+    print("  5. Use the debug CLI: python debug_cli.py status")
+    print("  6. Master orchestration: ./orchestrate.sh menu")
+    print("  7. Join the community: https://github.com/zejzl/zejzlAI")
     print()
 
 
@@ -259,9 +284,10 @@ def main():
         show_next_steps()
 
         print("=" * 70)
-        print("[SUCCESS] Welcome tour complete!")
+        print("[SUCCESS] ZEJZL.NET introduction tour complete!")
         print("[TIP] Run with --interactive for interactive demo:")
         print("      python token_haze.py --interactive")
+        print("[WEB] Launch web dashboard: docker-compose up -d")
         print("=" * 70)
 
 
