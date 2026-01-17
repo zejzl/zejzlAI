@@ -6,6 +6,8 @@ This document provides essential information for agentic coding assistants worki
 
 ZEJZL.NET is an async message bus AI framework implementing a 9-agent "Pantheon" orchestration system for multi-AI collaboration. The framework supports multiple AI providers (ChatGPT, Claude, Gemini, Grok, DeepSeek, Qwen, Zai) and uses a hybrid persistence layer (Redis primary + SQLite fallback).
 
+**Status**: Phase 4 Complete - Advanced orchestration with workflow patterns, self-healing magic system, and learning loop optimization now fully implemented. All Phase 4 enhancements are production-ready.
+
 ## Build, Lint, and Test Commands
 
 ### Build Commands
@@ -62,6 +64,71 @@ from src.magic import FairyMagic
 magic = FairyMagic()
 boost = await magic.acorn_vitality_boost("agent_name", {"max_tokens": 1024})
 healed = await magic.blue_spark_heal("component", "error_description")
+```
+
+## Advanced Workflow Patterns
+
+ZEJZL.NET includes an advanced workflow orchestration system supporting:
+
+### Features
+- **Parallel Execution**: Multiple agents running simultaneously with `ParallelGroupStep`
+- **Conditional Branching**: Decision-based workflow paths with `ConditionalBranchStep`
+- **Loop Control**: Iterative execution with break conditions using `LoopControlStep`
+- **Dependency Management**: Step execution ordering and prerequisite checking
+- **Agent Integration**: Seamless integration with the Pantheon 9-agent system
+
+### Components
+- **WorkflowDefinition**: Complete workflow specification with steps and context
+- **WorkflowExecutor**: Execution engine for complex workflow patterns
+- **WorkflowStep Types**: Agent execution, conditional branches, parallel groups, loop controls
+
+### Usage
+```python
+from src.workflows import execute_advanced_workflow
+
+# Execute predefined workflow patterns
+result = await execute_advanced_workflow("parallel", "analyze sales data")
+result = await execute_advanced_workflow("conditional", "complex task")
+result = await execute_advanced_workflow("loop", "iterative improvement")
+```
+
+### Predefined Workflows
+- **parallel**: Parallel observation and analysis with sequential reasoning
+- **conditional**: Branching workflow based on task complexity
+- **loop**: Iterative improvement with validation loops
+
+## Enterprise Security & Encryption
+
+ZEJZL.NET includes enterprise-grade security and encryption features:
+
+### Components
+- **KeyManager**: Secure key generation, storage, and rotation system
+- **EncryptionEngine**: AES-256-GCM encryption/decryption for data at rest
+- **EnterpriseSecurity**: Main security coordinator with compliance features
+- **SecureMessageBus**: Encrypted wrapper for inter-agent communications
+- **SecurePersistence**: Encrypted persistence layer with key isolation
+
+### Security Features
+- **AES-256-GCM Encryption**: Industry-standard encryption for all sensitive data
+- **Automatic Key Rotation**: Regular key updates with secure key lifecycle management
+- **End-to-End Encryption**: All communications encrypted from source to destination
+- **Secure Key Storage**: Encrypted key store with system fingerprint protection
+- **Compliance Ready**: Enterprise security standards and GDPR compliance
+
+### Usage
+```python
+from src.security import EnterpriseSecurity
+
+# Initialize enterprise security
+security = EnterpriseSecurity(enable_encryption=True)
+await security.initialize_security()
+
+# Encrypt sensitive data
+encrypted = security.encryption_engine.encrypt_json({"secret": "data"})
+decrypted = security.encryption_engine.decrypt_json(encrypted)
+
+# Check security status
+status = security.get_security_status()
 ```
 
 ## Code Style Guidelines
