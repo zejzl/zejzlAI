@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # Redis for message persistence and caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    command: redis-server --appendonly yes
+
+  # ZEJZL.NET AI Framework
+  zejzl_net:
+    build: .
+    ports:
+      - "8000:8000"  # For future web UI
+    environment:
+      # Redis connection (points to redis service)
+      - REDIS_URL=redis://redis:6379
+      # SQLite fallback
+      - SQLITE_PATH=/app/data/ai_framework.db
+      # Default settings
+      - DEFAULT_PROVIDER=grok
+      - LOG_LEVEL=INFO
+      # API Keys (override these with your actual keys)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - ZAI_API_KEY=${ZAI_API_KEY:-}
+      - GROK_API_KEY=${GROK_API_KEY:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - QWEN_API_KEY=${QWEN_API_KEY:-}
+    volumes:
+      - ./data:/app/data  # For SQLite database persistence
+      - ./logs:/app/logs  # For log files
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import asyncio; from ai_framework import AsyncMessageBus; asyncio.run(AsyncMessageBus().start())"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  # Optional: Redis Commander for Redis management
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    profiles:
+      - tools
+
+volumes:
+  redis_data:

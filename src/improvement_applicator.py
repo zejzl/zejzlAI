@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Any, Callable
 from dataclasses import dataclass, field
 
 from src.agents.profiling import AgentProfiler
-from src.learning_loop import LearningInsight
+from src.learning_types import LearningInsight
 from src.agents.consensus import ConsensusManager
 from src.magic import FairyMagic
 

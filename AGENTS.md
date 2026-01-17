@@ -6,7 +6,7 @@ This document provides essential information for agentic coding assistants worki
 
 ZEJZL.NET is an async message bus AI framework implementing a 9-agent "Pantheon" orchestration system for multi-AI collaboration. The framework supports multiple AI providers (ChatGPT, Claude, Gemini, Grok, DeepSeek, Qwen, Zai) and uses a hybrid persistence layer (Redis primary + SQLite fallback).
 
-**Status**: Phase 5 In Progress - Scalability & Performance completed. Phase 4 complete with advanced orchestration, self-healing magic system, and learning loop optimization. Phase 5 Tasks 1-2 (Security & Performance) completed.
+**Status**: Phase 6 Complete - Advanced AI Capabilities implemented. All ZEJZL.NET development phases completed: Multi-modal AI, advanced reasoning, natural language understanding, and AI model orchestration now active.
 
 ## Build, Lint, and Test Commands
 
@@ -64,6 +64,70 @@ from src.magic import FairyMagic
 magic = FairyMagic()
 boost = await magic.acorn_vitality_boost("agent_name", {"max_tokens": 1024})
 healed = await magic.blue_spark_heal("component", "error_description")
+```
+
+## Learning Loop Optimization System
+
+ZEJZL.NET features a sophisticated continuous learning and self-healing system that adapts and improves system performance over time.
+
+### Components
+
+- **LearningLoop**: Orchestrates continuous learning cycles with 6-phase optimization
+- **LearnerAgent**: Advanced pattern recognition and bottleneck analysis
+- **AgentProfiler**: Comprehensive performance monitoring and metrics collection
+- **ImprovementApplicator**: Automated application of optimization recommendations
+- **ConsensusManager**: Conflict resolution and decision consensus building
+
+### Learning Cycle Phases
+
+1. **Observation**: Collect system performance metrics and environmental data
+2. **Analysis**: Analyze patterns, identify bottlenecks, and detect anomalies
+3. **Optimization**: Generate improvement recommendations from multiple data sources
+4. **Implementation**: Apply selected optimizations with rollback capabilities
+5. **Evaluation**: Measure impact and effectiveness of applied changes
+6. **Adaptation**: Update system behavior based on learning results
+
+### Self-Healing Integration
+
+The learning loop integrates with the FairyMagic system for automatic self-healing:
+
+- **Blue Spark Healing**: Applied to failing components detected by learning analysis
+- **Acorn Vitality Boost**: Performance enhancement for underperforming agents
+- **Fairy Shield**: Protection during high-risk operations
+- **Circuit Breaker Reset**: Recovery from transient failures
+- **Holly Blessing Rituals**: Success enhancement for critical tasks
+
+### Continuous Monitoring
+
+Real-time monitoring runs parallel to learning cycles:
+- Anomaly detection compared to performance baselines
+- Proactive adaptation based on performance patterns
+- Emergency healing for critical system issues
+- Load balancing and resource optimization
+
+### Usage
+
+```python
+from src.learning_loop import LearningLoop
+from src.agents.profiling import AgentProfiler
+from src.improvement_applicator import ImprovementApplicator
+
+# Initialize components
+profiler = AgentProfiler()
+learning_loop = LearningLoop()
+improvement_applicator = ImprovementApplicator(profiler)
+
+# Start continuous learning and monitoring
+await learning_loop.start_continuous_learning()
+
+# Manual learning cycle
+result = await learning_loop.execute_learning_cycle()
+
+# Get learning insights
+insights = await learning_loop.get_recent_insights()
+
+# Check applied improvements
+improvements = await improvement_applicator.get_applied_improvements()
 ```
 
 ## Advanced Workflow Patterns

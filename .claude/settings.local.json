@@ -36,7 +36,8 @@
       "Bash(echo:*)",
       "Bash(cmd.exe /c \"docker ps\")",
       "Bash(python test_magic_integration.py:*)",
-      "Bash(python advanced_workflow_test.py:*)"
+      "Bash(python advanced_workflow_test.py:*)",
+      "Bash(python:*)"
     ]
   }
 }
