@@ -70,7 +70,7 @@ Return ONLY valid JSON:
                 # Call AI
                 response = await ai_bus.send_message(
                     content=prompt,
-                    provider_name="claude",  # Try Claude 3.5 Sonnet
+                    provider_name="grok",  # Use Grok for action planning
                     conversation_id=f"actor_{hash(str(plan))}_{i}"
                 )
 

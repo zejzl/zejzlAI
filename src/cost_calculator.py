@@ -37,9 +37,9 @@ class CostCalculator:
         },
         "claude": {
             "claude-3-opus-20240229": {"input": 0.015, "output": 0.075},     # $15/$75 per 1K tokens
-            "claude-3-sonnet-20240229": {"input": 0.003, "output": 0.015},  # $3/$15 per 1K tokens
+            "claude-3-opus-20240229": {"input": 0.003, "output": 0.015},  # $3/$15 per 1K tokens
             "claude-3-haiku-20240307": {"input": 0.00025, "output": 0.00125}, # $0.25/$1.25 per 1K tokens
-            "claude-3-5-sonnet-20241022": {"input": 0.003, "output": 0.015}, # $3/$15 per 1K tokens
+            "claude-3-opus-20240229": {"input": 0.003, "output": 0.015}, # $3/$15 per 1K tokens
         },
         "gemini": {
             "gemini-pro": {"input": 0.00025, "output": 0.0005},    # $0.25/$0.50 per 1K tokens

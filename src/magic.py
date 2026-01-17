@@ -483,10 +483,11 @@ class FairyMagic:
             return False
 
         # Use advanced healing system if available (Phase 8)
-        if self.advanced_healing and component_type and ComponentType:
+        if self.advanced_healing and component_type:
             try:
-                # Convert string to ComponentType enum
-                comp_type = ComponentType(component_type.upper())
+                # Import ComponentType and convert string
+                from .advanced_healing import ComponentType as HealingComponentType
+                comp_type = HealingComponentType(component_type.lower())
                 success = await self.advanced_healing.heal_component(
                     component, comp_type, error, {"circuit_breaker": cb.get_status()}
                 )

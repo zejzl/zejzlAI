@@ -20,7 +20,7 @@ def test_cost_calculation():
     # Test Claude pricing
     usage2 = TokenUsage(
         provider='Claude',
-        model='claude-3-5-sonnet-20241022',
+        model='claude-3-opus-20240229',
         prompt_tokens=2000,
         completion_tokens=1000
     )
