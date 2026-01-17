@@ -1,0 +1,182 @@
+#!/usr/bin/env python3
+"""
+Pantheon Agent Base Class
+All agents inherit from this
+"""
+
+import asyncio
+import logging
+from abc import ABC, abstractmethod
+from typing import Dict, List, Optional, Any
+from dataclasses import dataclass
+from datetime import datetime
+
+from messagebus import AsyncMessageBus, Message
+
+logger = logging.getLogger("PantheonAgent")
+
+# Lazy import to avoid circular dependency
+_ai_provider_bus = None
+
+
+async def get_ai_provider_bus():
+    """Get or create the shared AI Provider Bus instance"""
+    global _ai_provider_bus
+    if _ai_provider_bus is None:
+        # Import here to avoid circular dependency at module load time
+        from ai_framework import AsyncMessageBus as AIProviderBus
+        _ai_provider_bus = AIProviderBus()
+        await _ai_provider_bus.start()
+        logger.info("AI Provider Bus initialized for Pantheon agents")
+    return _ai_provider_bus
+
+
+async def cleanup_ai_provider_bus():
+    """Clean up the shared AI Provider Bus instance"""
+    global _ai_provider_bus
+    if _ai_provider_bus is not None:
+        await _ai_provider_bus.stop()
+        _ai_provider_bus = None
+        logger.info("AI Provider Bus cleaned up")
+
+
+@dataclass
+class AgentConfig:
+    """Configuration for Pantheon agents"""
+    name: str
+    role: str
+    channels: List[str]  # Channels this agent listens to
+    api_provider: str = "grok"  # Default to Grok
+    model: str = "grok-beta"
+    max_retries: int = 3
+    timeout: float = 30.0
+
+
+class PantheonAgent(ABC):
+    """
+    Base class for all Pantheon agents
+    
+    The Pantheon system consists of 9 specialized agents:
+    1. Observer - Monitors and interprets inputs
+    2. Actor - Takes concrete actions
+    3. Coordinator - Routes tasks and orchestrates
+    4. Memory - Manages context and history
+    5. Validator - Checks outputs for correctness
+    6. Analyzer - Deep analysis and reasoning
+    7. Learner - Adapts and improves
+    8. Executor - Runs code and commands
+    9. Improver - Optimizes and refines
+    """
+    
+    def __init__(self, config: AgentConfig, message_bus: AsyncMessageBus):
+        self.config = config
+        self.bus = message_bus
+        self.running = False
+        self.subscriptions: List[asyncio.Queue] = []
+        self._tasks: List[asyncio.Task] = []
+    
+    async def start(self):
+        """Start the agent and begin listening"""
+        if self.running:
+            logger.warning(f"{self.config.name} already running")
+            return
+        
+        self.running = True
+        
+        # Subscribe to channels
+        for channel in self.config.channels:
+            queue = await self.bus.subscribe(channel)
+            self.subscriptions.append(queue)
+            
+            # Create listener task for each channel
+            task = asyncio.create_task(self._listen(channel, queue))
+            self._tasks.append(task)
+        
+        logger.info(f"✓ {self.config.name} started (listening: {', '.join(self.config.channels)})")
+    
+    async def stop(self):
+        """Stop the agent"""
+        self.running = False
+        
+        # Cancel all tasks
+        for task in self._tasks:
+            task.cancel()
+        
+        # Wait for cancellation
+        await asyncio.gather(*self._tasks, return_exceptions=True)
+        self._tasks.clear()
+        
+        logger.info(f"✗ {self.config.name} stopped")
+    
+    async def _listen(self, channel: str, queue: asyncio.Queue):
+        """Listen to a channel and process messages"""
+        while self.running:
+            try:
+                message = await asyncio.wait_for(queue.get(), timeout=1.0)
+                await self.process(message)
+            except asyncio.TimeoutError:
+                continue
+            except Exception as e:
+                logger.error(f"{self.config.name} error in {channel}: {e}")
+    
+    @abstractmethod
+    async def process(self, message: Message):
+        """
+        Process incoming message - must be implemented by each agent
+        """
+        pass
+    
+    async def send(self, channel: str, content: str, conversation_id: str = "default"):
+        """Send message to a channel"""
+        message = Message.create(
+            content=content,
+            sender=self.config.name,
+            provider=self.config.api_provider,
+            conversation_id=conversation_id
+        )
+        await self.bus.publish(channel, message)
+        return message
+    
+    async def call_ai(self, prompt: str, conversation_id: str = "default",
+                     provider: Optional[str] = None, use_fallback: bool = True) -> str:
+        """
+        Call AI provider via the AI Provider Bus
+
+        Args:
+            prompt: The message to send to the AI
+            conversation_id: Conversation thread identifier
+            provider: Specific provider to use (overrides config.api_provider)
+            use_fallback: If True, returns stub response when AI Provider Bus unavailable
+
+        Returns:
+            AI-generated response string
+        """
+        provider_name = provider or self.config.api_provider
+
+        try:
+            # Get the AI Provider Bus
+            ai_bus = await get_ai_provider_bus()
+
+            # Send message to AI provider
+            logger.debug(f"{self.config.name} calling {provider_name}: {prompt[:50]}...")
+            response = await ai_bus.send_message(
+                content=prompt,
+                provider_name=provider_name,
+                conversation_id=f"pantheon_{conversation_id}"
+            )
+
+            logger.info(f"{self.config.name} received response from {provider_name}")
+            return response
+
+        except Exception as e:
+            logger.error(f"{self.config.name} AI call failed: {e}")
+
+            if use_fallback:
+                # Return stub response as fallback
+                logger.warning(f"{self.config.name} using fallback stub response")
+                return f"[Stub response from {provider_name}: {prompt[:30]}... processed]"
+            else:
+                raise
+    
+    def __repr__(self):
+        return f"<{self.config.name} ({self.config.role})>"
