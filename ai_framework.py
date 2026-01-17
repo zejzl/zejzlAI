@@ -1307,7 +1307,7 @@ class AsyncMessageBus:
 
         except Exception as e:
             # Attempt auto-healing with magic system
-            healed = await self.magic.auto_heal("ai_provider", e)
+            healed = await self.magic.auto_heal("ai_provider", e, "ai_provider")
             if healed:
                 logger.info("Magic auto-healing successful, retrying %s request", provider_name)
                 # Retry the request after successful healing

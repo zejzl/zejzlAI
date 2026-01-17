@@ -22,6 +22,8 @@ from ai_framework import AsyncMessageBus
 from base import get_ai_provider_bus
 from src.magic import FairyMagic
 from src.usage_analytics import UsageAnalytics
+from src.multimodal_processing import multimodal_processor
+from src.multimodal_ai import create_multimodal_message, MultiModalContent, ModalityType
 from telemetry import get_telemetry
 from src.performance import record_metric
 from src.logging_debug import debug_monitor, logger as debug_logger
@@ -46,10 +48,42 @@ class DashboardServer:
         try:
             self.bus = await get_ai_provider_bus()
             self.magic = self.bus.magic
-            logger.info("Dashboard initialized with AI framework")
+
+            # Initialize multi-modal providers
+            await self._initialize_multimodal_providers()
+
+            logger.info("Dashboard initialized with AI framework and multi-modal support")
         except Exception as e:
             logger.error(f"Failed to initialize dashboard: {e}")
             # Create fallback instances for demo
+
+    async def _initialize_multimodal_providers(self):
+        """Initialize multi-modal AI providers"""
+        try:
+            # Import providers
+            from src.multimodal_ai import GPT4VisionProvider, GeminiVisionProvider
+
+            # Get API keys from environment
+            import os
+            openai_key = os.environ.get("OPENAI_API_KEY", "")
+            gemini_key = os.environ.get("GEMINI_API_KEY", "")
+
+            # Register providers if keys are available
+            if openai_key:
+                gpt4_provider = GPT4VisionProvider(openai_key)
+                await gpt4_provider.initialize()
+                multimodal_processor.register_multimodal_provider(gpt4_provider)
+                logger.info("Registered GPT-4 Vision provider")
+
+            if gemini_key:
+                gemini_provider = GeminiVisionProvider(gemini_key)
+                await gemini_provider.initialize()
+                multimodal_processor.register_multimodal_provider(gemini_provider)
+                logger.info("Registered Gemini Vision provider")
+
+        except Exception as e:
+            logger.warning(f"Failed to initialize multi-modal providers: {e}")
+            # Continue without multi-modal support
             self.bus = AsyncMessageBus()
             await self.bus.start()
             self.magic = FairyMagic()
@@ -386,6 +420,145 @@ async def get_expensive_requests(limit: int = 10):
         }
     except Exception as e:
         logger.error(f"Expensive requests endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+# Multi-Modal Endpoints
+@app.get("/api/multimodal/providers")
+async def get_multimodal_providers():
+    """Get available multi-modal providers and their capabilities"""
+    try:
+        providers = multimodal_processor.get_supported_providers()
+        provider_info = multimodal_processor.get_provider_info()
+        return {
+            "success": True,
+            "providers": providers,
+            "details": provider_info
+        }
+    except Exception as e:
+        logger.error(f"Multi-modal providers endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/multimodal/analyze-image")
+async def analyze_image_endpoint(request: Request):
+    """Analyze an image with AI"""
+    try:
+        data = await request.json()
+        image_data = data.get("image_data")  # base64 encoded image
+        query = data.get("query", "Describe this image in detail")
+        provider = data.get("provider", "gpt4vision")
+
+        if not image_data:
+            return {"success": False, "error": "No image data provided"}
+
+        # Create image content
+        image_content = MultiModalContent.from_image_base64(image_data)
+
+        # Analyze the image
+        analysis = await multimodal_processor.process_image_analysis(image_content, query, provider)
+
+        return {
+            "success": True,
+            "analysis": analysis,
+            "provider": provider
+        }
+    except Exception as e:
+        logger.error(f"Image analysis endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/multimodal/chat")
+async def multimodal_chat_endpoint(request: Request):
+    """Multi-modal chat with text, images, and other content"""
+    try:
+        data = await request.json()
+        message = data.get("message", "")
+        provider = data.get("provider", "gpt4vision")
+        attachments = data.get("attachments", [])  # List of {type: "image", data: "base64..."}
+
+        if not message and not attachments:
+            return {"success": False, "error": "No message or attachments provided"}
+
+        # Build multi-modal content
+        content = []
+        if message:
+            content.append(MultiModalContent.from_text(message))
+
+        # Process attachments
+        for attachment in attachments:
+            attachment_type = attachment.get("type", "text")
+            attachment_data = attachment.get("data", "")
+
+            if attachment_type == "image":
+                if attachment_data.startswith("data:image"):
+                    # Handle data URL format
+                    base64_data = attachment_data.split(",")[1] if "," in attachment_data else attachment_data
+                    content.append(MultiModalContent.from_image_base64(base64_data))
+                else:
+                    # Assume direct base64
+                    content.append(MultiModalContent.from_image_base64(attachment_data))
+            elif attachment_type == "text":
+                content.append(MultiModalContent.from_text(attachment_data))
+
+        # Create multi-modal message
+        multimodal_msg = create_multimodal_message(content, provider=provider)
+
+        # Process through multi-modal system
+        response = await multimodal_processor.process_multimodal_message(multimodal_msg, provider)
+
+        # Format response
+        if hasattr(response, 'get_text_content'):
+            # MultiModalMessage response
+            text_response = response.get_text_content()
+            has_images = len(response.get_image_content()) > 0
+            response_data = {
+                "text": text_response,
+                "has_images": has_images,
+                "image_count": len(response.get_image_content())
+            }
+        else:
+            # Traditional Message response
+            response_data = {
+                "text": response.response or "No response generated",
+                "has_images": False,
+                "image_count": 0
+            }
+
+        return {
+            "success": True,
+            "response": response_data,
+            "provider": provider,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Multi-modal chat endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/multimodal/describe-image")
+async def describe_image_endpoint(request: Request):
+    """Generate detailed image description"""
+    try:
+        data = await request.json()
+        image_data = data.get("image_data")
+        style = data.get("style", "detailed")  # "brief", "detailed", "technical"
+        provider = data.get("provider", "gpt4vision")
+
+        if not image_data:
+            return {"success": False, "error": "No image data provided"}
+
+        # Create image content
+        image_content = MultiModalContent.from_image_base64(image_data)
+
+        # Generate description
+        description = await multimodal_processor.generate_image_description(image_content, style, provider)
+
+        return {
+            "success": True,
+            "description": description,
+            "style": style,
+            "provider": provider
+        }
+    except Exception as e:
+        logger.error(f"Image description endpoint error: {e}")
         return {"success": False, "error": str(e)}
 
 

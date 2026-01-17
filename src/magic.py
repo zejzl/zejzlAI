@@ -21,6 +21,13 @@ from enum import Enum
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+# Import advanced healing system
+try:
+    from .advanced_healing import AdvancedHealingSystem, ComponentType
+except ImportError:
+    AdvancedHealingSystem = None
+    ComponentType = None
+
 logger = logging.getLogger("MagicSystem")
 
 
@@ -142,6 +149,9 @@ class FairyMagic:
         self.healing_history: List[HealingRecord] = []
         self.learning_preferences: Dict[str, float] = {}  # For DPO-style learning
         self.persistence = persistence
+
+        # Initialize advanced healing system (Phase 8)
+        self.advanced_healing = AdvancedHealingSystem(self) if AdvancedHealingSystem else None
 
         # Initialize circuit breakers for common failure points
         self._init_circuit_breakers()
@@ -456,10 +466,10 @@ class FairyMagic:
             "learning_preferences_count": len(self.learning_preferences)
         }
 
-    async def auto_heal(self, component: str, error: Exception) -> bool:
+    async def auto_heal(self, component: str, error: Exception, component_type: str = None) -> bool:
         """
-        Automatic healing attempt using magic + circuit breaker logic.
-        Combines blue spark healing with circuit breaker state management.
+        Advanced automatic healing with component-specific strategies (Phase 8).
+        Uses pattern recognition and predictive healing when available.
         """
         if component not in self.circuit_breakers:
             logger.warning("Unknown component for auto-heal: %s", component)
@@ -472,17 +482,39 @@ class FairyMagic:
             logger.debug("Skipping auto-heal for %s - circuit breaker is OPEN", component)
             return False
 
-        # Attempt blue spark healing
+        # Use advanced healing system if available (Phase 8)
+        if self.advanced_healing and component_type and ComponentType:
+            try:
+                # Convert string to ComponentType enum
+                comp_type = ComponentType(component_type.upper())
+                success = await self.advanced_healing.heal_component(
+                    component, comp_type, error, {"circuit_breaker": cb.get_status()}
+                )
+
+                if success:
+                    # Reset circuit breaker on successful healing
+                    cb.failure_count = max(0, cb.failure_count - 1)
+                    logger.info("Advanced auto-healing successful for %s", component)
+                    return True
+                else:
+                    # Record failure in circuit breaker
+                    cb._on_failure()
+                    logger.warning("Advanced auto-healing failed for %s", component)
+                    # Fall back to basic healing
+            except Exception as e:
+                logger.warning("Advanced healing failed, falling back to basic: %s", e)
+
+        # Fallback to basic blue spark healing
         success = await self.blue_spark_heal(component, str(error))
 
         if success:
             # Reset circuit breaker on successful healing
             cb.failure_count = max(0, cb.failure_count - 1)
-            logger.info("Auto-healing successful for %s", component)
+            logger.info("Basic auto-healing successful for %s", component)
         else:
             # Record failure in circuit breaker
             cb._on_failure()
-            logger.warning("Auto-healing failed for %s", component)
+            logger.warning("Basic auto-healing failed for %s", component)
 
         return success
 
