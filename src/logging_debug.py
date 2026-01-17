@@ -93,7 +93,8 @@ class ZEJZLLogger:
     def log_with_context(self, level: str, message: str, **context):
         """Log with additional context fields"""
         extra = {'extra_fields': context}
-        getattr(self.logger, level)(message, extra=extra)
+        log_method = getattr(self.logger, level)
+        log_method(message, extra=extra)
 
     def info(self, message: str, **context):
         self.log_with_context('info', message, **context)
@@ -430,7 +431,7 @@ def setup_logging(level: str = "INFO", pretty: bool = False):
     global logger
     logger = ZEJZLLogger()
 
-    logger.info("Enhanced logging system initialized", level=level, pretty=pretty)
+    logger.info("Enhanced logging system initialized", log_level=level, pretty=pretty)
 
 # Export functions and classes
 __all__ = [
