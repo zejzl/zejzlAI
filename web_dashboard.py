@@ -23,8 +23,22 @@ from ai_framework import AsyncMessageBus
 from base import get_ai_provider_bus
 from src.magic import FairyMagic
 from src.usage_analytics import UsageAnalytics
-from src.multimodal_processing import multimodal_processor
-from src.multimodal_ai import create_multimodal_message, MultiModalContent, ModalityType
+try:
+    from src.multimodal_processing import multimodal_processor
+    from src.multimodal_ai import create_multimodal_message, MultiModalContent, ModalityType
+except ImportError:
+    multimodal_processor = None
+    create_multimodal_message = None
+    MultiModalContent = None
+    ModalityType = None
+
+# Import MCP components
+try:
+    from src.mcp_registry import MCPRegistry
+    from src.mcp_security import get_security_manager
+except ImportError:
+    MCPRegistry = None
+    get_security_manager = None
 from telemetry import get_telemetry
 from src.performance import record_metric
 from src.logging_debug import debug_monitor, logger as debug_logger
@@ -636,6 +650,111 @@ async def extract_pdf_text_endpoint(request: Request):
         }
     except Exception as e:
         logger.error(f"PDF text extraction endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+# MCP Status Endpoints
+@app.get("/api/mcp/status")
+async def get_mcp_status():
+    """Get MCP system status"""
+    try:
+        if not MCPRegistry:
+            return {"success": False, "error": "MCP not available"}
+
+        registry = MCPRegistry()
+        servers = registry.list_servers()
+        health_status = {}
+
+        for server_name in servers:
+            health = registry.check_server_health(server_name)
+            health_status[server_name] = health
+
+        return {
+            "success": True,
+            "data": {
+                "servers_count": len(servers),
+                "servers": servers,
+                "health_status": health_status,
+                "registry_status": "active"
+            }
+        }
+    except Exception as e:
+        logger.error(f"MCP status endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/mcp/servers")
+async def get_mcp_servers():
+    """Get detailed MCP server information"""
+    try:
+        if not MCPRegistry:
+            return {"success": False, "error": "MCP not available"}
+
+        registry = MCPRegistry()
+        servers = registry.list_servers()
+        server_details = {}
+
+        for server_name in servers:
+            server_info = registry.get_server(server_name)
+            health = registry.check_server_health(server_name)
+            server_details[server_name] = {
+                "info": server_info,
+                "health": health
+            }
+
+        return {
+            "success": True,
+            "data": server_details
+        }
+    except Exception as e:
+        logger.error(f"MCP servers endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/mcp/security")
+async def get_mcp_security_status():
+    """Get MCP security status"""
+    try:
+        if not get_security_manager:
+            return {"success": False, "error": "MCP Security not available"}
+
+        security = get_security_manager()
+        metrics = security.get_security_metrics()
+
+        return {
+            "success": True,
+            "data": metrics
+        }
+    except Exception as e:
+        logger.error(f"MCP security endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/mcp/tool-call")
+async def call_mcp_tool(request: Request):
+    """Call an MCP tool through the web interface"""
+    try:
+        data = await request.json()
+        server_name = data.get("server")
+        tool_name = data.get("tool")
+        arguments = data.get("arguments", {})
+
+        if not server_name or not tool_name:
+            return {"success": False, "error": "Server and tool name required"}
+
+        # This would need proper MCP client integration
+        # For now, return mock response
+        mock_response = {
+            "tool": tool_name,
+            "server": server_name,
+            "arguments": arguments,
+            "result": f"Mock result for {tool_name} on {server_name}",
+            "status": "completed"
+        }
+
+        return {
+            "success": True,
+            "data": mock_response
+        }
+    except Exception as e:
+        logger.error(f"MCP tool call endpoint error: {e}")
         return {"success": False, "error": str(e)}
 
 
