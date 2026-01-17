@@ -8,7 +8,7 @@ improvement of the multi-agent orchestration system.
 
 import asyncio
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from collections import defaultdict, Counter
 
 logger = logging.getLogger("LearnerAgent")
@@ -18,28 +18,123 @@ class LearnerAgent:
     """
     Learner Agent for Pantheon 9-Agent System.
     Responsible for learning patterns from memory/events and optimizing the learning loop.
+
+    Specialization: Pattern Recognition & Continuous Optimization
+    Responsibilities:
+    - Analyze historical data for patterns and trends
+    - Identify successful and failed execution patterns
+    - Generate optimization suggestions for system improvement
+    - Implement continuous learning and adaptation
+
+    Expertise Areas:
+    - Pattern recognition and machine learning
+    - Performance bottleneck identification
+    - Optimization strategy development
+    - Continuous improvement methodologies
     """
 
-    def __init__(self):
+    def __init__(self, persistence=None):
         self.name = "Learner"
+        self.specialization = "Pattern Recognition & Continuous Optimization"
+        self.responsibilities = [
+            "Analyze historical data for patterns and trends",
+            "Identify successful and failed execution patterns",
+            "Generate optimization suggestions for system improvement",
+            "Implement continuous learning and adaptation"
+        ]
+        self.expertise_areas = [
+            "Pattern recognition and machine learning",
+            "Performance bottleneck identification",
+            "Optimization strategy development",
+            "Continuous improvement methodologies"
+        ]
         self.learned_patterns: Dict[str, Any] = {}
         self.success_patterns: List[Dict[str, Any]] = []
         self.failure_patterns: List[Dict[str, Any]] = []
         self.optimization_suggestions: List[str] = []
+        self.persistence = persistence
 
-    async def learn(self, memory_events: List[Dict[str, Any]]) -> Dict[str, Any]:
+        # Load persisted patterns if persistence is available
+        if self.persistence:
+            asyncio.create_task(self.load_patterns())
+
+    async def save_patterns(self):
+        """Save learned patterns to persistence"""
+        # Get persistence from AI provider bus if not set
+        persistence = self.persistence
+        if not persistence:
+            try:
+                from base import get_ai_provider_bus
+                bus = await get_ai_provider_bus()
+                persistence = bus.persistence
+            except Exception as e:
+                logger.debug(f"Could not get persistence for saving patterns: {e}")
+                return
+
+        patterns_state = {
+            "learned_patterns": self.learned_patterns,
+            "success_patterns": self.success_patterns[-50:],  # Keep last 50
+            "failure_patterns": self.failure_patterns[-30:],  # Keep last 30
+            "optimization_suggestions": self.optimization_suggestions[-20:]  # Keep last 20
+        }
+
+        try:
+            await persistence.save_learner_patterns(patterns_state)
+            logger.debug("Learner patterns saved successfully")
+        except Exception as e:
+            logger.warning(f"Failed to save learner patterns: {e}")
+
+    async def load_patterns(self):
+        """Load learned patterns from persistence"""
+        # Get persistence from AI provider bus if not set
+        persistence = self.persistence
+        if not persistence:
+            try:
+                from base import get_ai_provider_bus
+                bus = await get_ai_provider_bus()
+                persistence = bus.persistence
+            except Exception as e:
+                logger.debug(f"Could not get persistence for loading patterns: {e}")
+                return
+
+        try:
+            patterns_state = await persistence.load_learner_patterns()
+            if not patterns_state:
+                logger.debug("No persisted learner patterns found")
+                return
+
+            self.learned_patterns = patterns_state.get("learned_patterns", {})
+            self.success_patterns = patterns_state.get("success_patterns", [])
+            self.failure_patterns = patterns_state.get("failure_patterns", [])
+            self.optimization_suggestions = patterns_state.get("optimization_suggestions", [])
+
+            logger.info("Learner patterns loaded successfully")
+        except Exception as e:
+            logger.warning(f"Failed to load learner patterns: {e}")
+
+    async def learn(self, memory_events: List[Dict[str, Any]],
+                   profiling_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Advanced learning process that analyzes event patterns and optimizes future behavior.
+        Now integrates with performance profiling data for data-driven insights.
         Implements learning loop optimization for the Pantheon system.
         """
-        logger.debug("[%s] Learning from %d events", self.name, len(memory_events))
+        logger.debug("[%s] Learning from %d events with profiling data: %s",
+                    self.name, len(memory_events), profiling_data is not None)
 
         try:
             # Analyze event sequences and patterns
             patterns = await self._analyze_patterns(memory_events)
             success_rate = await self._calculate_success_rate(memory_events)
             bottlenecks = await self._identify_bottlenecks(memory_events)
-            optimizations = await self._generate_optimizations(memory_events, patterns, bottlenecks)
+
+            # Integrate profiling data if available
+            if profiling_data:
+                enhanced_patterns = await self._integrate_profiling_data(patterns, profiling_data)
+                enhanced_bottlenecks = await self._enhance_bottlenecks_with_profiling(bottlenecks, profiling_data)
+                optimizations = await self._generate_optimizations(memory_events, enhanced_patterns, enhanced_bottlenecks, profiling_data)
+            else:
+                optimizations = await self._generate_optimizations(memory_events, patterns, bottlenecks)
 
             # Store learned knowledge
             await self._store_learned_patterns(patterns, success_rate, bottlenecks)
@@ -55,11 +150,16 @@ class LearnerAgent:
                 "learned_patterns": patterns,
                 "bottlenecks": bottlenecks,
                 "optimizations": optimizations,
+                "profiling_integrated": profiling_data is not None,
                 "timestamp": asyncio.get_event_loop().time(),
             }
 
-            logger.info("[%s] Learning complete: %d patterns, %.2f%% success rate",
-                       self.name, len(patterns), success_rate * 100)
+            logger.info("[%s] Learning complete: %d patterns, %.2f%% success rate, profiling: %s",
+                        self.name, len(patterns), success_rate * 100, "integrated" if profiling_data else "not used")
+
+            # Save patterns after successful learning
+            asyncio.create_task(self.save_patterns())
+
             return result
 
         except (ValueError, KeyError, TypeError) as e:
@@ -70,6 +170,7 @@ class LearnerAgent:
                 "success_rate": 0.0,
                 "bottlenecks_identified": 0,
                 "optimizations_suggested": 0,
+                "profiling_integrated": False,
                 "timestamp": asyncio.get_event_loop().time()
             }
         except Exception as e:
@@ -192,7 +293,7 @@ class LearnerAgent:
 
         return bottlenecks
 
-    async def _generate_optimizations(self, events: List[Dict[str, Any]], patterns: Dict[str, Any], bottlenecks: List[Dict[str, Any]]) -> List[str]:
+    async def _generate_optimizations(self, events: List[Dict[str, Any]], patterns: Dict[str, Any], bottlenecks: List[Dict[str, Any]], profiling_data: Optional[Dict[str, Any]] = None) -> List[str]:
         """
         Generate optimization suggestions based on patterns and bottlenecks.
         """
@@ -232,6 +333,114 @@ class LearnerAgent:
         if len(events) > 10:  # If we have enough data
             optimizations.append("Implement continuous learning with pattern reinforcement")
             optimizations.append("Add predictive optimization based on historical success rates")
+
+        # Add profiling-based optimizations
+        if profiling_data:
+            profiling_opts = await self._generate_profiling_optimizations(profiling_data)
+            optimizations.extend(profiling_opts)
+
+        return optimizations
+
+    async def _integrate_profiling_data(self, patterns: Dict[str, Any], profiling_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Integrate performance profiling data with pattern analysis.
+        """
+        enhanced_patterns = patterns.copy()
+
+        # Add performance metrics to patterns
+        agent_metrics = profiling_data.get("agent_metrics", {})
+        enhanced_patterns["performance_correlations"] = {}
+
+        # Correlate success patterns with high-performing agents
+        if patterns.get("success_paths"):
+            for pattern in patterns["success_paths"]:
+                # Analyze which agents performed well in successful patterns
+                pattern_agents = set()
+                for event_seq in pattern:
+                    if isinstance(event_seq, dict) and "agent" in event_seq:
+                        pattern_agents.add(event_seq["agent"])
+
+                # Check performance of agents in this pattern
+                high_performers = []
+                for agent in pattern_agents:
+                    if agent in agent_metrics:
+                        metrics = agent_metrics[agent]
+                        if metrics.get("efficiency_score", 0) > 0.8:
+                            high_performers.append(agent)
+
+                enhanced_patterns["performance_correlations"][str(pattern)] = {
+                    "high_performing_agents": high_performers,
+                    "correlation_strength": len(high_performers) / len(pattern_agents) if pattern_agents else 0
+                }
+
+        return enhanced_patterns
+
+    async def _enhance_bottlenecks_with_profiling(self, bottlenecks: List[Dict[str, Any]], profiling_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Enhance bottleneck analysis with profiling data.
+        """
+        enhanced_bottlenecks = []
+        agent_metrics = profiling_data.get("agent_metrics", {})
+
+        for bottleneck in bottlenecks:
+            enhanced = bottleneck.copy()
+
+            # Add performance context
+            if bottleneck["type"] == "performance_bottleneck":
+                # Identify which agents are causing the bottleneck
+                slow_agents = []
+                for agent_name, metrics in agent_metrics.items():
+                    if metrics.get("avg_response_time", 0) > 2.0:  # Slow threshold
+                        slow_agents.append({
+                            "agent": agent_name,
+                            "response_time": metrics["avg_response_time"],
+                            "efficiency": metrics.get("efficiency_score", 0)
+                        })
+
+                enhanced["slow_agents"] = slow_agents
+                enhanced["bottleneck_severity"] = len(slow_agents)
+
+            elif bottleneck["type"] == "execution_error":
+                # Correlate with low reliability agents
+                unreliable_agents = []
+                for agent_name, metrics in agent_metrics.items():
+                    if metrics.get("success_rate", 1.0) < 0.8:
+                        unreliable_agents.append({
+                            "agent": agent_name,
+                            "success_rate": metrics["success_rate"],
+                            "error_count": metrics.get("failed_calls", 0)
+                        })
+
+                enhanced["unreliable_agents"] = unreliable_agents
+
+            enhanced_bottlenecks.append(enhanced)
+
+        return enhanced_bottlenecks
+
+    async def _generate_profiling_optimizations(self, profiling_data: Dict[str, Any]) -> List[str]:
+        """
+        Generate optimizations based on profiling data.
+        """
+        optimizations = []
+        agent_metrics = profiling_data.get("agent_metrics", {})
+
+        # Agent-specific optimizations
+        for agent_name, metrics in agent_metrics.items():
+            efficiency = metrics.get("efficiency_score", 1.0)
+            reliability = metrics.get("success_rate", 1.0)
+            avg_time = metrics.get("avg_response_time", 0)
+
+            if efficiency < 0.7:
+                optimizations.append(f"Optimize {agent_name} efficiency (current: {efficiency:.2f})")
+            if reliability < 0.8:
+                optimizations.append(f"Improve {agent_name} reliability (current: {reliability:.1%})")
+            if avg_time > 2.0:
+                optimizations.append(f"Reduce {agent_name} response time (current: {avg_time:.2f}s)")
+
+        # System-level optimizations
+        system_metrics = profiling_data.get("system_metrics", {})
+        if system_metrics.get("system_efficiency", 1.0) < 0.8:
+            optimizations.append("Optimize overall system performance")
 
         return optimizations
 

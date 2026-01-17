@@ -10,10 +10,36 @@ class ExecutorAgent:
     """
     Executor Agent for Pantheon 9-Agent System.
     Responsible for safely executing validated tasks, with retries.
+
+    Specialization: Safe Execution & Error Recovery
+    Responsibilities:
+    - Execute validated tasks with safety checks
+    - Implement retry logic for transient failures
+    - Monitor execution progress and health
+    - Handle critical execution failures gracefully
+
+    Expertise Areas:
+    - Safe execution environments
+    - Retry logic and backoff strategies
+    - Failure recovery and rollback
+    - Execution monitoring and alerting
     """
 
     def __init__(self):
         self.name = "Executor"
+        self.specialization = "Safe Execution & Error Recovery"
+        self.responsibilities = [
+            "Execute validated tasks with safety checks",
+            "Implement retry logic for transient failures",
+            "Monitor execution progress and health",
+            "Handle critical execution failures gracefully"
+        ]
+        self.expertise_areas = [
+            "Safe execution environments",
+            "Retry logic and backoff strategies",
+            "Failure recovery and rollback",
+            "Execution monitoring and alerting"
+        ]
 
     async def execute(self, validated_task: Dict[str, Any]) -> Dict[str, Any]:
         """

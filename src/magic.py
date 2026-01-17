@@ -133,7 +133,7 @@ class FairyMagic:
     Lore ties: Holly's mesmer/healing, oak acorns for strength, underground fairy tech.
     """
 
-    def __init__(self, energy_level: float = 100.0, max_energy: float = 100.0):
+    def __init__(self, energy_level: float = 100.0, max_energy: float = 100.0, persistence=None):
         self.energy_level = energy_level
         self.max_energy = max_energy
         self.acorn_reserve = 5  # Number of 'acorn potions' available
@@ -141,9 +141,108 @@ class FairyMagic:
         self.circuit_breakers: Dict[str, CircuitBreaker] = {}
         self.healing_history: List[HealingRecord] = []
         self.learning_preferences: Dict[str, float] = {}  # For DPO-style learning
+        self.persistence = persistence
 
         # Initialize circuit breakers for common failure points
         self._init_circuit_breakers()
+
+        # Load persisted state if persistence is available
+        if self.persistence:
+            asyncio.create_task(self.load_state())
+
+    async def save_state(self):
+        """Save magic system state to persistence"""
+        if not self.persistence:
+            return
+
+        # Serialize circuit breakers
+        cb_states = {}
+        for name, cb in self.circuit_breakers.items():
+            cb_states[name] = {
+                "state": cb.state.value,
+                "failure_count": cb.failure_count,
+                "last_failure_time": cb.last_failure_time.isoformat() if cb.last_failure_time else None,
+                "success_count": cb.success_count
+            }
+
+        # Serialize healing history
+        healing_records = []
+        for record in self.healing_history[-100:]:  # Keep last 100 records
+            healing_records.append({
+                "target": record.target,
+                "issue": record.issue,
+                "success": record.success,
+                "energy_used": record.energy_used,
+                "timestamp": record.timestamp.isoformat(),
+                "outcome": record.outcome
+            })
+
+        state = {
+            "energy_level": self.energy_level,
+            "max_energy": self.max_energy,
+            "acorn_reserve": self.acorn_reserve,
+            "is_shielded": self.is_shielded,
+            "circuit_breakers": cb_states,
+            "healing_history": healing_records,
+            "learning_preferences": self.learning_preferences
+        }
+
+        try:
+            await self.persistence.save_magic_state(state)
+            logger.debug("Magic state saved successfully")
+        except Exception as e:
+            logger.warning(f"Failed to save magic state: {e}")
+
+    async def load_state(self):
+        """Load magic system state from persistence"""
+        if not self.persistence:
+            return
+
+        try:
+            state = await self.persistence.load_magic_state()
+            if not state:
+                logger.debug("No persisted magic state found")
+                return
+
+            # Restore basic state
+            self.energy_level = state.get("energy_level", 100.0)
+            self.max_energy = state.get("max_energy", 100.0)
+            self.acorn_reserve = state.get("acorn_reserve", 5)
+            self.is_shielded = state.get("is_shielded", False)
+            self.learning_preferences = state.get("learning_preferences", {})
+
+            # Restore circuit breakers
+            cb_states = state.get("circuit_breakers", {})
+            for name, cb_state in cb_states.items():
+                if name in self.circuit_breakers:
+                    cb = self.circuit_breakers[name]
+                    cb.state = CircuitBreakerState(cb_state.get("state", "closed"))
+                    cb.failure_count = cb_state.get("failure_count", 0)
+                    cb.success_count = cb_state.get("success_count", 0)
+                    last_failure = cb_state.get("last_failure_time")
+                    if last_failure:
+                        cb.last_failure_time = datetime.fromisoformat(last_failure)
+
+            # Restore healing history
+            healing_records = state.get("healing_history", [])
+            self.healing_history = []
+            for record_data in healing_records[-100:]:  # Keep last 100
+                try:
+                    record = HealingRecord(
+                        target=record_data["target"],
+                        issue=record_data["issue"],
+                        success=record_data["success"],
+                        energy_used=record_data["energy_used"],
+                        timestamp=datetime.fromisoformat(record_data["timestamp"]),
+                        outcome=record_data["outcome"]
+                    )
+                    self.healing_history.append(record)
+                except (KeyError, ValueError) as e:
+                    logger.warning(f"Failed to load healing record: {e}")
+
+            logger.info("Magic state loaded successfully")
+        except Exception as e:
+            logger.warning(f"Failed to load magic state: {e}")
 
     def _init_circuit_breakers(self):
         """Initialize circuit breakers for different system components"""

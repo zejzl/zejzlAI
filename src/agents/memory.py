@@ -10,10 +10,36 @@ class MemoryAgent:
     """
     Memory Agent for Pantheon 9-Agent System.
     Responsible for storing and recalling state, observations, and execution history.
+
+    Specialization: State Management & Historical Data
+    Responsibilities:
+    - Store and organize system events and data
+    - Provide efficient data retrieval and filtering
+    - Maintain conversation and execution history
+    - Support memory-based decision making
+
+    Expertise Areas:
+    - Data persistence and storage optimization
+    - Memory retrieval and search algorithms
+    - Historical data analysis
+    - State management and caching
     """
 
     def __init__(self):
         self.name = "Memory"
+        self.specialization = "State Management & Historical Data"
+        self.responsibilities = [
+            "Store and organize system events and data",
+            "Provide efficient data retrieval and filtering",
+            "Maintain conversation and execution history",
+            "Support memory-based decision making"
+        ]
+        self.expertise_areas = [
+            "Data persistence and storage optimization",
+            "Memory retrieval and search algorithms",
+            "Historical data analysis",
+            "State management and caching"
+        ]
         self.memory_store: List[Dict[str, Any]] = []
 
     async def store(self, event: Dict[str, Any]):

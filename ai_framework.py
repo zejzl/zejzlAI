@@ -11,8 +11,10 @@ from __future__ import annotations
 
 # --- 2. Standard Library Imports ---
 import asyncio
+import json
 import logging
 import os
+import pickle
 import sys
 import argparse
 from abc import ABC, abstractmethod
@@ -189,12 +191,52 @@ class RedisPersistence(PersistenceLayer):
     async def load_config(self) -> Dict:
         if not self.redis:
             raise RuntimeError("Redis not initialized")
-        
+
         config_str = await self.redis.get(self.config_key)
         if config_str:
             return toml.loads(config_str)
         return self.get_default_config()
-    
+
+    async def save_magic_state(self, magic_state: Dict):
+        """Save magic system state to Redis"""
+        if not self.redis:
+            raise RuntimeError("Redis not initialized")
+
+        magic_key = "ai_framework:magic_state"
+        state_str = pickle.dumps(magic_state)
+        await self.redis.set(magic_key, state_str)
+
+    async def load_magic_state(self) -> Dict:
+        """Load magic system state from Redis"""
+        if not self.redis:
+            raise RuntimeError("Redis not initialized")
+
+        magic_key = "ai_framework:magic_state"
+        state_data = await self.redis.get(magic_key)
+        if state_data:
+            return pickle.loads(state_data)
+        return {}  # Return empty dict if no state saved
+
+    async def save_learner_patterns(self, patterns_state: Dict):
+        """Save learner patterns to Redis"""
+        if not self.redis:
+            raise RuntimeError("Redis not initialized")
+
+        patterns_key = "ai_framework:learner_patterns"
+        patterns_data = pickle.dumps(patterns_state)
+        await self.redis.set(patterns_key, patterns_data)
+
+    async def load_learner_patterns(self) -> Dict:
+        """Load learner patterns from Redis"""
+        if not self.redis:
+            raise RuntimeError("Redis not initialized")
+
+        patterns_key = "ai_framework:learner_patterns"
+        patterns_data = await self.redis.get(patterns_key)
+        if patterns_data:
+            return pickle.loads(patterns_data)
+        return {}  # Return empty dict if no patterns saved
+
     def get_default_config(self) -> Dict:
         return {
             "providers": {
@@ -210,7 +252,79 @@ class RedisPersistence(PersistenceLayer):
             "redis_url": "redis://localhost:6379",
             "sqlite_path": str(Path.home() / ".ai_framework.db")
         }
-    
+
+    async def save_magic_state(self, magic_state: Dict):
+        """Save magic system state to SQLite database"""
+        if not self.conn:
+            raise RuntimeError("SQLite not initialized")
+
+        # Store as JSON in a magic_state table
+        await self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS magic_state (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
+
+        state_json = json.dumps(magic_state)
+        await self.conn.execute("""
+            INSERT OR REPLACE INTO magic_state (key, value, updated_at)
+            VALUES (?, ?, ?)
+        """, ("state", state_json, datetime.now().isoformat()))
+
+        await self.conn.commit()
+
+    async def load_magic_state(self) -> Dict:
+        """Load magic system state from SQLite database"""
+        if not self.conn:
+            raise RuntimeError("SQLite not initialized")
+
+        cursor = await self.conn.execute("""
+            SELECT value FROM magic_state WHERE key = 'state'
+        """)
+
+        row = await cursor.fetchone()
+        if row:
+            return json.loads(row[0])
+        return {}  # Return empty dict if no state saved
+
+    async def save_learner_patterns(self, patterns_state: Dict):
+        """Save learner patterns to SQLite database"""
+        if not self.conn:
+            raise RuntimeError("SQLite not initialized")
+
+        # Store as JSON in a learner_patterns table
+        await self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS learner_patterns (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
+
+        patterns_json = json.dumps(patterns_state)
+        await self.conn.execute("""
+            INSERT OR REPLACE INTO learner_patterns (key, value, updated_at)
+            VALUES (?, ?, ?)
+        """, ("patterns", patterns_json, datetime.now().isoformat()))
+
+        await self.conn.commit()
+
+    async def load_learner_patterns(self) -> Dict:
+        """Load learner patterns from SQLite database"""
+        if not self.conn:
+            raise RuntimeError("SQLite not initialized")
+
+        cursor = await self.conn.execute("""
+            SELECT value FROM learner_patterns WHERE key = 'patterns'
+        """)
+
+        row = await cursor.fetchone()
+        if row:
+            return json.loads(row[0])
+        return {}  # Return empty dict if no patterns saved
+
     async def cleanup(self):
         if self.redis:
             await self.redis.aclose()
@@ -416,6 +530,60 @@ class HybridPersistence:
             else:
                 raise
     
+    async def save_magic_state(self, magic_state: Dict):
+        """Save magic system state to persistence"""
+        try:
+            await self.primary.save_magic_state(magic_state)
+            if self.fallback:
+                try:
+                    await self.fallback.save_magic_state(magic_state)
+                except Exception as e:
+                    logger.warning(f"Failed to save magic state to fallback: {e}")
+        except Exception as e:
+            if self.fallback:
+                logger.warning(f"Primary failed, using fallback for magic state: {e}")
+                await self.fallback.save_magic_state(magic_state)
+            else:
+                raise
+
+    async def load_magic_state(self) -> Dict:
+        """Load magic system state from persistence"""
+        try:
+            return await self.primary.load_magic_state()
+        except Exception as e:
+            if self.fallback:
+                logger.warning(f"Primary failed, using fallback for magic state: {e}")
+                return await self.fallback.load_magic_state()
+            else:
+                raise
+
+    async def save_learner_patterns(self, patterns_state: Dict):
+        """Save learner patterns to persistence"""
+        try:
+            await self.primary.save_learner_patterns(patterns_state)
+            if self.fallback:
+                try:
+                    await self.fallback.save_learner_patterns(patterns_state)
+                except Exception as e:
+                    logger.warning(f"Failed to save learner patterns to fallback: {e}")
+        except Exception as e:
+            if self.fallback:
+                logger.warning(f"Primary failed, using fallback for learner patterns: {e}")
+                await self.fallback.save_learner_patterns(patterns_state)
+            else:
+                raise
+
+    async def load_learner_patterns(self) -> Dict:
+        """Load learner patterns from persistence"""
+        try:
+            return await self.primary.load_learner_patterns()
+        except Exception as e:
+            if self.fallback:
+                logger.warning(f"Primary failed, using fallback for learner patterns: {e}")
+                return await self.fallback.load_learner_patterns()
+            else:
+                raise
+
     async def cleanup(self):
         if self.redis:
             await self.redis.cleanup()
@@ -707,7 +875,7 @@ class AsyncMessageBus:
         self.running = False
         self.persistence = HybridPersistence()
         self.config = None
-        self.magic = FairyMagic()  # Self-healing magic system
+        self.magic = FairyMagic(persistence=self.persistence)  # Self-healing magic system
     
     async def load_config(self) -> Dict:
         """Load configuration from persistence layer"""
@@ -929,14 +1097,18 @@ class AsyncMessageBus:
     async def stop(self):
         """Stop the message bus"""
         self.running = False
-        
+
+        # Save magic state before shutdown
+        if hasattr(self, 'magic') and self.magic:
+            await self.magic.save_state()
+
         # Clean up all providers
         for provider_name in list(self.providers.keys()):
             await self.unregister_provider(provider_name)
-        
+
         # Clean up persistence
         await self.persistence.cleanup()
-        
+
         logger.info("Message bus stopped")
     
     async def process_messages(self):
