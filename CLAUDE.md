@@ -4,18 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ZEJZL.NET is an async message bus AI framework implementing a 9-agent "Pantheon" orchestration system for multi-AI collaboration. The framework supports multiple AI providers (ChatGPT, Claude, Gemini, Grok, DeepSeek, Qwen, Zai) and uses a hybrid persistence layer (Redis primary + SQLite fallback).
+ZEJZL.NET is an async message bus AI framework implementing a 9-agent "Pantheon" orchestration system for multi-AI collaboration with self-healing capabilities. The framework supports multiple AI providers (ChatGPT, Claude, Gemini, Grok, DeepSeek, Qwen, Zai), uses a hybrid persistence layer (Redis primary + SQLite fallback), and features a fairy magic-inspired self-healing system with circuit breakers and learning loop optimization.
 
 ## Core Architecture
 
 ### Message Bus System
-The framework is built around `AsyncMessageBus` (ai_framework.py:680-829) which handles:
+The framework is built around `AsyncMessageBus` (ai_framework.py:680-900) which handles:
 - Provider registration and lifecycle management
 - Async message queuing and routing
 - Conversation history caching
 - Dual persistence (Redis + SQLite)
+- Self-healing with magic system (Phase 4)
+- Automatic failure recovery via circuit breakers
 
-Messages flow: User Input → AsyncMessageBus → AI Provider → Response → Persistence Layer
+Messages flow: User Input → AsyncMessageBus → Magic System (Pre-boost) → AI Provider → Response → Magic System (Auto-heal if needed) → Persistence Layer
 
 ### The 9-Agent Pantheon System
 Agents communicate through async method calls and shared memory state. The full execution flow is:
@@ -27,8 +29,8 @@ Agents communicate through async method calls and shared memory state. The full 
 5. **Executor** → Performs validated tasks with error handling
 6. **Memory** → Stores all events and state (acts as shared context)
 7. **Analyzer** → Generates metrics from stored events
-8. **Learner** → Identifies patterns from execution history
-9. **Improver** → Suggests system optimizations
+8. **Learner** → Identifies patterns, bottlenecks, and generates optimizations (Phase 4: Enhanced with learning loop)
+9. **Improver** → Suggests magic-based healing and system optimizations (Phase 4: Enhanced with magic recommendations)
 
 All agents are located in `src/agents/` and follow the pattern:
 ```python
@@ -51,6 +53,26 @@ All providers implement the `AIProvider` abstract base class (ai_framework.py:40
 - Each provider handles its own API format and authentication
 - Uses aiohttp for async HTTP requests
 - Response times and errors are tracked automatically
+
+### Magic System (Phase 4)
+Located in `src/magic.py` (447 lines). Provides self-healing capabilities:
+- **Circuit Breakers**: 4 components (ai_provider, persistence, agent_coordinator, tool_call) with auto-recovery
+- **Blue Spark Healing**: Energy-based healing with DPO-style preference learning
+- **Acorn Vitality Boost**: Performance enhancement (10-50% boost)
+- **Fairy Shield**: Protection mechanism for critical operations
+- **Energy Management**: 0-100% energy level with automatic recharge
+
+**Integration with MessageBus**:
+```python
+# Auto-initialized in AsyncMessageBus
+self.magic = FairyMagic()
+
+# Pre-task vitality boost
+boost = await self.magic.acorn_vitality_boost(f"provider_{name}", config)
+
+# Auto-healing on failure
+healed = await self.magic.auto_heal("ai_provider", exception)
+```
 
 ## Running the Framework
 
@@ -106,6 +128,16 @@ python single_session_test_loop.py
 python interactive_session_example.py
 ```
 
+**Phase 4 tools:**
+```bash
+python token_haze.py                  # Interactive onboarding
+python token_haze.py --interactive    # Interactive demo mode
+python test_magic_integration.py      # Test magic system
+./start.sh                            # Quick start (bash)
+./orchestrate.sh menu                 # Master orchestration
+./orchestrate.sh infinite             # Infinite Panda Adventure!
+```
+
 ## Development Patterns
 
 ### Adding a New Agent
@@ -142,28 +174,32 @@ python interactive_session_example.py
 
 ```
 zejzl_net/
-├── ai_framework.py              # Core: MessageBus, Persistence, Providers (970 lines)
+├── ai_framework.py              # Core: MessageBus, Persistence, Providers + Magic (950 lines)
 ├── main.py                      # Interactive CLI menu entry point
 ├── 9agent_pantheon_test.py      # Full 9-agent orchestration demo
 ├── single_session_test_loop.py  # Single agent + validation test
 ├── interactive_session_example.py # Simple single agent example
+├── token_haze.py                # Interactive onboarding (Phase 4)
+├── test_magic_integration.py    # Magic system tests (Phase 4)
+├── orchestrate.sh               # Master orchestration (Phase 4)
+├── start.sh                     # Quick start script (Phase 4)
 ├── pyproject.toml               # Build config (setuptools)
 ├── .env                         # API keys (git-ignored, copy from .env.example)
 ├── .env.example                 # Template with all required env vars
 └── src/
     ├── __init__.py              # Package init
-    ├── agents/
-    │   ├── __init__.py          # Agent subpackage init
-    │   ├── observer.py          # Observation & perception
-    │   ├── reasoner.py          # Planning & task decomposition
-    │   ├── actor.py             # Action execution
-    │   ├── validator.py         # Safety & correctness checks
-    │   ├── memory.py            # State storage & recall
-    │   ├── executor.py          # Reliable task execution
-    │   ├── analyzer.py          # Telemetry & metrics
-    │   ├── learner.py           # Pattern learning
-    │   └── improver.py          # Self-optimization suggestions
-    └── [wrapper files]          # Direct imports for backward compatibility
+    ├── magic.py                 # Self-healing magic system (Phase 4)
+    └── agents/
+        ├── __init__.py          # Agent subpackage init
+        ├── observer.py          # Observation & perception
+        ├── reasoner.py          # Planning & task decomposition
+        ├── actor.py             # Action execution
+        ├── validator.py         # Safety & correctness checks
+        ├── memory.py            # State storage & recall
+        ├── executor.py          # Reliable task execution
+        ├── analyzer.py          # Telemetry & metrics
+        ├── learner.py           # Pattern learning + optimization (Phase 4: Enhanced)
+        └── improver.py          # Self-optimization + magic (Phase 4: Enhanced)
 ```
 
 ## Important Implementation Details
@@ -214,11 +250,20 @@ The current implementation uses stub agents (placeholder implementations). To te
 3. **Test persistence**: Check that messages persist by querying conversation history in subsequent sessions
 4. **Test fallback**: Stop Redis and verify SQLite fallback engages automatically
 
-## Known Limitations (Current State)
+## Phase 4 Features (Self-Healing)
 
+**Completed Enhancements:**
+- ✅ Rate limiting on provider API calls (Phase 3)
+- ✅ Conversation pruning (Phase 3: 100 message limit)
+- ✅ Automatic retries with exponential backoff (Phase 3)
+- ✅ Circuit breaker pattern for failure recovery (Phase 4)
+- ✅ Auto-healing with preference learning (Phase 4)
+- ✅ Performance vitality boosts (10-50% improvement) (Phase 4)
+- ✅ Learning loop optimization with bottleneck detection (Phase 4)
+
+**Known Limitations (Current State):**
 - Agent implementations are stubs (return mock data, not real AI reasoning)
-- No rate limiting on provider API calls
-- No conversation pruning (100 message limit per conversation in Redis only)
-- Provider errors don't trigger automatic retries
 - No streaming response support
 - Memory agent uses in-process storage (not persistent across runs)
+- Magic system state not persistent (lost on restart)
+- Learning patterns not saved to database

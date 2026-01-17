@@ -19,6 +19,9 @@ ZEJZL.NET implements a dual-layer architecture with two distinct message bus sys
 - Request/response pattern for AI API calls
 - Configuration management (API keys, default providers)
 - Response time tracking and error handling
+- **Self-healing with magic system (Phase 4)**
+- **Circuit breakers for automatic failure recovery (Phase 4)**
+- **Pre-task vitality boosts and auto-healing (Phase 4)**
 
 **Use Case**: When you need to send a prompt to an AI provider and get a response
 ```python
