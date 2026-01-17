@@ -247,7 +247,7 @@ class RedisPersistence(PersistenceLayer):
         return {
             "providers": {
                 "chatgpt": {"api_key": os.environ.get("OPENAI_API_KEY", ""), "model": "gpt-3.5-turbo"},
-                "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-3-opus-20240229"},
+                "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-3-5-sonnet-20241022"},
                 "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-pro"},
                 "zai": {"api_key": os.environ.get("ZAI_API_KEY", ""), "model": "zai-1"},
                 "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-1"},
@@ -446,7 +446,7 @@ class SQLitePersistence(PersistenceLayer):
         return {
             "providers": {
                 "chatgpt": {"api_key": os.environ.get("OPENAI_API_KEY", ""), "model": "gpt-3.5-turbo"},
-                "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-3-opus-20240229"},
+                "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-3-5-sonnet-20241022"},
                 "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-pro"},
                 "zai": {"api_key": os.environ.get("ZAI_API_KEY", ""), "model": "zai-1"},
                 "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-1"},
@@ -737,7 +737,7 @@ class ClaudeProvider(AIProvider):
     
     @property
     def default_model(self) -> str:
-        return "claude-3-opus-20240229"
+        return "claude-3-5-sonnet-20241022"
     
     async def initialize(self):
         self.session = aiohttp.ClientSession(
@@ -1243,10 +1243,10 @@ class AsyncMessageBus:
             "chatgpt": ChatGPTProvider,
             "claude": ClaudeProvider,
             "gemini": GeminiProvider,
-            "zai": ZaiProvider,
+            # "zai": ZaiProvider,  # Commented out for now
             "grok": GrokProvider,
-            "deepseek": DeepSeekProvider,
-            "qwen": QwenProvider
+            # "deepseek": DeepSeekProvider,  # Commented out for now
+            # "qwen": QwenProvider  # Commented out for now
         }
         
         for provider_name, provider_config in self.config["providers"].items():

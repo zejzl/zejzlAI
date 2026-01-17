@@ -53,35 +53,20 @@ class ReasonerAgent:
             task = observation.get('task', 'Unknown task')
             context = observation.get('context', '')
 
-            prompt = f"""{personality_prompt}
+            prompt = f"""Analyze this task and create a JSON plan: {task}
 
-Observation: {task}
-Context: {context}
-
-As the Reasoner, analyze this observation and create a comprehensive execution plan. Break the task into logical, manageable subtasks with clear dependencies and success criteria.
-
-Provide your response as a JSON object with this structure:
+Return ONLY valid JSON:
 {{
-    "analysis": "Brief analysis of the task requirements",
-    "subtasks": [
-        {{
-            "id": "subtask_1",
-            "description": "Clear description of what to do",
-            "dependencies": ["subtask_id if any"],
-            "success_criteria": "How to know this subtask is complete",
-            "estimated_effort": "Low/Medium/High"
-        }}
-    ],
-    "risks": ["Potential issues or challenges"],
-    "approach": "Overall strategy for execution"
-}}
-
-{self.personality.get_communication_prompt() if self.personality else 'Be thorough but practical'}. Focus on actionable steps."""
+    "analysis": "task analysis",
+    "subtasks": [{{"id": "1", "description": "step description", "success_criteria": "completion check", "estimated_effort": "Low"}}],
+    "risks": ["risk1"],
+    "approach": "strategy"
+}}"""
 
             # Call AI
             response = await ai_bus.send_message(
                 content=prompt,
-                provider_name="grok",  # Use Grok for reasoning
+                provider_name="claude",  # Try Claude 3.5 Sonnet
                 conversation_id=f"reasoner_{hash(str(observation))}"
             )
 

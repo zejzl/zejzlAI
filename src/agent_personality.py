@@ -59,7 +59,7 @@ class AgentPersonality:
 
     def get_personality_prompt(self) -> str:
         """Generate complete personality prompt"""
-        return f"""You are {self.name}, an AI agent with the following characteristics:
+        return f"""Act as an AI agent with these characteristics:
 
 Communication Style: {self.get_communication_prompt()}
 Expertise Areas: {self.get_expertise_prompt()}

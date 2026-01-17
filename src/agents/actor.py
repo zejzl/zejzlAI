@@ -56,35 +56,21 @@ class ActorAgent:
                 # Create prompt for action execution
                 subtask_desc = subtask if isinstance(subtask, str) else subtask.get("description", str(subtask))
 
-                prompt = f"""{personality_prompt}
+                prompt = f"""Create execution steps for: {subtask_desc}
 
-Subtask to execute: {subtask_desc}
-
-Based on the Reasoner's plan, provide specific, actionable steps for executing this subtask. Consider:
-1. What concrete actions need to be taken
-2. What tools or methods should be used
-3. How to verify successful completion
-4. Any potential issues and how to handle them
-
-Provide your response as a JSON object with this structure:
+Return ONLY valid JSON:
 {{
-    "execution_steps": [
-        "Step 1: Specific action to take",
-        "Step 2: Next action...",
-        "Step 3: Verification step"
-    ],
-    "tools_needed": ["tool1", "tool2"],
-    "expected_outcome": "What success looks like",
-    "risk_mitigation": "How to handle potential issues",
-    "estimated_duration": "Time estimate"
-}}
-
-{self.personality.get_communication_prompt() if self.personality else 'Be practical and specific'}. Focus on executable actions rather than abstract planning."""
+    "execution_steps": ["step 1", "step 2"],
+    "tools_needed": ["tool1"],
+    "expected_outcome": "success criteria",
+    "risk_mitigation": "risk handling",
+    "estimated_duration": "time estimate"
+}}"""
 
                 # Call AI
                 response = await ai_bus.send_message(
                     content=prompt,
-                    provider_name="grok",  # Use Grok for action planning
+                    provider_name="claude",  # Try Claude 3.5 Sonnet
                     conversation_id=f"actor_{hash(str(plan))}_{i}"
                 )
 

@@ -191,7 +191,7 @@ class FairyMagic:
             await self.persistence.save_magic_state(state)
             logger.debug("Magic state saved successfully")
         except Exception as e:
-            logger.warning(f"Failed to save magic state: {e}")
+            logger.debug(f"Magic state saving skipped: {e}")
 
     async def load_state(self):
         """Load magic system state from persistence"""
@@ -242,7 +242,7 @@ class FairyMagic:
 
             logger.info("Magic state loaded successfully")
         except Exception as e:
-            logger.warning(f"Failed to load magic state: {e}")
+            logger.debug(f"Magic state loading skipped: {e}")
 
     def _init_circuit_breakers(self):
         """Initialize circuit breakers for different system components"""

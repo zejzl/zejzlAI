@@ -50,96 +50,74 @@ class ObserverAgent:
             # Get personality-enhanced prompt
             personality_prompt = self.personality.get_personality_prompt() if self.personality else ""
 
-            prompt = f"""{personality_prompt}
+            prompt = f"""Analyze this task: {task}
 
-Task to observe: {task}
-
-As the Observer, analyze this task and provide a comprehensive observation that will inform the rest of the pantheon. Consider:
-
-1. What is the core objective of this task?
-2. What are the key requirements and constraints?
-3. What resources or information will be needed?
-4. What are the success criteria?
-5. What potential challenges or complexities exist?
-6. What context or background information is relevant?
-
-Provide your response as a JSON object with this structure:
+Return ONLY valid JSON:
 {{
-    "task": "The original task",
-    "objective": "Clear statement of what needs to be accomplished",
-    "requirements": [
-        "Requirement 1",
-        "Requirement 2"
-    ],
-    "constraints": [
-        "Constraint 1",
-        "Constraint 2"
-    ],
-    "resources_needed": [
-        "Resource 1",
-        "Resource 2"
-    ],
-    "success_criteria": [
-        "Criterion 1",
-        "Criterion 2"
-    ],
-    "potential_challenges": [
-        "Challenge 1",
-        "Challenge 2"
-    ],
-    "context": "Relevant background information",
-    "complexity_level": "Low/Medium/High",
-    "estimated_effort": "Rough effort estimate"
-}}
-
-{self.personality.get_communication_prompt() if self.personality else 'Be thorough and analytical'}. Your observation will guide the entire pantheon's approach to this task."""
+    "objective": "task goal",
+    "requirements": ["req1", "req2"],
+    "complexity_level": "Low",
+    "estimated_effort": "Medium"
+}}"""
 
             # Call AI
             response = await ai_bus.send_message(
                 content=prompt,
-                provider_name="grok",  # Use Grok for observation
+                provider_name="claude",  # Try Claude 3.5 Sonnet
                 conversation_id=f"observer_{hash(task)}"
             )
 
-            # Parse JSON response
+            logger.debug(f"[{self.name}] AI response received: {response[:500]}...")
+
+            # Parse JSON response with better error handling
             import json
+            import re
+
+            def extract_json_from_text(text):
+                """Extract JSON from text that might contain extra content"""
+                # Look for JSON-like content
+                json_match = re.search(r'\{.*\}', text, re.DOTALL)
+                if json_match:
+                    try:
+                        return json.loads(json_match.group())
+                    except json.JSONDecodeError:
+                        pass
+
+                # Try to find JSON between triple backticks
+                code_block_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
+                if code_block_match:
+                    try:
+                        return json.loads(code_block_match.group(1))
+                    except json.JSONDecodeError:
+                        pass
+
+                return None
+
             try:
                 observation_data = json.loads(response)
-                observation = {
-                    "task": task,
-                    "objective": observation_data.get("objective", "Objective not specified"),
-                    "requirements": observation_data.get("requirements", []),
-                    "constraints": observation_data.get("constraints", []),
-                    "resources_needed": observation_data.get("resources_needed", []),
-                    "success_criteria": observation_data.get("success_criteria", []),
-                    "potential_challenges": observation_data.get("potential_challenges", []),
-                    "context": observation_data.get("context", "No additional context"),
-                    "complexity_level": observation_data.get("complexity_level", "Medium"),
-                    "estimated_effort": observation_data.get("estimated_effort", "Unknown"),
-                    "timestamp": asyncio.get_event_loop().time(),
-                    "ai_generated": True
-                }
             except json.JSONDecodeError:
-                # Fallback if JSON parsing fails
-                observation = {
-                    "task": task,
-                    "objective": f"Complete: {task}",
-                    "requirements": [task],
-                    "constraints": [],
-                    "resources_needed": ["AI assistance"],
-                    "success_criteria": ["Task completion"],
-                    "potential_challenges": ["AI response parsing failed"],
-                    "context": "Task analysis failed",
-                    "complexity_level": "Medium",
-                    "estimated_effort": "Unknown",
-                    "timestamp": asyncio.get_event_loop().time(),
-                    "ai_generated": True,
-                    "raw_response": response
-                }
+                # Try to extract JSON from the response
+                observation_data = extract_json_from_text(response)
+                if not observation_data:
+                    raise json.JSONDecodeError("Could not parse JSON from AI response", response, 0)
+
+            observation = {
+                "task": task,
+                "objective": observation_data.get("objective", f"Complete: {task}"),
+                "requirements": observation_data.get("requirements", [task]),
+                "constraints": observation_data.get("constraints", []),
+                "resources_needed": observation_data.get("resources_needed", ["AI assistance"]),
+                "success_criteria": observation_data.get("success_criteria", ["Task completion"]),
+                "potential_challenges": observation_data.get("potential_challenges", []),
+                "context": observation_data.get("context", "AI-generated analysis"),
+                "complexity_level": observation_data.get("complexity_level", "Medium"),
+                "estimated_effort": observation_data.get("estimated_effort", "Medium"),
+                "timestamp": asyncio.get_event_loop().time(),
+                "ai_generated": True
+            }
 
             logger.info(f"[{self.name}] AI observation complete: {observation['complexity_level']} complexity")
             return observation
-
         except Exception as e:
             logger.error(f"[{self.name}] AI observation failed: {e}")
             # Fallback to basic observation
