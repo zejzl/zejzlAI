@@ -59,3 +59,8 @@ async def run_pantheon_demo(task: str):
     print("Analysis:", analysis)
     print("Learned Patterns:", learned)
     print("Improvement Suggestions:", improvement)
+
+
+if __name__ == "__main__":
+    # Test the enhanced learning loop
+    asyncio.run(run_pantheon_demo("analyze customer feedback data and generate insights"))

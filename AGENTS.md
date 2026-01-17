@@ -24,12 +24,44 @@ The project uses manual integration tests rather than formal unit testing framew
 ### Lint and Format Commands
 No automated linting/formatting tools are currently configured. Follow the style guidelines below manually.
 
+For manual code quality checks, use:
+- **Type checking**: `python -m mypy src/agents/learner.py`
+- **Style checking**: `python -m pylint src/agents/learner.py`
+- **PEP 8 compliance**: `python -m flake8 src/agents/learner.py`
+
 ### Running a Single Test
 Since formal unit tests don't exist, "running a single test" means executing one of the integration test files:
 
 ```bash
 # Test specific agent functionality
 python -c "import asyncio; from src.agents.observer import ObserverAgent; obs = ObserverAgent(); asyncio.run(obs.observe('test task'))"
+```
+
+## Magic System (Self-Healing)
+
+ZEJZL.NET includes an advanced fairy magic system for self-healing and agent enhancement:
+
+### Components
+- **FairyMagic**: Core magic system with energy management and healing
+- **CircuitBreaker**: Automatic failure recovery for system components
+- **Blue Spark Healing**: Energy-based healing with preference learning
+- **Acorn Vitality Boost**: Performance enhancement for agents
+- **Fairy Shield**: Protection mechanism for critical operations
+
+### Integration
+The magic system is automatically integrated into the AsyncMessageBus for:
+- Pre-task vitality boosts for improved performance
+- Automatic healing on provider failures
+- Circuit breaker protection for cascading failure prevention
+- Real-time energy management and ritual casting
+
+### Usage
+```python
+from src.magic import FairyMagic
+
+magic = FairyMagic()
+boost = await magic.acorn_vitality_boost("agent_name", {"max_tokens": 1024})
+healed = await magic.blue_spark_heal("component", "error_description")
 ```
 
 ## Code Style Guidelines

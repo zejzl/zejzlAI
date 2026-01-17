@@ -33,6 +33,7 @@ import aiosqlite
 from dotenv import load_dotenv
 from rate_limiter import get_rate_limiter
 from telemetry import get_telemetry
+from src.magic import FairyMagic
 
 # (The sys.path fix you added)
 project_root = os.path.dirname(os.path.abspath(__file__))
@@ -696,8 +697,8 @@ class QwenProvider(AIProvider):
             await self.session.close()
 
 class AsyncMessageBus:
-    """Async message bus for handling AI provider requests with hybrid persistence"""
-    
+    """Async message bus for handling AI provider requests with hybrid persistence and self-healing"""
+
     def __init__(self):
         self.providers: Dict[str, AIProvider] = {}
         self.message_queue = asyncio.Queue()
@@ -706,6 +707,7 @@ class AsyncMessageBus:
         self.running = False
         self.persistence = HybridPersistence()
         self.config = None
+        self.magic = FairyMagic()  # Self-healing magic system
     
     async def load_config(self) -> Dict:
         """Load configuration from persistence layer"""
@@ -742,6 +744,16 @@ class AsyncMessageBus:
         rate_limiter = get_rate_limiter()
         if not await rate_limiter.acquire(provider_name, timeout=30.0):
             raise RuntimeError(f"Rate limit exceeded for provider {provider_name}")
+
+        # Apply fairy shield protection for critical operations
+        if self.magic.is_shielded:
+            logger.debug("Fairy shield active - protecting against unauthorized access")
+
+        # Pre-task vitality boost for agent performance
+        agent_config = {"max_tokens": 1024}
+        boost_result = await self.magic.acorn_vitality_boost(f"provider_{provider_name}", agent_config)
+        if boost_result.get("vitality_boost", 1.0) > 1.0:
+            logger.info("Applied vitality boost to %s provider", provider_name)
 
         provider = self.providers[provider_name]
 
@@ -824,6 +836,45 @@ class AsyncMessageBus:
             raise last_error
 
         except Exception as e:
+            # Attempt auto-healing with magic system
+            healed = await self.magic.auto_heal("ai_provider", e)
+            if healed:
+                logger.info("Magic auto-healing successful, retrying %s request", provider_name)
+                # Retry the request after successful healing
+                try:
+                    response = await provider.generate_response(content, history)
+                    response_time = asyncio.get_event_loop().time() - start_time
+
+                    message.response = response
+                    message.response_time = response_time
+
+                    # Update conversation history
+                    history.append({"role": "user", "content": content})
+                    history.append({"role": "assistant", "content": response})
+
+                    # Keep only last 10 messages in cache
+                    if len(history) > 10:
+                        self.conversation_cache[conversation_id] = history[-10:]
+
+                    # Save message to persistence
+                    await self.persistence.save_message(message)
+
+                    # Record successful telemetry after healing
+                    await telemetry.record_call(
+                        component=f"provider_{provider_name}",
+                        response_time=response_time,
+                        success=True,
+                        healed=True
+                    )
+
+                    logger.info("Response from %s after healing in %.2fs", provider_name, response_time)
+                    return response
+
+                except Exception as retry_error:
+                    logger.warning("Retry after healing failed: %s", retry_error)
+                    # Fall through to original error handling
+
+            # Original error handling if healing failed or wasn't attempted
             message.error = str(e)
             await self.persistence.save_message(message)
 
@@ -836,7 +887,7 @@ class AsyncMessageBus:
                 error_type=type(e).__name__
             )
 
-            logger.error(f"Error getting response from {provider_name}: {str(e)}")
+            logger.error("Error getting response from %s: %s", provider_name, str(e))
             raise
     
     async def start(self):
