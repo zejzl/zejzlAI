@@ -36,6 +36,8 @@ from dotenv import load_dotenv
 from rate_limiter import get_rate_limiter
 from telemetry import get_telemetry
 from src.magic import FairyMagic
+from src.security import EnterpriseSecurity
+from src.performance import record_metric
 
 # (The sys.path fix you added)
 project_root = os.path.dirname(os.path.abspath(__file__))
@@ -908,9 +910,13 @@ class AsyncMessageBus:
         if provider_name not in self.providers:
             raise ValueError(f"Provider {provider_name} not registered")
 
+        # Performance monitoring: request start
+        request_start = asyncio.get_event_loop().time()
+
         # Rate limiting check
         rate_limiter = get_rate_limiter()
         if not await rate_limiter.acquire(provider_name, timeout=30.0):
+            record_metric("rate_limit_exceeded", 1, {"provider": provider_name})
             raise RuntimeError(f"Rate limit exceeded for provider {provider_name}")
 
         # Apply fairy shield protection for critical operations
@@ -921,6 +927,7 @@ class AsyncMessageBus:
         agent_config = {"max_tokens": 1024}
         boost_result = await self.magic.acorn_vitality_boost(f"provider_{provider_name}", agent_config)
         if boost_result.get("vitality_boost", 1.0) > 1.0:
+            record_metric("vitality_boost_applied", boost_result["vitality_boost"], {"provider": provider_name})
             logger.info("Applied vitality boost to %s provider", provider_name)
 
         provider = self.providers[provider_name]
@@ -978,6 +985,11 @@ class AsyncMessageBus:
                         response_time=response_time,
                         success=True
                     )
+
+                    # Performance monitoring: successful request
+                    total_request_time = asyncio.get_event_loop().time() - request_start
+                    record_metric("request_duration", total_request_time * 1000, {"provider": provider_name, "status": "success"})
+                    record_metric("requests_total", 1, {"provider": provider_name, "status": "success"})
 
                     logger.info(f"Response from {provider_name} in {response_time:.2f}s")
                     return response
@@ -1054,6 +1066,11 @@ class AsyncMessageBus:
                 success=False,
                 error_type=type(e).__name__
             )
+
+            # Performance monitoring: failed request
+            total_request_time = asyncio.get_event_loop().time() - request_start
+            record_metric("request_duration", total_request_time * 1000, {"provider": provider_name, "status": "error"})
+            record_metric("requests_total", 1, {"provider": provider_name, "status": "error", "error_type": type(e).__name__})
 
             logger.error("Error getting response from %s: %s", provider_name, str(e))
             raise

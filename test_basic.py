@@ -59,8 +59,10 @@ async def test_observer_agent():
     assert result is not None
     assert "task" in result
     assert result["task"] == "test task"
-    assert "data" in result
+    assert "objective" in result  # AI-generated observation structure
+    assert "requirements" in result
     assert "timestamp" in result
+    assert result.get("ai_generated", False)  # Should be AI-generated
 
 
 @pytest.mark.asyncio
