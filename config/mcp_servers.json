@@ -1,0 +1,126 @@
+{
+  "version": "1.0",
+  "servers": [
+    {
+      "name": "filesystem",
+      "transport": "stdio",
+      "command": ["python", "-m", "mcp.server.filesystem", "--root", "."],
+      "enabled": false,
+      "timeout": 30.0,
+      "auto_reconnect": true,
+      "health_check_interval": 60,
+      "allowed_agents": null,
+      "description": "Local filesystem access via MCP - provides file read/write/search capabilities",
+      "tags": ["filesystem", "local", "storage"]
+    },
+    {
+      "name": "github",
+      "transport": "stdio",
+      "command": ["python", "-m", "mcp.server.github"],
+      "enabled": false,
+      "timeout": 45.0,
+      "auto_reconnect": true,
+      "health_check_interval": 120,
+      "allowed_agents": null,
+      "description": "GitHub API access via MCP - repository operations, issues, PRs, releases",
+      "tags": ["github", "api", "vcs", "collaboration"]
+    },
+    {
+      "name": "web-search",
+      "transport": "stdio",
+      "command": ["python", "-m", "mcp.server.websearch"],
+      "enabled": false,
+      "timeout": 60.0,
+      "auto_reconnect": true,
+      "health_check_interval": 90,
+      "allowed_agents": ["Observer", "Reasoner", "Actor"],
+      "description": "Web search capabilities via MCP - search engines, scraping, content extraction",
+      "tags": ["search", "web", "internet", "information"]
+    },
+    {
+      "name": "database",
+      "transport": "stdio",
+      "command": ["python", "-m", "mcp.server.database", "--connection", "sqlite:///data/zejzl.db"],
+      "enabled": false,
+      "timeout": 30.0,
+      "auto_reconnect": true,
+      "health_check_interval": 60,
+      "allowed_agents": ["Memory", "Analyzer", "Learner"],
+      "description": "Database access via MCP - SQL queries, schema introspection, data operations",
+      "tags": ["database", "sql", "persistence", "analytics"]
+    },
+    {
+      "name": "http-api",
+      "transport": "http",
+      "url": "http://localhost:8080/mcp",
+      "command": null,
+      "enabled": false,
+      "timeout": 30.0,
+      "auto_reconnect": true,
+      "health_check_interval": 60,
+      "allowed_agents": null,
+      "description": "HTTP-based MCP server for remote tool execution",
+      "tags": ["http", "api", "remote"]
+    },
+    {
+      "name": "kubernetes",
+      "transport": "stdio",
+      "command": ["python", "-m", "mcp.server.kubernetes"],
+      "enabled": false,
+      "timeout": 45.0,
+      "auto_reconnect": true,
+      "health_check_interval": 120,
+      "allowed_agents": ["Executor", "Validator"],
+      "description": "Kubernetes cluster management via MCP - pods, services, deployments",
+      "tags": ["kubernetes", "k8s", "orchestration", "cloud"]
+    },
+    {
+      "name": "slack",
+      "transport": "stdio",
+      "command": ["python", "-m", "mcp.server.slack"],
+      "enabled": false,
+      "timeout": 30.0,
+      "auto_reconnect": true,
+      "health_check_interval": 90,
+      "allowed_agents": ["Actor", "Improver"],
+      "description": "Slack integration via MCP - send messages, read channels, manage workspace",
+      "tags": ["slack", "communication", "collaboration", "notifications"]
+    },
+    {
+      "name": "brave-search",
+      "transport": "stdio",
+      "command": ["python", "-m", "mcp.server.brave_search"],
+      "enabled": false,
+      "timeout": 60.0,
+      "auto_reconnect": true,
+      "health_check_interval": 120,
+      "allowed_agents": ["Observer", "Reasoner"],
+      "description": "Brave Search API integration - privacy-focused web search",
+      "tags": ["search", "web", "privacy", "brave"]
+    },
+    {
+      "name": "google-drive",
+      "transport": "stdio",
+      "command": ["python", "-m", "mcp.server.gdrive"],
+      "enabled": false,
+      "timeout": 45.0,
+      "auto_reconnect": true,
+      "health_check_interval": 120,
+      "allowed_agents": null,
+      "description": "Google Drive integration via MCP - file storage, sharing, collaboration",
+      "tags": ["gdrive", "storage", "cloud", "google"]
+    },
+    {
+      "name": "puppeteer",
+      "transport": "stdio",
+      "command": ["python", "-m", "mcp.server.puppeteer"],
+      "enabled": false,
+      "timeout": 90.0,
+      "auto_reconnect": true,
+      "health_check_interval": 120,
+      "allowed_agents": ["Observer", "Actor"],
+      "description": "Browser automation via MCP - web scraping, testing, screenshots",
+      "tags": ["browser", "automation", "scraping", "testing"]
+    }
+  ]
+}
