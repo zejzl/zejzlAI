@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+IMPORTANT NOTICE: Emojis are forbidden in this repo!
+
 ## Project Overview
 
 ZEJZL.NET is an async message bus AI framework implementing a 9-agent "Pantheon" orchestration system for multi-AI collaboration with self-healing capabilities. The framework supports multiple AI providers (ChatGPT, Claude, Gemini, Grok, DeepSeek, Qwen, Zai), uses a hybrid persistence layer (Redis primary + SQLite fallback), and features a fairy magic-inspired self-healing system with circuit breakers and learning loop optimization.

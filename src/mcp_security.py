@@ -152,7 +152,7 @@ class RateLimiter:
     def __init__(self):
         self.buckets: Dict[str, Dict[str, Any]] = {}
         self.cleanup_interval = 300  # 5 minutes
-        asyncio.create_task(self._cleanup_task())
+        self._cleanup_started = False
 
     async def check_limit(self, rule: RateLimitRule, identifier: str) -> Tuple[bool, int]:
         """
@@ -161,6 +161,10 @@ class RateLimiter:
         Returns:
             Tuple of (allowed: bool, remaining_requests: int)
         """
+        # Start cleanup task on first use
+        if not self._cleanup_started:
+            self._cleanup_started = True
+            asyncio.create_task(self._cleanup_task())
         key = rule.get_key(identifier)
         now = time.time()
 
@@ -225,6 +229,7 @@ class MCPSecurityManager:
         self.audit_log_path = audit_log_path or "logs/mcp_audit.log"
         self.audit_queue: asyncio.Queue = asyncio.Queue()
         self.metrics = SecurityMetrics()
+        self._audit_task_started = False
 
         # Default rate limit rules
         self.rate_rules = {
@@ -236,10 +241,7 @@ class MCPSecurityManager:
         # Ensure audit log directory exists
         os.makedirs(os.path.dirname(self.audit_log_path), exist_ok=True)
 
-        # Start audit logging task
-        asyncio.create_task(self._audit_logging_task())
-
-        # Create default system principal
+        # Create default system principal (don't start async task yet)
         self._create_default_principals()
 
     def _create_default_principals(self):
@@ -452,8 +454,13 @@ class MCPSecurityManager:
         return principal
 
     async def _audit_event(self, action: str, resource: str, success: bool,
-                          details: Optional[Dict[str, Any]] = None):
+                           details: Optional[Dict[str, Any]] = None):
         """Log audit event"""
+        # Start audit logging task on first use
+        if not self._audit_task_started:
+            self._audit_task_started = True
+            asyncio.create_task(self._audit_logging_task())
+
         event = AuditEvent(
             timestamp=datetime.now(),
             principal_id=getattr(asyncio.current_task(), 'principal_id', 'system') if asyncio.current_task() else 'system',

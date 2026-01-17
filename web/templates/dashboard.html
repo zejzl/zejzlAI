@@ -54,6 +54,9 @@
             <button class="nav-tab px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors" data-tab="monitoring">
                 <i data-lucide="activity" class="w-4 h-4 inline mr-2"></i>Monitoring
             </button>
+            <button class="nav-tab px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors" data-tab="security">
+                <i data-lucide="shield" class="w-4 h-4 inline mr-2"></i>Security
+            </button>
         </div>
     </nav>
 
@@ -335,9 +338,85 @@
                     <!-- Logs will be populated by JavaScript -->
                 </div>
             </div>
-        </div>
+         </div>
 
-    </main>
+         <!-- Security Tab -->
+         <div id="security-tab" class="tab-content hidden">
+             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                 <!-- Security Overview -->
+                 <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                     <h3 class="text-lg font-semibold mb-4 flex items-center">
+                         <i data-lucide="shield" class="w-5 h-5 mr-2"></i>Security Overview
+                     </h3>
+                     <div class="space-y-4">
+                         <div class="flex justify-between items-center">
+                             <span class="text-sm text-gray-400">Total Validations</span>
+                             <span class="text-lg font-semibold text-blue-400" id="total-validations">-</span>
+                         </div>
+                         <div class="flex justify-between items-center">
+                             <span class="text-sm text-gray-400">Pending Approvals</span>
+                             <span class="text-lg font-semibold text-yellow-400" id="pending-approvals">-</span>
+                         </div>
+                         <div class="flex justify-between items-center">
+                             <span class="text-sm text-gray-400">Blocked Operations</span>
+                             <span class="text-lg font-semibold text-red-400" id="blocked-operations">-</span>
+                         </div>
+                     </div>
+                 </div>
+
+                 <!-- Risk Distribution -->
+                 <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                     <h3 class="text-lg font-semibold mb-4 flex items-center">
+                         <i data-lucide="alert-triangle" class="w-5 h-5 mr-2"></i>Risk Distribution
+                     </h3>
+                     <canvas id="risk-chart" width="200" height="200"></canvas>
+                 </div>
+
+                 <!-- Security Actions -->
+                 <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                     <h3 class="text-lg font-semibold mb-4 flex items-center">
+                         <i data-lucide="settings" class="w-5 h-5 mr-2"></i>Security Actions
+                     </h3>
+                     <div class="space-y-3">
+                         <button class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors" onclick="refreshSecurityData()">
+                             <i data-lucide="refresh-cw" class="w-4 h-4 inline mr-2"></i>Refresh Data
+                         </button>
+                         <button class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors" onclick="exportSecurityReport()">
+                             <i data-lucide="download" class="w-4 h-4 inline mr-2"></i>Export Report
+                         </button>
+                         <button class="w-full bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-colors" onclick="configureSecurityPolicies()">
+                             <i data-lucide="settings" class="w-4 h-4 inline mr-2"></i>Configure Policies
+                         </button>
+                     </div>
+                 </div>
+             </div>
+
+             <!-- Pending Approvals -->
+             <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-6">
+                 <h3 class="text-lg font-semibold mb-4 flex items-center">
+                     <i data-lucide="clock" class="w-5 h-5 mr-2"></i>Pending Approvals
+                 </h3>
+                 <div id="pending-approvals-list" class="space-y-4">
+                     <!-- Pending approvals will be populated by JavaScript -->
+                     <div class="text-center text-gray-400 py-8">
+                         <i data-lucide="check-circle" class="w-12 h-12 mx-auto mb-4 opacity-50"></i>
+                         <p>No pending approvals</p>
+                     </div>
+                 </div>
+             </div>
+
+             <!-- Security Log -->
+             <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                 <h3 class="text-lg font-semibold mb-4 flex items-center">
+                     <i data-lucide="file-text" class="w-5 h-5 mr-2"></i>Security Log
+                 </h3>
+                 <div id="security-log" class="bg-black rounded-lg p-4 h-64 overflow-y-auto font-mono text-sm">
+                     <!-- Security events will be populated by JavaScript -->
+                 </div>
+             </div>
+         </div>
+
+     </main>
 
     <!-- Footer -->
     <footer class="bg-gray-800 border-t border-gray-700 px-6 py-4 mt-12">
@@ -357,6 +436,266 @@
     <script>
         // Initialize Lucide icons
         lucide.createIcons();
+
+        // Security Tab Functionality
+        let securityChart = null;
+
+        // Tab switching
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabName = this.dataset.tab;
+
+                // Hide all tabs
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.add('hidden');
+                });
+
+                // Remove active class from all tabs
+                document.querySelectorAll('.nav-tab').forEach(t => {
+                    t.classList.remove('active', 'bg-blue-600', 'text-white');
+                    t.classList.add('bg-gray-700', 'hover:bg-gray-600');
+                });
+
+                // Show selected tab
+                document.getElementById(tabName + '-tab').classList.remove('hidden');
+
+                // Make clicked tab active
+                this.classList.add('active', 'bg-blue-600', 'text-white');
+                this.classList.remove('bg-gray-700', 'hover:bg-gray-600');
+
+                // Load tab-specific data
+                if (tabName === 'security') {
+                    loadSecurityData();
+                }
+            });
+        });
+
+        // Security Functions
+        async function loadSecurityData() {
+            try {
+                const response = await fetch('/api/security/overview');
+                const data = await response.json();
+
+                if (data.success) {
+                    updateSecurityOverview(data.data);
+                    updatePendingApprovals(data.data.pending_approvals);
+                    updateRiskChart(data.data.report.risk_distribution || {});
+                }
+            } catch (error) {
+                console.error('Failed to load security data:', error);
+            }
+        }
+
+        function updateSecurityOverview(data) {
+            document.getElementById('total-validations').textContent = data.total_validations || 0;
+            document.getElementById('pending-approvals').textContent = data.pending_count || 0;
+            document.getElementById('blocked-operations').textContent = data.blocked_count || 0;
+        }
+
+        function updatePendingApprovals(approvals) {
+            const container = document.getElementById('pending-approvals-list');
+
+            if (!approvals || approvals.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-gray-400 py-8">
+                        <i data-lucide="check-circle" class="w-12 h-12 mx-auto mb-4 opacity-50"></i>
+                        <p>No pending approvals</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = approvals.map(approval => `
+                <div class="bg-gray-700 rounded-lg p-4 border border-gray-600">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-white mb-1">${approval.operation || 'Unknown Operation'}</h4>
+                            <p class="text-sm text-gray-400">Risk: ${approval.validation?.risk_level || 'unknown'}</p>
+                            <p class="text-sm text-gray-400">User: ${approval.user_id || 'unknown'}</p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="approveOperation('${approval.approval_id}', true)"
+                                    class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition-colors">
+                                Approve
+                            </button>
+                            <button onclick="approveOperation('${approval.approval_id}', false)"
+                                    class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors">
+                                Deny
+                            </button>
+                        </div>
+                    </div>
+                    ${approval.validation?.violations?.length > 0 ? `
+                        <div class="bg-red-900 border border-red-700 rounded p-3">
+                            <h5 class="text-red-400 font-semibold mb-2">Violations:</h5>
+                            <ul class="text-red-300 text-sm space-y-1">
+                                ${approval.validation.violations.map(v => `<li>• ${v}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+
+            // Re-initialize icons for new content
+            lucide.createIcons();
+        }
+
+        function updateRiskChart(riskData) {
+            const ctx = document.getElementById('risk-chart').getContext('2d');
+
+            if (securityChart) {
+                securityChart.destroy();
+            }
+
+            const labels = Object.keys(riskData);
+            const values = Object.values(riskData);
+
+            securityChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: [
+                            '#10B981', // safe - green
+                            '#3B82F6', // low_risk - blue
+                            '#F59E0B', // medium_risk - yellow
+                            '#EF4444', // high_risk - red
+                            '#7C2D12'  // critical - dark red
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#9CA3AF'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function approveOperation(approvalId, approved) {
+            try {
+                const response = await fetch('/api/security/approve', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        approval_id: approvalId,
+                        approved: approved,
+                        admin_user: 'web_admin'
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Refresh the security data
+                    loadSecurityData();
+                    // Show success message
+                    showNotification(`Operation ${approved ? 'approved' : 'denied'} successfully`, 'success');
+                } else {
+                    showNotification(`Failed to ${approved ? 'approve' : 'deny'} operation: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Approval error:', error);
+                showNotification('Failed to process approval', 'error');
+            }
+        }
+
+        async function validateOperation() {
+            const operation = prompt('Enter operation to validate:');
+            if (!operation) return;
+
+            try {
+                const response = await fetch('/api/security/validate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        operation: operation,
+                        user: 'web_user'
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const data = result.data;
+                    let message = `Risk Level: ${data.risk_level}\nApproval Required: ${data.approval_required}\nCan Proceed: ${data.can_proceed}`;
+
+                    if (data.violations.length > 0) {
+                        message += `\n\nViolations:\n${data.violations.join('\n')}`;
+                    }
+
+                    if (data.recommendations.length > 0) {
+                        message += `\n\nRecommendations:\n${data.recommendations.join('\n')}`;
+                    }
+
+                    alert(message);
+                } else {
+                    alert(`Validation failed: ${result.error}`);
+                }
+            } catch (error) {
+                console.error('Validation error:', error);
+                alert('Failed to validate operation');
+            }
+        }
+
+        function refreshSecurityData() {
+            loadSecurityData();
+            showNotification('Security data refreshed', 'success');
+        }
+
+        function exportSecurityReport() {
+            // This would trigger a download of the security report
+            showNotification('Security report export not yet implemented', 'info');
+        }
+
+        function configureSecurityPolicies() {
+            // This would open a policy configuration dialog
+            showNotification('Security policy configuration not yet implemented', 'info');
+        }
+
+        function showNotification(message, type = 'info') {
+            // Simple notification - you could enhance this with a proper notification system
+            const colors = {
+                success: 'bg-green-600',
+                error: 'bg-red-600',
+                warning: 'bg-yellow-600',
+                info: 'bg-blue-600'
+            };
+
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 ${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg z-50`;
+            notification.textContent = message;
+
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                document.body.removeChild(notification);
+            }, 3000);
+        }
+
+        // Add validate operation button to security actions
+        document.addEventListener('DOMContentLoaded', function() {
+            const actionsDiv = document.querySelector('#security-tab .space-y-3');
+            if (actionsDiv) {
+                const validateButton = document.createElement('button');
+                validateButton.className = 'w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors';
+                validateButton.innerHTML = '<i data-lucide="search" class="w-4 h-4 inline mr-2"></i>Test Validation';
+                validateButton.onclick = validateOperation;
+                actionsDiv.appendChild(validateButton);
+            }
+        });
     </script>
 </body>
 </html>

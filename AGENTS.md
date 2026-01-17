@@ -2,6 +2,8 @@
 
 This document provides essential information for agentic coding assistants working in the ZEJZL.NET repository. It includes build/test commands, code style guidelines, and development practices.
 
+IMPORTANT NOTICE: Emojis are forbidden in this repo!
+
 ## Project Overview
 
 ZEJZL.NET is an async message bus AI framework implementing a 9-agent "Pantheon" orchestration system for multi-AI collaboration. The framework supports multiple AI providers (ChatGPT, Claude, Gemini, Grok, DeepSeek, Qwen, Zai) and uses a hybrid persistence layer (Redis primary + SQLite fallback).

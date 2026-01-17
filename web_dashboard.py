@@ -757,6 +757,142 @@ async def call_mcp_tool(request: Request):
         logger.error(f"MCP tool call endpoint error: {e}")
         return {"success": False, "error": str(e)}
 
+# Security Validation Endpoints
+@app.get("/api/security/overview")
+async def get_security_overview():
+    """Get security overview and statistics"""
+    try:
+        from src.security_validator import security_validator
+
+        report = security_validator.get_security_report()
+        pending_approvals = security_validator.get_pending_approvals()
+
+        return {
+            "success": True,
+            "data": {
+                "report": report,
+                "pending_approvals": pending_approvals,
+                "total_validations": report.get("total_operations", 0),
+                "pending_count": len(pending_approvals),
+                "blocked_count": sum(1 for op in pending_approvals if op.get("status") == "denied")
+            }
+        }
+    except Exception as e:
+        logger.error(f"Security overview endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/security/validate")
+async def validate_operation(request: Request):
+    """Validate an operation for security"""
+    try:
+        from src.security_validator import security_validator
+
+        data = await request.json()
+        operation = data.get("operation", "")
+        context = data.get("context", {})
+        user = data.get("user", "web_user")
+
+        if not operation:
+            return {"success": False, "error": "Operation required"}
+
+        result = security_validator.validate_operation(operation, context, user)
+
+        return {
+            "success": True,
+            "data": {
+                "is_safe": result.is_safe,
+                "risk_level": result.risk_level.value,
+                "approval_required": result.approval_required.value,
+                "violations": result.violations,
+                "recommendations": result.recommendations,
+                "requires_user_approval": result.requires_user_approval,
+                "requires_admin_approval": result.requires_admin_approval,
+                "can_proceed": result.can_proceed
+            }
+        }
+    except Exception as e:
+        logger.error(f"Security validation endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/security/approvals")
+async def get_pending_approvals(user_id: str = None):
+    """Get pending approval requests"""
+    try:
+        from src.security_validator import security_validator
+
+        approvals = security_validator.get_pending_approvals(user_id)
+
+        return {
+            "success": True,
+            "data": approvals
+        }
+    except Exception as e:
+        logger.error(f"Pending approvals endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/security/approve")
+async def approve_operation(request: Request):
+    """Approve or deny a pending operation"""
+    try:
+        from src.security_validator import security_validator
+
+        data = await request.json()
+        approval_id = data.get("approval_id")
+        approved = data.get("approved", False)
+        admin_user = data.get("admin_user")
+
+        if not approval_id:
+            return {"success": False, "error": "Approval ID required"}
+
+        success = security_validator.approve_operation(approval_id, approved, admin_user)
+
+        return {
+            "success": success,
+            "message": f"Operation {'approved' if approved else 'denied'}"
+        }
+    except Exception as e:
+        logger.error(f"Approve operation endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/security/request-approval")
+async def request_user_approval(request: Request):
+    """Request user approval for an operation"""
+    try:
+        from src.security_validator import security_validator
+
+        data = await request.json()
+        operation = data.get("operation", "")
+        validation_data = data.get("validation", {})
+        user_id = data.get("user_id", "web_user")
+
+        if not operation:
+            return {"success": False, "error": "Operation required"}
+
+        # Convert dict back to ValidationResult
+        from src.security_validator import ValidationResult, RiskLevel, ApprovalRequirement
+
+        validation = ValidationResult(
+            is_safe=validation_data.get("is_safe", False),
+            risk_level=RiskLevel(validation_data.get("risk_level", "medium_risk")),
+            approval_required=ApprovalRequirement(validation_data.get("approval_required", "user_confirm")),
+            violations=validation_data.get("violations", []),
+            recommendations=validation_data.get("recommendations", []),
+            requires_user_approval=validation_data.get("requires_user_approval", True),
+            requires_admin_approval=validation_data.get("requires_admin_approval", False),
+            can_proceed=validation_data.get("can_proceed", False)
+        )
+
+        approved = await security_validator.request_user_approval(operation, validation, user_id)
+
+        return {
+            "success": True,
+            "approved": approved,
+            "message": "Approval request submitted"
+        }
+    except Exception as e:
+        logger.error(f"Request approval endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
 
 if __name__ == "__main__":
     uvicorn.run(
