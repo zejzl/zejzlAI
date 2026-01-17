@@ -19,7 +19,7 @@ import sys
 import argparse
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, asdict
-from typing import Dict, List, Optional, Any, Callable, Union
+from typing import Dict, List, Optional, Any, Callable, Union, Tuple
 from datetime import datetime
 from pathlib import Path
 import pickle
@@ -53,6 +53,7 @@ load_dotenv()
 # --- USE ABSOLUTE IMPORTS HERE ---
 # These point to the full path from the project root.
 from src.agents.observer import ObserverAgent
+from src.cost_calculator import CostCalculator, TokenUsage
 from src.agents.actor import ActorAgent
 from src.agents.analyzer import AnalyzerAgent
 from src.agents.executor import ExecutorAgent
@@ -100,6 +101,7 @@ class Message:
     provider: str
     response: Optional[str] = None
     response_time: Optional[float] = None
+    token_usage: Optional[TokenUsage] = None
     error: Optional[str] = None
     conversation_id: str = "default"
 
@@ -360,13 +362,76 @@ class SQLitePersistence(PersistenceLayer):
                 conversation_id TEXT DEFAULT 'default'
             )
         """)
+
+        # Add token usage columns if they don't exist (schema migration)
+        try:
+            await self.conn.execute("ALTER TABLE messages ADD COLUMN token_usage_provider TEXT")
+        except:
+            pass  # Column might already exist
+        try:
+            await self.conn.execute("ALTER TABLE messages ADD COLUMN token_usage_model TEXT")
+        except:
+            pass
+        try:
+            await self.conn.execute("ALTER TABLE messages ADD COLUMN prompt_tokens INTEGER DEFAULT 0")
+        except:
+            pass
+        try:
+            await self.conn.execute("ALTER TABLE messages ADD COLUMN completion_tokens INTEGER DEFAULT 0")
+        except:
+            pass
+        try:
+            await self.conn.execute("ALTER TABLE messages ADD COLUMN total_tokens INTEGER DEFAULT 0")
+        except:
+            pass
+        try:
+            await self.conn.execute("ALTER TABLE messages ADD COLUMN cost_usd REAL DEFAULT 0.0")
+        except:
+            pass
         
         await self.conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_conversation ON messages(conversation_id, timestamp)
         """)
-        
+
+        # Create usage analytics tables
+        await self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS daily_usage (
+                date TEXT PRIMARY KEY,
+                total_requests INTEGER DEFAULT 0,
+                total_tokens INTEGER DEFAULT 0,
+                total_cost_usd REAL DEFAULT 0.0,
+                avg_response_time REAL DEFAULT 0.0,
+                success_rate REAL DEFAULT 0.0
+            )
+        """)
+
+        await self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS provider_usage (
+                provider TEXT,
+                model TEXT,
+                date TEXT,
+                requests INTEGER DEFAULT 0,
+                tokens INTEGER DEFAULT 0,
+                cost_usd REAL DEFAULT 0.0,
+                avg_response_time REAL DEFAULT 0.0,
+                success_count INTEGER DEFAULT 0,
+                error_count INTEGER DEFAULT 0,
+                PRIMARY KEY (provider, model, date)
+            )
+        """)
+
+        await self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS hourly_usage (
+                hour TEXT PRIMARY KEY,  -- Format: YYYY-MM-DD-HH
+                requests INTEGER DEFAULT 0,
+                tokens INTEGER DEFAULT 0,
+                cost_usd REAL DEFAULT 0.0,
+                peak_concurrent INTEGER DEFAULT 0
+            )
+        """)
+
         await self.conn.commit()
-        logger.info("SQLite persistence initialized")
+        logger.info("SQLite persistence initialized with usage analytics")
     
     async def save_message(self, message: Message):
         if not self.conn:
@@ -375,8 +440,9 @@ class SQLitePersistence(PersistenceLayer):
         await self.conn.execute(
             """
             INSERT OR REPLACE INTO messages
-            (id, content, timestamp, sender, provider, response, response_time, error, conversation_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, content, timestamp, sender, provider, response, response_time, error, conversation_id,
+             token_usage_provider, token_usage_model, prompt_tokens, completion_tokens, total_tokens, cost_usd)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 message.id,
@@ -387,9 +453,18 @@ class SQLitePersistence(PersistenceLayer):
                 message.response,
                 message.response_time,
                 message.error,
-                message.conversation_id
+                message.conversation_id,
+                message.token_usage.provider if message.token_usage else None,
+                message.token_usage.model if message.token_usage else None,
+                message.token_usage.prompt_tokens if message.token_usage else 0,
+                message.token_usage.completion_tokens if message.token_usage else 0,
+                message.token_usage.total_tokens if message.token_usage else 0,
+                message.token_usage.cost_usd if message.token_usage else 0.0
             )
         )
+
+        # Update usage analytics
+        await self._update_usage_analytics(message)
 
         # Prune old messages - keep only last 100 per conversation (matching Redis behavior)
         await self.conn.execute(
@@ -457,7 +532,77 @@ class SQLitePersistence(PersistenceLayer):
             "redis_url": "redis://localhost:6379",
             "sqlite_path": str(Path.home() / ".ai_framework.db")
         }
-    
+
+    async def _update_usage_analytics(self, message: Message):
+        """Update usage analytics tables with message data"""
+        if not message.token_usage:
+            return
+
+        date = message.timestamp.strftime("%Y-%m-%d")
+        hour = message.timestamp.strftime("%Y-%m-%d-%H")
+
+        # Update daily usage
+        await self.conn.execute("""
+            INSERT OR REPLACE INTO daily_usage (date, total_requests, total_tokens, total_cost_usd, avg_response_time, success_rate)
+            SELECT
+                ?,
+                COALESCE((SELECT total_requests FROM daily_usage WHERE date = ?), 0) + 1,
+                COALESCE((SELECT total_tokens FROM daily_usage WHERE date = ?), 0) + ?,
+                COALESCE((SELECT total_cost_usd FROM daily_usage WHERE date = ?), 0) + ?,
+                CASE WHEN COALESCE((SELECT total_requests FROM daily_usage WHERE date = ?), 0) > 0
+                     THEN ((SELECT avg_response_time FROM daily_usage WHERE date = ?) * (SELECT total_requests FROM daily_usage WHERE date = ?) + ?) / ((SELECT total_requests FROM daily_usage WHERE date = ?) + 1)
+                     ELSE ?
+                END,
+                1.0  -- Placeholder for success rate calculation
+            """, (
+                date, date, date, message.token_usage.total_tokens, date, message.token_usage.cost_usd,
+                date, date, date, message.response_time or 0, date, message.response_time or 0
+            ))
+
+        # Update provider usage
+        provider = message.token_usage.provider
+        model = message.token_usage.model
+        is_success = message.error is None
+
+        await self.conn.execute("""
+            INSERT OR REPLACE INTO provider_usage
+            (provider, model, date, requests, tokens, cost_usd, avg_response_time, success_count, error_count)
+            SELECT
+                ?, ?, ?,
+                COALESCE((SELECT requests FROM provider_usage WHERE provider = ? AND model = ? AND date = ?), 0) + 1,
+                COALESCE((SELECT tokens FROM provider_usage WHERE provider = ? AND model = ? AND date = ?), 0) + ?,
+                COALESCE((SELECT cost_usd FROM provider_usage WHERE provider = ? AND model = ? AND date = ?), 0) + ?,
+                CASE WHEN COALESCE((SELECT requests FROM provider_usage WHERE provider = ? AND model = ? AND date = ?), 0) > 0
+                     THEN ((SELECT avg_response_time FROM provider_usage WHERE provider = ? AND model = ? AND date = ?) * (SELECT requests FROM provider_usage WHERE provider = ? AND model = ? AND date = ?) + ?) / ((SELECT requests FROM provider_usage WHERE provider = ? AND model = ? AND date = ?) + 1)
+                     ELSE ?
+                END,
+                COALESCE((SELECT success_count FROM provider_usage WHERE provider = ? AND model = ? AND date = ?), 0) + ?,
+                COALESCE((SELECT error_count FROM provider_usage WHERE provider = ? AND model = ? AND date = ?), 0) + ?
+            """, (
+                provider, model, date,
+                provider, model, date,
+                provider, model, date, message.token_usage.total_tokens,
+                provider, model, date, message.token_usage.cost_usd,
+                provider, model, date,
+                provider, model, date, provider, model, date, message.response_time or 0,
+                provider, model, date, message.response_time or 0,
+                provider, model, date, 1 if is_success else 0,
+                provider, model, date, 0 if is_success else 1
+            ))
+
+        # Update hourly usage
+        await self.conn.execute("""
+            INSERT OR REPLACE INTO hourly_usage (hour, requests, tokens, cost_usd, peak_concurrent)
+            SELECT
+                ?,
+                COALESCE((SELECT requests FROM hourly_usage WHERE hour = ?), 0) + 1,
+                COALESCE((SELECT tokens FROM hourly_usage WHERE hour = ?), 0) + ?,
+                COALESCE((SELECT cost_usd FROM hourly_usage WHERE hour = ?), 0) + ?,
+                GREATEST(COALESCE((SELECT peak_concurrent FROM hourly_usage WHERE hour = ?), 0), 1)
+            """, (
+                hour, hour, hour, message.token_usage.total_tokens, hour, message.token_usage.cost_usd, hour
+            ))
+
     async def cleanup(self):
         if self.conn:
             await self.conn.close()
@@ -622,8 +767,8 @@ class AIProvider(ABC):
         pass
     
     @abstractmethod
-    async def generate_response(self, message: str, history: List[Dict] = None) -> str:
-        """Generate a response to the given message"""
+    async def generate_response(self, message: str, history: List[Dict] = None) -> Tuple[str, TokenUsage]:
+        """Generate a response to the given message with token usage"""
         pass
 
     async def generate_response_stream(self, message: str, history: List[Dict] = None):
@@ -653,7 +798,7 @@ class ChatGPTProvider(AIProvider):
         )
     
     @log_ai_interaction("chatgpt", "generate_response")
-    async def generate_response(self, message: str, history: List[Dict] = None) -> str:
+    async def generate_response(self, message: str, history: List[Dict] = None) -> Tuple[str, TokenUsage]:
         if not self.session:
             await self.initialize()
 
@@ -674,8 +819,19 @@ class ChatGPTProvider(AIProvider):
                 if response.status == 200:
                     result = await response.json()
                     response_content = result["choices"][0]["message"]["content"]
-                    logger.debug(f"ChatGPT API success", response_length=len(response_content), model=self.model)
-                    return response_content
+
+                    # Extract token usage from OpenAI response
+                    usage = result.get("usage", {})
+                    token_usage = TokenUsage(
+                        provider=self.name,
+                        model=self.model,
+                        prompt_tokens=usage.get("prompt_tokens", 0),
+                        completion_tokens=usage.get("completion_tokens", 0),
+                        total_tokens=usage.get("total_tokens", 0)
+                    )
+
+                    logger.debug(f"ChatGPT API success", response_length=len(response_content), model=self.model, tokens=token_usage.total_tokens)
+                    return response_content, token_usage
                 else:
                     error_text = await response.text()
                     logger.error(f"ChatGPT API error", status=response.status, error=error_text[:200])
@@ -748,25 +904,36 @@ class ClaudeProvider(AIProvider):
             }
         )
     
-    async def generate_response(self, message: str, history: List[Dict] = None) -> str:
+    async def generate_response(self, message: str, history: List[Dict] = None) -> Tuple[str, TokenUsage]:
         if not self.session:
             await self.initialize()
-        
+
         messages = history or []
         messages.append({"role": "user", "content": message})
-        
+
         url = "https://api.anthropic.com/v1/messages"
         data = {
             "model": self.model,
             "max_tokens": 1000,
             "messages": messages
         }
-        
+
         try:
             async with self.session.post(url, json=data) as response:
                 if response.status == 200:
                     result = await response.json()
-                    return result["content"][0]["text"]
+                    response_content = result["content"][0]["text"]
+
+                    # Extract token usage from Claude response
+                    usage = result.get("usage", {})
+                    token_usage = TokenUsage(
+                        provider=self.name,
+                        model=self.model,
+                        prompt_tokens=usage.get("input_tokens", 0),
+                        completion_tokens=usage.get("output_tokens", 0)
+                    )
+
+                    return response_content, token_usage
                 else:
                     error_text = await response.text()
                     raise Exception(f"API error {response.status}: {error_text}")
@@ -792,27 +959,40 @@ class GeminiProvider(AIProvider):
     async def initialize(self):
         self.session = aiohttp.ClientSession()
     
-    async def generate_response(self, message: str, history: List[Dict] = None) -> str:
+    async def generate_response(self, message: str, history: List[Dict] = None) -> Tuple[str, TokenUsage]:
         if not self.session:
             await self.initialize()
-        
+
         # Convert history to Gemini format
         contents = []
         if history:
             for item in history:
                 role = "user" if item["role"] == "user" else "model"
                 contents.append({"role": role, "parts": [{"text": item["content"]}]})
-        
+
         contents.append({"role": "user", "parts": [{"text": message}]})
-        
+
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
         data = {"contents": contents}
-        
+
         try:
             async with self.session.post(url, json=data) as response:
                 if response.status == 200:
                     result = await response.json()
-                    return result["candidates"][0]["content"]["parts"][0]["text"]
+                    response_content = result["candidates"][0]["content"]["parts"][0]["text"]
+
+                    # Gemini doesn't provide detailed token usage, create basic tracking
+                    # Estimate tokens roughly (this is approximate)
+                    prompt_tokens = len(message) // 4  # Rough estimate
+                    completion_tokens = len(response_content) // 4
+                    token_usage = TokenUsage(
+                        provider=self.name,
+                        model=self.model,
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens
+                    )
+
+                    return response_content, token_usage
                 else:
                     error_text = await response.text()
                     raise Exception(f"API error {response.status}: {error_text}")
@@ -841,9 +1021,16 @@ class ZaiProvider(AIProvider):
             headers={"Authorization": f"Bearer {self.api_key}"}
         )
     
-    async def generate_response(self, message: str, history: List[Dict] = None) -> str:
+    async def generate_response(self, message: str, history: List[Dict] = None) -> Tuple[str, TokenUsage]:
         await asyncio.sleep(1)
-        return f"Zai response to: {message}"
+        response = f"Zai response to: {message}"
+        token_usage = TokenUsage(
+            provider=self.name,
+            model=self.model,
+            prompt_tokens=len(message) // 4,
+            completion_tokens=len(response) // 4
+        )
+        return response, token_usage
     
     async def cleanup(self):
         if self.session:
@@ -865,9 +1052,16 @@ class GrokProvider(AIProvider):
             headers={"Authorization": f"Bearer {self.api_key}"}
         )
     
-    async def generate_response(self, message: str, history: List[Dict] = None) -> str:
+    async def generate_response(self, message: str, history: List[Dict] = None) -> Tuple[str, TokenUsage]:
         await asyncio.sleep(1)
-        return f"Grok response to: {message}"
+        response = f"Grok response to: {message}"
+        token_usage = TokenUsage(
+            provider=self.name,
+            model=self.model,
+            prompt_tokens=len(message) // 4,
+            completion_tokens=len(response) // 4
+        )
+        return response, token_usage
     
     async def cleanup(self):
         if self.session:
@@ -889,9 +1083,16 @@ class DeepSeekProvider(AIProvider):
             headers={"Authorization": f"Bearer {self.api_key}"}
         )
     
-    async def generate_response(self, message: str, history: List[Dict] = None) -> str:
+    async def generate_response(self, message: str, history: List[Dict] = None) -> Tuple[str, TokenUsage]:
         await asyncio.sleep(1)
-        return f"DeepSeek response to: {message}"
+        response = f"DeepSeek response to: {message}"
+        token_usage = TokenUsage(
+            provider=self.name,
+            model=self.model,
+            prompt_tokens=len(message) // 4,
+            completion_tokens=len(response) // 4
+        )
+        return response, token_usage
     
     async def cleanup(self):
         if self.session:
@@ -913,9 +1114,16 @@ class QwenProvider(AIProvider):
             headers={"Authorization": f"Bearer {self.api_key}"}
         )
     
-    async def generate_response(self, message: str, history: List[Dict] = None) -> str:
+    async def generate_response(self, message: str, history: List[Dict] = None) -> Tuple[str, TokenUsage]:
         await asyncio.sleep(1)
-        return f"Qwen response to: {message}"
+        response = f"Qwen response to: {message}"
+        token_usage = TokenUsage(
+            provider=self.name,
+            model=self.model,
+            prompt_tokens=len(message) // 4,
+            completion_tokens=len(response) // 4
+        )
+        return response, token_usage
     
     async def cleanup(self):
         if self.session:
@@ -1032,16 +1240,19 @@ class AsyncMessageBus:
             for attempt in range(max_retries):
                 try:
                     if stream:
-                        # Streaming response
+                        # Streaming response - token counting not yet implemented for streaming
                         response = ""
                         async for chunk in provider.generate_response_stream(content, history):
                             response += chunk
                             # In streaming mode, we could yield chunks here
                             # For now, accumulate and return complete response
                         response_time = asyncio.get_event_loop().time() - start_time
+                        # Create basic token usage for streaming (to be improved)
+                        token_usage = TokenUsage(provider=provider.name, model=provider.model)
+                        CostCalculator.calculate_cost(token_usage)
                     else:
                         # Regular response
-                        response = await provider.generate_response(content, history)
+                        response, token_usage = await provider.generate_response(content, history)
                         response_time = asyncio.get_event_loop().time() - start_time
 
                     message.response = response
@@ -1106,6 +1317,11 @@ class AsyncMessageBus:
 
                     message.response = response
                     message.response_time = response_time
+                    message.token_usage = token_usage
+
+                    # Calculate cost for this usage
+                    if token_usage:
+                        CostCalculator.calculate_cost(token_usage)
 
                     # Update conversation history
                     history.append({"role": "user", "content": content})

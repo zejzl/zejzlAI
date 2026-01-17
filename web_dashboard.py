@@ -21,6 +21,7 @@ import uvicorn
 from ai_framework import AsyncMessageBus
 from base import get_ai_provider_bus
 from src.magic import FairyMagic
+from src.usage_analytics import UsageAnalytics
 from telemetry import get_telemetry
 from src.performance import record_metric
 from src.logging_debug import debug_monitor, logger as debug_logger
@@ -313,6 +314,80 @@ async def chat_endpoint(request: Request, background_tasks: BackgroundTasks):
     except Exception as e:
         logger.error(f"Chat endpoint error: {e}")
         return {"error": str(e)}
+
+
+# Analytics Endpoints
+analytics = UsageAnalytics()
+
+@app.get("/api/analytics/usage")
+async def get_usage_analytics(days: int = 7):
+    """Get usage analytics for the specified number of days"""
+    try:
+        report = await analytics.get_usage_report(days=days)
+        return {
+            "success": True,
+            "data": {
+                "period": report.period,
+                "total_requests": report.total_requests,
+                "total_tokens": report.total_tokens,
+                "total_cost_usd": report.total_cost_usd,
+                "avg_response_time": report.avg_response_time,
+                "success_rate": report.success_rate,
+                "provider_breakdown": report.provider_breakdown,
+                "hourly_usage": report.hourly_usage[:24]  # Last 24 hours
+            }
+        }
+    except Exception as e:
+        logger.error(f"Analytics endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/analytics/costs")
+async def get_cost_analytics(days: int = 30):
+    """Get cost analysis for the specified number of days"""
+    try:
+        cost_analysis = await analytics.get_cost_analysis(days=days)
+        return {
+            "success": True,
+            "data": {
+                "period_days": cost_analysis.period_days,
+                "total_cost": cost_analysis.total_cost,
+                "avg_daily_cost": cost_analysis.avg_daily_cost,
+                "avg_request_cost": cost_analysis.avg_request_cost,
+                "most_expensive_provider": cost_analysis.most_expensive_provider,
+                "cost_trend": cost_analysis.cost_trend,
+                "projected_monthly_cost": cost_analysis.projected_monthly_cost
+            }
+        }
+    except Exception as e:
+        logger.error(f"Cost analytics endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/analytics/provider/{provider}")
+async def get_provider_analytics(provider: str, days: int = 7):
+    """Get detailed analytics for a specific provider"""
+    try:
+        provider_data = await analytics.get_provider_performance(provider, days=days)
+        return {
+            "success": True,
+            "data": provider_data
+        }
+    except Exception as e:
+        logger.error(f"Provider analytics endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/analytics/expensive-requests")
+async def get_expensive_requests(limit: int = 10):
+    """Get the most expensive individual requests"""
+    try:
+        expensive_requests = await analytics.get_top_expensive_requests(limit=limit)
+        return {
+            "success": True,
+            "data": expensive_requests
+        }
+    except Exception as e:
+        logger.error(f"Expensive requests endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
 
 if __name__ == "__main__":
     uvicorn.run(
