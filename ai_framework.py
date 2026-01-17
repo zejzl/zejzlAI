@@ -31,6 +31,8 @@ import aiosqlite
 
 # --- 4. Local Application Imports ---
 from dotenv import load_dotenv
+from rate_limiter import get_rate_limiter
+from telemetry import get_telemetry
 
 # (The sys.path fix you added)
 project_root = os.path.dirname(os.path.abspath(__file__))
@@ -210,7 +212,7 @@ class RedisPersistence(PersistenceLayer):
     
     async def cleanup(self):
         if self.redis:
-            await self.redis.close()
+            await self.redis.aclose()
 
 class SQLitePersistence(PersistenceLayer):
     """SQLite persistence layer (fallback)"""
@@ -248,10 +250,10 @@ class SQLitePersistence(PersistenceLayer):
     async def save_message(self, message: Message):
         if not self.conn:
             raise RuntimeError("SQLite not initialized")
-        
+
         await self.conn.execute(
             """
-            INSERT OR REPLACE INTO messages 
+            INSERT OR REPLACE INTO messages
             (id, content, timestamp, sender, provider, response, response_time, error, conversation_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
@@ -267,6 +269,22 @@ class SQLitePersistence(PersistenceLayer):
                 message.conversation_id
             )
         )
+
+        # Prune old messages - keep only last 100 per conversation (matching Redis behavior)
+        await self.conn.execute(
+            """
+            DELETE FROM messages
+            WHERE conversation_id = ?
+            AND id NOT IN (
+                SELECT id FROM messages
+                WHERE conversation_id = ?
+                ORDER BY timestamp DESC
+                LIMIT 100
+            )
+            """,
+            (message.conversation_id, message.conversation_id)
+        )
+
         await self.conn.commit()
     
     async def get_conversation_history(self, conversation_id: str, limit: int = 10) -> List[Dict]:
@@ -711,25 +729,30 @@ class AsyncMessageBus:
             del self.providers[provider_name]
             logger.info(f"Unregistered provider: {provider_name}")
     
-    async def send_message(self, content: str, provider_name: str = None, 
+    async def send_message(self, content: str, provider_name: str = None,
                           conversation_id: str = "default") -> str:
         """Send a message to a specific provider and return the response"""
         provider_name = provider_name or self.config.get("default_provider", "chatgpt")
         provider_name = provider_name.lower()
-        
+
         if provider_name not in self.providers:
             raise ValueError(f"Provider {provider_name} not registered")
-        
+
+        # Rate limiting check
+        rate_limiter = get_rate_limiter()
+        if not await rate_limiter.acquire(provider_name, timeout=30.0):
+            raise RuntimeError(f"Rate limit exceeded for provider {provider_name}")
+
         provider = self.providers[provider_name]
-        
+
         # Get conversation history from persistence or cache
         if conversation_id not in self.conversation_cache:
             self.conversation_cache[conversation_id] = await self.persistence.get_conversation_history(
                 conversation_id
             )
-        
+
         history = self.conversation_cache[conversation_id]
-        
+
         # Create message
         message_id = f"{provider_name}_{datetime.now().timestamp()}_{hashlib.md5(content.encode()).hexdigest()[:8]}"
         message = Message(
@@ -740,32 +763,79 @@ class AsyncMessageBus:
             provider=provider_name,
             conversation_id=conversation_id
         )
-        
+
         try:
             start_time = asyncio.get_event_loop().time()
-            response = await provider.generate_response(content, history)
-            response_time = asyncio.get_event_loop().time() - start_time
-            
-            message.response = response
-            message.response_time = response_time
-            
-            # Update conversation history
-            history.append({"role": "user", "content": content})
-            history.append({"role": "assistant", "content": response})
-            
-            # Keep only last 10 messages in cache
-            if len(history) > 10:
-                self.conversation_cache[conversation_id] = history[-10:]
-            
-            # Save message to persistence
-            await self.persistence.save_message(message)
-            
-            logger.info(f"Response from {provider_name} in {response_time:.2f}s")
-            return response
-            
+            telemetry = get_telemetry()
+
+            # Retry logic for transient failures
+            max_retries = 3
+            retry_delay = 1.0  # Start with 1 second
+            last_error = None
+
+            for attempt in range(max_retries):
+                try:
+                    response = await provider.generate_response(content, history)
+                    response_time = asyncio.get_event_loop().time() - start_time
+
+                    message.response = response
+                    message.response_time = response_time
+
+                    # Update conversation history
+                    history.append({"role": "user", "content": content})
+                    history.append({"role": "assistant", "content": response})
+
+                    # Keep only last 10 messages in cache
+                    if len(history) > 10:
+                        self.conversation_cache[conversation_id] = history[-10:]
+
+                    # Save message to persistence
+                    await self.persistence.save_message(message)
+
+                    # Record telemetry
+                    await telemetry.record_call(
+                        component=f"provider_{provider_name}",
+                        response_time=response_time,
+                        success=True
+                    )
+
+                    logger.info(f"Response from {provider_name} in {response_time:.2f}s")
+                    return response
+
+                except Exception as e:
+                    last_error = e
+                    error_str = str(e).lower()
+
+                    # Check if error is retryable (transient network/API issues)
+                    retryable_errors = ["timeout", "503", "502", "500", "connection", "temporary"]
+                    is_retryable = any(err in error_str for err in retryable_errors)
+
+                    if is_retryable and attempt < max_retries - 1:
+                        logger.warning(
+                            f"Retryable error from {provider_name} (attempt {attempt + 1}/{max_retries}): {e}"
+                        )
+                        await asyncio.sleep(retry_delay)
+                        retry_delay *= 2  # Exponential backoff
+                    else:
+                        # Non-retryable error or max retries reached
+                        raise
+
+            # If we get here, all retries failed
+            raise last_error
+
         except Exception as e:
             message.error = str(e)
             await self.persistence.save_message(message)
+
+            # Record failed telemetry
+            response_time = asyncio.get_event_loop().time() - start_time
+            await telemetry.record_call(
+                component=f"provider_{provider_name}",
+                response_time=response_time,
+                success=False,
+                error_type=type(e).__name__
+            )
+
             logger.error(f"Error getting response from {provider_name}: {str(e)}")
             raise
     

@@ -13,6 +13,11 @@ redis>=5.0.0
 # Async SQLite
 aiosqlite>=0.19.0
 
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+
 # Standard library (included with Python 3.10+)
 # - asyncio
 # - logging
@@ -22,3 +27,6 @@ aiosqlite>=0.19.0
 # - dataclasses
 # - pathlib
 # - datetime
+# - sys
+# - abc
+# - typing
