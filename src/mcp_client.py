@@ -20,6 +20,10 @@ from src.mcp_types import (
     MCPMethod, validate_json_rpc_response
 )
 from src.magic import FairyMagic, CircuitBreaker, CircuitBreakerConfig
+from src.mcp_security import (
+    get_security_manager, SecurityLevel, Permission,
+    authenticate_token, check_authorization, check_rate_limit
+)
 
 logger = logging.getLogger("MCPClient")
 
@@ -235,25 +239,50 @@ class MCPClient:
     async def call_tool(
         self,
         tool_name: str,
-        arguments: Optional[Dict[str, Any]] = None
+        arguments: Optional[Dict[str, Any]] = None,
+        auth_token: Optional[str] = None
     ) -> Any:
         """
-        Call an MCP tool.
+        Call an MCP tool with security checks.
 
         Args:
             tool_name: Name of tool to call
             arguments: Tool arguments
+            auth_token: Authentication token (optional)
 
         Returns:
             Tool result
 
         Raises:
-            MCPError: If tool call fails
+            MCPError: If tool call fails or security checks fail
         """
         if not self.connected:
             raise MCPConnectionError("Not connected to server")
 
-        logger.debug(f"Calling tool: {tool_name}")
+        # Security checks
+        principal = None
+        if auth_token:
+            principal = await authenticate_token(auth_token)
+            if not principal:
+                raise MCPProtocolError("Authentication failed")
+
+            # Check authorization
+            authorized = await check_authorization(
+                principal, "call_tool", f"tool:{tool_name}"
+            )
+            if not authorized:
+                raise MCPProtocolError("Authorization failed")
+
+            # Check rate limits
+            rate_allowed, rate_reason = await check_rate_limit(principal, "call_tool")
+            if not rate_allowed:
+                raise MCPProtocolError(f"Rate limit exceeded: {rate_reason}")
+        else:
+            # Use default agent principal for unauthenticated calls
+            manager = get_security_manager()
+            principal = manager.principals.get("default_agent")
+
+        logger.debug(f"Calling tool: {tool_name} by principal: {principal.id if principal else 'unauthenticated'}")
 
         request = MCPRequest(
             id=self._next_request_id(),
