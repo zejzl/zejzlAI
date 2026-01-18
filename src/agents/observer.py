@@ -50,15 +50,26 @@ class ObserverAgent:
             # Get personality-enhanced prompt
             personality_prompt = self.personality.get_personality_prompt() if self.personality else ""
 
-            prompt = f"""Analyze this task: {task}
-
-Return ONLY valid JSON:
-{{
+            # Use TOON format for token efficiency if available
+            from ai_framework import TOON_AVAILABLE
+            if TOON_AVAILABLE:
+                format_instruction = """Return ONLY valid TOON format:
+objective: "task goal"
+requirements: ["req1", "req2"]
+complexity_level: "Low"
+estimated_effort: "Medium" """
+            else:
+                format_instruction = """Return ONLY valid JSON:
+{
     "objective": "task goal",
     "requirements": ["req1", "req2"],
     "complexity_level": "Low",
     "estimated_effort": "Medium"
-}}"""
+}"""
+
+            prompt = f"""Analyze this task: {task}
+
+{format_instruction}"""
 
             # Call AI
             response = await ai_bus.send_message(
@@ -69,35 +80,46 @@ Return ONLY valid JSON:
 
             logger.debug(f"[{self.name}] AI response received: {response[:500]}...")
 
-            # Parse JSON response with better error handling
-            import json
-            import re
+            # Parse response with TOON support for token efficiency
+            from ai_framework import decode_from_llm
 
-            def extract_json_from_text(text):
-                """Extract JSON from text that might contain extra content"""
-                # Look for JSON-like content
-                json_match = re.search(r'\{.*\}', text, re.DOTALL)
-                if json_match:
-                    try:
-                        return json.loads(json_match.group())
-                    except json.JSONDecodeError:
-                        pass
+            observation_data = decode_from_llm(response, use_toon=TOON_AVAILABLE)
 
-                # Try to find JSON between triple backticks
-                code_block_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
-                if code_block_match:
-                    try:
-                        return json.loads(code_block_match.group(1))
-                    except json.JSONDecodeError:
-                        pass
+            # If TOON/JSON parsing failed, try fallback extraction
+            if not isinstance(observation_data, dict):
+                import json
+                import re
 
-                return None
+                def extract_json_from_text(text):
+                    """Extract JSON from text that might contain extra content"""
+                    # Look for JSON-like content
+                    json_match = re.search(r'\{.*\}', text, re.DOTALL)
+                    if json_match:
+                        try:
+                            return json.loads(json_match.group())
+                        except json.JSONDecodeError:
+                            pass
 
-            try:
-                observation_data = json.loads(response)
-            except json.JSONDecodeError:
-                # Try to extract JSON from the response
+                    # Try to find JSON between triple backticks
+                    code_block_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
+                    if code_block_match:
+                        try:
+                            return json.loads(code_block_match.group(1))
+                        except json.JSONDecodeError:
+                            pass
+
+                    return None
+
                 observation_data = extract_json_from_text(response)
+
+                # Final fallback
+                if not observation_data:
+                    observation_data = {
+                        "objective": task[:100],
+                        "requirements": ["Analysis failed - using fallback"],
+                        "complexity_level": "Unknown",
+                        "estimated_effort": "Unknown"
+                    }
                 if not observation_data:
                     raise json.JSONDecodeError("Could not parse JSON from AI response", response, 0)
 

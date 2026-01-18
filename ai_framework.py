@@ -31,6 +31,15 @@ try:
     import toon
 except ImportError:
     import toml as toon  # Fallback to standard toml
+
+# TOON support for token-efficient agent communications
+try:
+    from toon_format import encode as toon_encode, decode as toon_decode
+    TOON_AVAILABLE = True
+except ImportError:
+    TOON_AVAILABLE = False
+    print("Warning: toon_format not available. Install with: pip install toon_format")
+
 import redis.asyncio as aioredis
 import aiosqlite
 
@@ -80,6 +89,40 @@ async def run_interactive_session():
         else:
             print(f"Option {choice} not implemented yet.")
 
+# TOON utility functions for token-efficient agent communications
+def encode_for_llm(data: Any, use_toon: bool = True) -> str:
+    """
+    Encode data for LLM consumption using TOON (if available) or JSON as fallback.
+    TOON provides ~40% token savings compared to JSON.
+    """
+    if use_toon and TOON_AVAILABLE:
+        try:
+            return toon_encode(data)
+        except Exception as e:
+            logger.warning(f"TOON encoding failed, falling back to JSON: {e}")
+            # Fall through to JSON
+
+    # Fallback to JSON
+    return json.dumps(data, indent=2)
+
+def decode_from_llm(text: str, use_toon: bool = True) -> Any:
+    """
+    Decode LLM response using TOON (if available) or JSON as fallback.
+    """
+    if use_toon and TOON_AVAILABLE:
+        try:
+            return toon_decode(text)
+        except Exception:
+            # Fall through to JSON
+            pass
+
+    # Fallback to JSON
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # If both fail, return raw text
+        return text
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
@@ -90,6 +133,12 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger("AI_Framework")
+
+# Log TOON availability
+if TOON_AVAILABLE:
+    logger.info("TOON format available - using token-efficient agent communications")
+else:
+    logger.info("TOON format not available - install with: pip install toon_format")
 
 @dataclass
 class Message:
