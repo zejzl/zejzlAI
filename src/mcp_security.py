@@ -9,6 +9,7 @@ import logging
 import time
 import hashlib
 import secrets
+import re
 from typing import Dict, List, Optional, Any, Set, Tuple, Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -16,6 +17,7 @@ from collections import defaultdict, deque
 from enum import Enum
 import json
 import os
+from pathlib import Path
 
 logger = logging.getLogger("MCPSecurity")
 
@@ -554,6 +556,10 @@ class MCPSecurityManager:
 security_manager = MCPSecurityManager()
 
 # Convenience functions
+def get_security_manager() -> MCPSecurityManager:
+    """Get the global security manager instance"""
+    return security_manager
+
 async def authenticate_token(token: str) -> Optional[SecurityPrincipal]:
     """Convenience function for token authentication"""
     return await security_manager.authenticate(token)
@@ -566,5 +572,164 @@ async def check_authorization(principal: SecurityPrincipal, action: str, resourc
 async def check_rate_limit(principal: SecurityPrincipal, action: str) -> Tuple[bool, str]:
     """Convenience function for rate limit checking"""
     return await security_manager.check_rate_limit(principal, action)
+
+
+# Input validation and security utilities
+def validate_path_traversal(path: str, base_path: Optional[str] = None) -> bool:
+    """
+    Validate path for traversal attacks.
+
+    Args:
+        path: Path to validate
+        base_path: Optional base path to resolve against
+
+    Returns:
+        True if path is safe, False if traversal detected
+    """
+    try:
+        # Normalize path separators for cross-platform compatibility
+        normalized_path = os.path.normpath(path)
+
+        # Check for obvious traversal patterns in normalized path
+        if ".." in normalized_path:
+            # Count directory traversals
+            parts = normalized_path.replace("\\", "/").split("/")
+            traversal_count = 0
+            safe_parts: List[str] = []
+
+            for part in parts:
+                if part == "..":
+                    traversal_count += 1
+                    if safe_parts:
+                        safe_parts.pop()  # Remove parent directory
+                    else:
+                        # Trying to go above root
+                        return False
+                elif part not in ("", "."):
+                    safe_parts.append(part)
+
+            # If we have more traversals than safe directories, it's suspicious
+            if traversal_count > len(safe_parts):
+                return False
+
+        # Check for absolute paths that might be dangerous
+        if os.path.isabs(path):
+            # For now, allow absolute paths but log warning
+            # In production, you might want to restrict to allowed directories
+            pass
+
+        # If base_path provided, ensure resolved path is within base
+        if base_path:
+            try:
+                base_resolved = Path(base_path).resolve()
+                resolved = Path(path).resolve()
+                resolved.relative_to(base_resolved)
+            except ValueError:
+                # Path is outside base directory
+                return False
+
+        return True
+    except Exception:
+        # If path resolution fails, assume it's unsafe
+        return False
+
+
+def validate_sql_injection(query: str) -> bool:
+    """
+    Basic SQL injection detection for common patterns.
+
+    Args:
+        query: SQL query string to validate
+
+    Returns:
+        True if query appears safe, False if injection patterns detected
+    """
+    # Common SQL injection patterns (basic detection)
+    dangerous_patterns = [
+        r';\s*--',  # Semicolon followed by comment
+        r';\s*/\*',  # Semicolon followed by block comment
+        r'union\s+select',  # UNION SELECT
+        r'/\*.*\*/',  # Block comments that might hide malicious code
+        r';\s*drop\s+',  # DROP statements
+        r';\s*delete\s+from',  # DELETE statements
+        r';\s*update\s+',  # UPDATE statements
+        r';\s*insert\s+into',  # INSERT statements
+        r';\s*exec\s+',  # EXEC statements
+        r';\s*execute\s+',  # EXECUTE statements
+        r'--\s*drop',  # Comments hiding DROP
+        r'--\s*delete',  # Comments hiding DELETE
+    ]
+
+    query_lower = query.lower()
+    for pattern in dangerous_patterns:
+        if re.search(pattern, query_lower, re.IGNORECASE):
+            return False
+
+    return True
+
+
+def sanitize_resource_uri(uri: str) -> str:
+    """
+    Sanitize resource URI to prevent malicious access.
+
+    Args:
+        uri: Resource URI to sanitize
+
+    Returns:
+        Sanitized URI
+    """
+    # Basic URI validation - ensure it doesn't contain dangerous schemes or paths
+    if "://" in uri:
+        # Has scheme, validate it's safe
+        scheme = uri.split("://")[0].lower()
+        safe_schemes = ["file", "http", "https", "ftp", "ftps"]
+        if scheme not in safe_schemes:
+            raise ValueError(f"Unsafe URI scheme: {scheme}")
+
+    # Remove any null bytes or other dangerous characters
+    sanitized = uri.replace('\x00', '').replace('\r', '').replace('\n', '')
+
+    return sanitized
+
+
+def validate_tool_arguments(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Validate and sanitize tool arguments based on tool type.
+
+    Args:
+        tool_name: Name of the tool being called
+        arguments: Tool arguments
+
+    Returns:
+        Validated and sanitized arguments
+
+    Raises:
+        ValueError: If arguments are unsafe or invalid
+    """
+    sanitized_args = {}
+
+    for key, value in arguments.items():
+        if isinstance(value, str):
+            # For file system tools, validate paths
+            if tool_name in ["read_file", "write_file", "list_dir", "delete_file", "move_file"] and key in ["path", "src", "dst"]:
+                if not validate_path_traversal(value):
+                    raise ValueError(f"Path traversal detected in {key}: {value}")
+
+            # For database tools, check SQL injection
+            elif tool_name in ["execute_query", "execute_sql"] and key in ["query", "sql"]:
+                if not validate_sql_injection(value):
+                    raise ValueError(f"Potential SQL injection detected in {key}")
+
+            # For resource URIs
+            elif key == "uri":
+                value = sanitize_resource_uri(value)
+
+            # Remove dangerous characters from strings
+            sanitized_args[key] = value.replace('\x00', '').replace('\r\n', '\n').replace('\r', '\n')
+        else:
+            sanitized_args[key] = value
+
+    return sanitized_args
+
 
 logger.info("MCP Security Layer initialized with comprehensive authorization, rate limiting, and audit logging")

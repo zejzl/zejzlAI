@@ -800,7 +800,272 @@ class DashboardManager {
     }
 }
 
+// MCP Dashboard Functions
+async function loadMCPData() {
+    try {
+        // Load MCP status
+        const statusResponse = await fetch('/api/mcp/status');
+        const statusData = await statusResponse.json();
+
+        if (statusData.success) {
+            updateMCPOveview(statusData);
+        }
+
+        // Load MCP servers
+        const serversResponse = await fetch('/api/mcp/servers');
+        const serversData = await serversResponse.json();
+
+        if (serversData.success) {
+            updateMCPServers(serversData.servers);
+        }
+
+        // Load MCP security
+        const securityResponse = await fetch('/api/mcp/security');
+        const securityData = await securityResponse.json();
+
+        if (securityData.success) {
+            updateMCPSecurity(securityData.security);
+        }
+
+    } catch (error) {
+        console.error('Failed to load MCP data:', error);
+    }
+}
+
+function updateMCPOveview(data) {
+    const stats = data.stats;
+
+    document.getElementById('mcp-active-servers').textContent = stats.connected_servers || 0;
+    document.getElementById('mcp-total-tools').textContent = stats.total_tools || 0;
+    document.getElementById('mcp-total-resources').textContent = stats.total_resources || 0;
+    document.getElementById('mcp-total-requests').textContent = stats.total_requests || 0;
+    document.getElementById('mcp-success-rate').textContent = `${(stats.success_rate * 100 || 0).toFixed(1)}%`;
+    document.getElementById('mcp-avg-response').textContent = 'N/A'; // Would need to calculate from server metrics
+}
+
+function updateMCPServers(servers) {
+    const container = document.getElementById('mcp-servers-list');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!servers || Object.keys(servers).length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-gray-400 py-8">
+                <i data-lucide="server-off" class="w-12 h-12 mx-auto mb-4 opacity-50"></i>
+                <p>No MCP servers configured</p>
+            </div>
+        `;
+        return;
+    }
+
+    for (const [name, server] of Object.entries(servers)) {
+        const serverDiv = document.createElement('div');
+        serverDiv.className = 'flex items-center justify-between p-3 bg-gray-700 rounded-lg';
+
+        const status = server.status?.connected ? 'Connected' : 'Disconnected';
+        const statusClass = server.status?.connected ? 'text-green-400' : 'text-red-400';
+
+        serverDiv.innerHTML = `
+            <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                <div class="flex items-center space-x-3">
+                    <i data-lucide="server" class="w-5 h-5 text-gray-400"></i>
+                    <div>
+                        <div class="font-medium">${name}</div>
+                        <div class="text-sm text-gray-400">${server.config?.transport || 'Unknown'} • ${server.status?.tools?.length || 0} tools</div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm ${statusClass}">${status}</span>
+                    <button class="text-gray-400 hover:text-white" onclick="toggleMCPServer('${name}', ${!server.status?.connected})">
+                        <i data-lucide="${server.status?.connected ? 'power-off' : 'power'}" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        container.appendChild(serverDiv);
+    }
+
+    // Re-create icons for new elements
+    lucide.createIcons();
+}
+
+function updateMCPSecurity(security) {
+    const metrics = security.metrics || {};
+
+    document.getElementById('mcp-auth-failures').textContent = metrics.auth_failures || 0;
+    document.getElementById('mcp-rate-limited').textContent = metrics.rate_limited_requests || 0;
+    document.getElementById('mcp-active-tokens').textContent = security.active_tokens || 0;
+}
+
+async function toggleMCPServer(serverName, connect) {
+    try {
+        const endpoint = connect ? `/api/mcp/server/connect/${serverName}` : `/api/mcp/server/disconnect/${serverName}`;
+        const response = await fetch(endpoint, { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+            showAlert(`Server ${connect ? 'connected' : 'disconnected'} successfully`, 'success');
+            loadMCPData();
+        } else {
+            showAlert(`Failed to ${connect ? 'connect' : 'disconnect'} server: ${result.error}`, 'error');
+        }
+    } catch (error) {
+        showAlert(`Server operation failed: ${error.message}`, 'error');
+    }
+}
+
+async function showMCPTools() {
+    try {
+        const response = await fetch('/api/mcp/tools');
+        const data = await response.json();
+
+        if (data.success) {
+            displayMCPItems(data.tools, 'tools');
+        }
+    } catch (error) {
+        console.error('Failed to load MCP tools:', error);
+    }
+}
+
+async function showMCPResources() {
+    try {
+        const response = await fetch('/api/mcp/resources');
+        const data = await response.json();
+
+        if (data.success) {
+            displayMCPItems(data.resources, 'resources');
+        }
+    } catch (error) {
+        console.error('Failed to load MCP resources:', error);
+    }
+}
+
+function displayMCPItems(items, type) {
+    const container = document.getElementById('mcp-tools-resources');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!items || items.length === 0) {
+        container.innerHTML = `<p class="text-gray-400">No ${type} available</p>`;
+        return;
+    }
+
+    items.forEach(item => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'p-2 bg-gray-700 rounded text-sm';
+
+        if (type === 'tools') {
+            itemDiv.innerHTML = `
+                <div class="font-medium text-blue-400">${item.name}</div>
+                <div class="text-gray-300 text-xs">${item.description}</div>
+                <div class="text-gray-500 text-xs">Server: ${item.server}</div>
+            `;
+            itemDiv.onclick = () => selectMCPTool(item);
+        } else {
+            itemDiv.innerHTML = `
+                <div class="font-medium text-purple-400">${item.name}</div>
+                <div class="text-gray-300 text-xs">${item.description}</div>
+                <div class="text-gray-500 text-xs">URI: ${item.uri}</div>
+            `;
+        }
+
+        container.appendChild(itemDiv);
+    });
+}
+
+function selectMCPTool(tool) {
+    // Populate the tool execution form
+    const serverSelect = document.getElementById('tool-server-select');
+    const toolSelect = document.getElementById('tool-name-select');
+
+    // Set server
+    serverSelect.value = tool.server;
+
+    // Add tool option if not exists
+    let option = toolSelect.querySelector(`option[value="${tool.name}"]`);
+    if (!option) {
+        option = document.createElement('option');
+        option.value = tool.name;
+        option.textContent = tool.name;
+        toolSelect.appendChild(option);
+    }
+
+    toolSelect.value = tool.name;
+
+    // Switch to the tool execution section
+    document.querySelector('[data-tab="mcp"]').click();
+}
+
+async function executeMCPTool() {
+    const serverName = document.getElementById('tool-server-select').value;
+    const toolName = document.getElementById('tool-name-select').value;
+    const argsText = document.getElementById('tool-arguments').value;
+
+    if (!serverName || !toolName) {
+        showAlert('Please select both server and tool', 'error');
+        return;
+    }
+
+    let arguments = {};
+    if (argsText.trim()) {
+        try {
+            arguments = JSON.parse(argsText);
+        } catch (e) {
+            showAlert('Invalid JSON in arguments', 'error');
+            return;
+        }
+    }
+
+    try {
+        const response = await fetch('/api/mcp/tool-call', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                server_name: serverName,
+                tool_name: toolName,
+                arguments: arguments
+            })
+        });
+
+        const result = await response.json();
+        const resultDiv = document.getElementById('tool-result');
+
+        if (result.success) {
+            resultDiv.className = 'mt-4 p-3 bg-green-900 border border-green-700 rounded-lg font-mono text-sm max-h-32 overflow-y-auto';
+            resultDiv.innerHTML = `<pre class="text-green-300">${JSON.stringify(result.result, null, 2)}</pre>`;
+        } else {
+            resultDiv.className = 'mt-4 p-3 bg-red-900 border border-red-700 rounded-lg font-mono text-sm max-h-32 overflow-y-auto';
+            resultDiv.innerHTML = `<pre class="text-red-300">Error: ${result.error}</pre>`;
+        }
+
+        resultDiv.classList.remove('hidden');
+    } catch (error) {
+        showAlert(`Tool execution failed: ${error.message}`, 'error');
+    }
+}
+
+function clearToolForm() {
+    document.getElementById('tool-server-select').value = '';
+    document.getElementById('tool-name-select').value = '';
+    document.getElementById('tool-arguments').value = '';
+    document.getElementById('tool-result').classList.add('hidden');
+}
+
 // Initialize dashboard when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.dashboard = new DashboardManager();
+
+    // Load MCP data when MCP tab is activated
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            if (this.dataset.tab === 'mcp') {
+                loadMCPData();
+            }
+        });
+    });
 });

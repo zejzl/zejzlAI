@@ -34,11 +34,14 @@ except ImportError:
 
 # Import MCP components
 try:
-    from src.mcp_registry import MCPRegistry
+    from src.mcp_registry import MCPServerRegistry
     from src.mcp_security import get_security_manager
+    from src.mcp_agent_integration import MCPAgentInterface, initialize_mcp
 except ImportError:
-    MCPRegistry = None
+    MCPServerRegistry = None
     get_security_manager = None
+    MCPAgentInterface = None
+    initialize_mcp = None
 from telemetry import get_telemetry
 from src.performance import record_metric
 from src.logging_debug import debug_monitor, logger as debug_logger
@@ -59,16 +62,24 @@ class DashboardServer:
         self.magic: FairyMagic = None
         self.connected_clients = set()
 
+        # MCP components
+        self.mcp_registry: MCPServerRegistry = None
+        self.mcp_agent_interface: MCPAgentInterface = None
+        self.mcp_security_manager = None
+
     async def initialize(self):
         """Initialize the dashboard with framework components"""
         try:
             self.bus = await get_ai_provider_bus()
             self.magic = self.bus.magic
 
+            # Initialize MCP components
+            await self._initialize_mcp_system()
+
             # Initialize multi-modal providers
             await self._initialize_multimodal_providers()
 
-            logger.info("Dashboard initialized with AI framework and multi-modal support")
+            logger.info("Dashboard initialized with AI framework, MCP system, and multi-modal support")
         except Exception as e:
             logger.error(f"Failed to initialize dashboard: {e}")
             # Create fallback instances for demo
@@ -99,10 +110,21 @@ class DashboardServer:
 
         except Exception as e:
             logger.warning(f"Failed to initialize multi-modal providers: {e}")
-            # Continue without multi-modal support
-            self.bus = AsyncMessageBus()
-            await self.bus.start()
-            self.magic = FairyMagic()
+
+    async def _initialize_mcp_system(self):
+        """Initialize MCP system components"""
+        try:
+            if initialize_mcp and MCPAgentInterface:
+                self.mcp_agent_interface = await initialize_mcp()
+                self.mcp_registry = self.mcp_agent_interface.registry
+                logger.info("MCP system initialized successfully")
+
+            if get_security_manager:
+                self.mcp_security_manager = get_security_manager()
+                logger.info("MCP security manager initialized")
+
+        except Exception as e:
+            logger.warning(f"Failed to initialize MCP system: {e}")
 
     async def get_system_status(self) -> Dict[str, Any]:
         """Get comprehensive system status"""
@@ -277,6 +299,8 @@ async def detailed_health_check():
                 "bus_status": "connected" if dashboard.bus else "disconnected",
                 "magic_energy": dashboard.magic.energy_level if dashboard.magic else 0,
                 "providers_count": len(dashboard.bus.providers) if dashboard.bus else 0,
+                "mcp_servers": len(dashboard.mcp_registry.configs) if dashboard.mcp_registry else 0,
+                "mcp_connected": len([s for s in dashboard.mcp_registry.status.values() if s.connected]) if dashboard.mcp_registry else 0,
                 "active_requests": len(debug_monitor.active_requests)
             }
         }
@@ -658,25 +682,17 @@ async def extract_pdf_text_endpoint(request: Request):
 async def get_mcp_status():
     """Get MCP system status"""
     try:
-        if not MCPRegistry:
+        if not dashboard.mcp_registry:
             return {"success": False, "error": "MCP not available"}
 
-        registry = MCPRegistry()
-        servers = registry.list_servers()
-        health_status = {}
-
-        for server_name in servers:
-            health = registry.check_server_health(server_name)
-            health_status[server_name] = health
+        servers = dashboard.mcp_registry.get_all_servers()
+        stats = dashboard.mcp_registry.get_registry_stats()
 
         return {
             "success": True,
-            "data": {
-                "servers_count": len(servers),
-                "servers": servers,
-                "health_status": health_status,
-                "registry_status": "active"
-            }
+            "servers": servers,
+            "stats": stats,
+            "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
         logger.error(f"MCP status endpoint error: {e}")
@@ -686,24 +702,15 @@ async def get_mcp_status():
 async def get_mcp_servers():
     """Get detailed MCP server information"""
     try:
-        if not MCPRegistry:
+        if not dashboard.mcp_registry:
             return {"success": False, "error": "MCP not available"}
 
-        registry = MCPRegistry()
-        servers = registry.list_servers()
-        server_details = {}
-
-        for server_name in servers:
-            server_info = registry.get_server(server_name)
-            health = registry.check_server_health(server_name)
-            server_details[server_name] = {
-                "info": server_info,
-                "health": health
-            }
+        servers = dashboard.mcp_registry.get_all_servers()
 
         return {
             "success": True,
-            "data": server_details
+            "servers": servers,
+            "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
         logger.error(f"MCP servers endpoint error: {e}")
@@ -713,15 +720,15 @@ async def get_mcp_servers():
 async def get_mcp_security_status():
     """Get MCP security status"""
     try:
-        if not get_security_manager:
+        if not dashboard.mcp_security_manager:
             return {"success": False, "error": "MCP Security not available"}
 
-        security = get_security_manager()
-        metrics = security.get_security_metrics()
+        metrics = dashboard.mcp_security_manager.get_security_metrics()
 
         return {
             "success": True,
-            "data": metrics
+            "security": metrics,
+            "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
         logger.error(f"MCP security endpoint error: {e}")
@@ -731,30 +738,154 @@ async def get_mcp_security_status():
 async def call_mcp_tool(request: Request):
     """Call an MCP tool through the web interface"""
     try:
+        if not dashboard.mcp_registry:
+            return {"success": False, "error": "MCP not available"}
+
         data = await request.json()
-        server_name = data.get("server")
-        tool_name = data.get("tool")
+        server_name = data.get("server_name")
+        tool_name = data.get("tool_name")
         arguments = data.get("arguments", {})
+        agent_name = data.get("agent_name", "web_dashboard")
 
-        if not server_name or not tool_name:
-            return {"success": False, "error": "Server and tool name required"}
-
-        # This would need proper MCP client integration
-        # For now, return mock response
-        mock_response = {
-            "tool": tool_name,
-            "server": server_name,
-            "arguments": arguments,
-            "result": f"Mock result for {tool_name} on {server_name}",
-            "status": "completed"
-        }
+        # Call the tool through the registry
+        result = await dashboard.mcp_registry.call_tool(
+            server_name=server_name,
+            tool_name=tool_name,
+            arguments=arguments,
+            agent_name=agent_name
+        )
 
         return {
             "success": True,
-            "data": mock_response
+            "result": result,
+            "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
         logger.error(f"MCP tool call endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/mcp/tools")
+async def get_mcp_tools(server_name: str = None):
+    """Get MCP tools"""
+    try:
+        if not dashboard.mcp_registry:
+            return {"success": False, "error": "MCP not available"}
+
+        tools = dashboard.mcp_registry.list_tools(server_name)
+
+        return {
+            "success": True,
+            "tools": tools,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"MCP tools endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/mcp/resources")
+async def get_mcp_resources(server_name: str = None):
+    """Get MCP resources"""
+    try:
+        if not dashboard.mcp_registry:
+            return {"success": False, "error": "MCP not available"}
+
+        resources = dashboard.mcp_registry.list_resources(server_name)
+
+        return {
+            "success": True,
+            "resources": resources,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"MCP resources endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/mcp/resource/read")
+async def read_mcp_resource(request: Request):
+    """Read an MCP resource through the web interface"""
+    try:
+        if not dashboard.mcp_registry:
+            return {"success": False, "error": "MCP not available"}
+
+        data = await request.json()
+        server_name = data.get("server_name")
+        uri = data.get("uri")
+        agent_name = data.get("agent_name", "web_dashboard")
+
+        # Read the resource through the registry
+        result = await dashboard.mcp_registry.read_resource(
+            server_name=server_name,
+            uri=uri,
+            agent_name=agent_name
+        )
+
+        return {
+            "success": True,
+            "result": result,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"MCP resource read endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/mcp/server/connect/{server_name}")
+async def connect_mcp_server(server_name: str):
+    """Connect to an MCP server"""
+    try:
+        if not dashboard.mcp_registry:
+            return {"success": False, "error": "MCP not available"}
+
+        await dashboard.mcp_registry._connect_server(server_name)
+
+        return {
+            "success": True,
+            "message": f"Connected to {server_name}",
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"MCP server connect error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/mcp/server/disconnect/{server_name}")
+async def disconnect_mcp_server(server_name: str):
+    """Disconnect from an MCP server"""
+    try:
+        if not dashboard.mcp_registry:
+            return {"success": False, "error": "MCP not available"}
+
+        await dashboard.mcp_registry._disconnect_server(server_name)
+
+        return {
+            "success": True,
+            "message": f"Disconnected from {server_name}",
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"MCP server disconnect error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/mcp/agents")
+async def get_mcp_agents():
+    """Get MCP agent activity statistics"""
+    try:
+        if not dashboard.mcp_agent_interface:
+            return {"success": False, "error": "MCP Agent Interface not available"}
+
+        agents = dashboard.mcp_agent_interface.get_all_agent_stats()
+
+        return {
+            "success": True,
+            "agents": agents,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"MCP agents endpoint error: {e}")
         return {"success": False, "error": str(e)}
 
 # Security Validation Endpoints

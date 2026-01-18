@@ -57,6 +57,9 @@
             <button class="nav-tab px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors" data-tab="security">
                 <i data-lucide="shield" class="w-4 h-4 inline mr-2"></i>Security
             </button>
+            <button class="nav-tab px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors" data-tab="mcp">
+                <i data-lucide="server" class="w-4 h-4 inline mr-2"></i>MCP
+            </button>
         </div>
     </nav>
 
@@ -414,9 +417,149 @@
                      <!-- Security events will be populated by JavaScript -->
                  </div>
              </div>
-         </div>
+          </div>
 
-     </main>
+          <!-- MCP Tab -->
+          <div id="mcp-tab" class="tab-content hidden">
+              <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                  <!-- MCP Overview -->
+                  <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                      <h3 class="text-lg font-semibold mb-4 flex items-center">
+                          <i data-lucide="server" class="w-5 h-5 mr-2"></i>MCP Overview
+                      </h3>
+                      <div class="space-y-4">
+                          <div class="flex justify-between items-center">
+                              <span class="text-sm text-gray-400">Active Servers</span>
+                              <span class="text-lg font-semibold text-green-400" id="mcp-active-servers">-</span>
+                          </div>
+                          <div class="flex justify-between items-center">
+                              <span class="text-sm text-gray-400">Total Tools</span>
+                              <span class="text-lg font-semibold text-blue-400" id="mcp-total-tools">-</span>
+                          </div>
+                          <div class="flex justify-between items-center">
+                              <span class="text-sm text-gray-400">Total Resources</span>
+                              <span class="text-lg font-semibold text-purple-400" id="mcp-total-resources">-</span>
+                          </div>
+                      </div>
+                  </div>
+
+                  <!-- MCP Performance -->
+                  <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                      <h3 class="text-lg font-semibold mb-4 flex items-center">
+                          <i data-lucide="activity" class="w-5 h-5 mr-2"></i>Performance
+                      </h3>
+                      <div class="space-y-4">
+                          <div class="flex justify-between items-center">
+                              <span class="text-sm text-gray-400">Total Requests</span>
+                              <span class="text-lg font-semibold text-cyan-400" id="mcp-total-requests">-</span>
+                          </div>
+                          <div class="flex justify-between items-center">
+                              <span class="text-sm text-gray-400">Success Rate</span>
+                              <span class="text-lg font-semibold text-green-400" id="mcp-success-rate">-</span>
+                          </div>
+                          <div class="flex justify-between items-center">
+                              <span class="text-sm text-gray-400">Avg Response Time</span>
+                              <span class="text-sm text-gray-300" id="mcp-avg-response">-</span>
+                          </div>
+                      </div>
+                  </div>
+
+                  <!-- MCP Security -->
+                  <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                      <h3 class="text-lg font-semibold mb-4 flex items-center">
+                          <i data-lucide="lock" class="w-5 h-5 mr-2"></i>Security Status
+                      </h3>
+                      <div class="space-y-4">
+                          <div class="flex justify-between items-center">
+                              <span class="text-sm text-gray-400">Auth Failures</span>
+                              <span class="text-lg font-semibold text-red-400" id="mcp-auth-failures">-</span>
+                          </div>
+                          <div class="flex justify-between items-center">
+                              <span class="text-sm text-gray-400">Rate Limited</span>
+                              <span class="text-lg font-semibold text-yellow-400" id="mcp-rate-limited">-</span>
+                          </div>
+                          <div class="flex justify-between items-center">
+                              <span class="text-sm text-gray-400">Active Tokens</span>
+                              <span class="text-lg font-semibold text-blue-400" id="mcp-active-tokens">-</span>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                  <!-- MCP Servers -->
+                  <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                      <h3 class="text-lg font-semibold mb-4 flex items-center">
+                          <i data-lucide="server" class="w-5 h-5 mr-2"></i>MCP Servers
+                      </h3>
+                      <div id="mcp-servers-list" class="space-y-3">
+                          <!-- MCP servers will be populated by JavaScript -->
+                          <div class="text-center text-gray-400 py-8">
+                              <i data-lucide="server" class="w-12 h-12 mx-auto mb-4 opacity-50"></i>
+                              <p>Loading MCP servers...</p>
+                          </div>
+                      </div>
+                  </div>
+
+                  <!-- MCP Tools & Resources -->
+                  <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                      <h3 class="text-lg font-semibold mb-4 flex items-center">
+                          <i data-lucide="wrench" class="w-5 h-5 mr-2"></i>Tools & Resources
+                      </h3>
+                      <div class="mb-4">
+                          <div class="flex space-x-2 mb-3">
+                              <button class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm" onclick="showMCPTools()">
+                                  Tools
+                              </button>
+                              <button class="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded text-sm" onclick="showMCPResources()">
+                                  Resources
+                              </button>
+                          </div>
+                          <div id="mcp-tools-resources" class="space-y-2 max-h-64 overflow-y-auto">
+                              <!-- Tools and resources will be populated by JavaScript -->
+                          </div>
+                      </div>
+                  </div>
+              </div>
+
+              <!-- Tool Execution -->
+              <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                  <h3 class="text-lg font-semibold mb-4 flex items-center">
+                      <i data-lucide="play" class="w-5 h-5 mr-2"></i>Tool Execution
+                  </h3>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                          <label class="block text-sm font-medium text-gray-300 mb-2">Server</label>
+                          <select id="tool-server-select" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                              <option value="">Select Server</option>
+                          </select>
+                      </div>
+                      <div>
+                          <label class="block text-sm font-medium text-gray-300 mb-2">Tool</label>
+                          <select id="tool-name-select" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                              <option value="">Select Tool</option>
+                          </select>
+                      </div>
+                  </div>
+                  <div class="mt-4">
+                      <label class="block text-sm font-medium text-gray-300 mb-2">Arguments (JSON)</label>
+                      <textarea id="tool-arguments" rows="3" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white font-mono text-sm" placeholder='{"key": "value"}'></textarea>
+                  </div>
+                  <div class="mt-4 flex space-x-2">
+                      <button class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-sm font-medium" onclick="executeMCPTool()">
+                          Execute Tool
+                      </button>
+                      <button class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg text-sm font-medium" onclick="clearToolForm()">
+                          Clear
+                      </button>
+                  </div>
+                  <div id="tool-result" class="mt-4 p-3 bg-gray-900 rounded-lg font-mono text-sm max-h-32 overflow-y-auto hidden">
+                      <!-- Tool execution results will be shown here -->
+                  </div>
+              </div>
+          </div>
+
+      </main>
 
     <!-- Footer -->
     <footer class="bg-gray-800 border-t border-gray-700 px-6 py-4 mt-12">

@@ -17,287 +17,476 @@ import tempfile
 import os
 
 # Add project root to path
-project_root = Path(__file__).parent.parent.parent
+project_root = Path(__file__).parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from src.mcp_client import MCPClient
-from src.mcp_types import MCPMethod, MCPServerInfo
-from src.mcp_registry import MCPRegistry
+from src.mcp_client import MCPClient, MCPConnectionError, MCPProtocolError, MCPTimeoutError
+from src.mcp_types import MCPMethod, MCPServerInfo, MCPTransport
+from src.mcp_registry import MCPServerRegistry
+from src.mcp_agent_integration import MCPAgentInterface
+from src.mcp_security import get_security_manager
 
 
-class MCPIntegrationTest(unittest.TestCase):
-    """Test MCP client and server integration"""
+class MCPMockServerTest(unittest.TestCase):
+    """Test MCP client with mock servers"""
 
     def setUp(self):
         """Set up test fixtures"""
-        self.registry = MCPRegistry()
-        self.test_server_process = None
+        self.temp_dir = tempfile.mkdtemp()
+        self.mock_server_process = None
 
     def tearDown(self):
         """Clean up test fixtures"""
-        if self.test_server_process:
-            self.test_server_process.terminate()
-            self.test_server_process.wait()
+        if self.mock_server_process:
+            try:
+                self.mock_server_process.terminate()
+                self.mock_server_process.wait(timeout=5)
+            except:
+                self.mock_server_process.kill()
 
-    def test_mcp_client_initialization(self):
-        """Test MCP client can be initialized"""
-        client = MCPClient("test_client")
-        self.assertIsNotNone(client)
-        self.assertEqual(client.client_name, "test_client")
-
-    def test_mcp_registry_operations(self):
-        """Test MCP registry basic operations"""
-        # Register a mock server
-        server_info = {
-            "name": "test_server",
-            "version": "1.0.0",
-            "transport": "stdio",
-            "command": ["echo", "test"]
-        }
-
-        self.registry.register_server("test_server", server_info)
-        registered = self.registry.get_server("test_server")
-        self.assertIsNotNone(registered)
-        self.assertEqual(registered["name"], "test_server")
-
-    async def test_mcp_server_connection(self):
-        """Test connecting to MCP server"""
-        # Start test server in background
-        self.test_server_process = subprocess.Popen(
-            [sys.executable, "src/mcp_servers/test_server.py"],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-
-        # Give server time to start
-        await asyncio.sleep(1)
-
-        # Try to connect (this would need a full client implementation)
-        # For now, just test that server started
-        self.assertIsNotNone(self.test_server_process.poll())
-        if self.test_server_process.poll() is None:  # Still running
-            self.test_server_process.terminate()
-            self.test_server_process.wait()
-
-    def test_mcp_types_validation(self):
-        """Test MCP type definitions"""
-        from src.mcp_types import MCPErrorCode, MCPMethod
-
-        # Test error codes
-        self.assertEqual(MCPErrorCode.PARSE_ERROR, -32700)
-        self.assertEqual(MCPErrorCode.INVALID_REQUEST, -32600)
-
-        # Test methods
-        self.assertEqual(MCPMethod.INITIALIZE, "initialize")
-        self.assertEqual(MCPMethod.TOOLS_LIST, "tools/list")
-
-
-class MCPClientTest(unittest.TestCase):
-    """Test MCP client functionality"""
-
-    def setUp(self):
-        """Set up test fixtures"""
-        self.client = MCPClient("test_client")
-
-    def test_client_initialization(self):
-        """Test client initialization"""
-        self.assertEqual(self.client.client_name, "test_client")
-        self.assertIsNotNone(self.client.client_info)
-
-    def test_client_capabilities(self):
-        """Test client capabilities"""
-        caps = self.client.get_client_capabilities()
-        self.assertIsInstance(caps, dict)
-        self.assertIn("sampling", caps)
-
-
-class MCPRegistryTest(unittest.TestCase):
-    """Test MCP registry functionality"""
-
-    def setUp(self):
-        """Set up test fixtures"""
-        self.registry = MCPRegistry()
-
-    def test_registry_initialization(self):
-        """Test registry initialization"""
-        self.assertIsInstance(self.registry.servers, dict)
-        self.assertIsInstance(self.registry.health_status, dict)
-
-    def test_server_registration(self):
-        """Test server registration"""
-        server_config = {
-            "name": "test_server",
-            "version": "1.0.0",
-            "transport": "stdio",
-            "command": ["python", "test_server.py"]
-        }
-
-        self.registry.register_server("test_server", server_config)
-        server = self.registry.get_server("test_server")
-        self.assertIsNotNone(server)
-        self.assertEqual(server["name"], "test_server")
-
-    def test_server_health_check(self):
-        """Test server health checking"""
-        # Register server
-        server_config = {
-            "name": "test_server",
-            "version": "1.0.0",
-            "transport": "stdio",
-            "command": ["python", "test_server.py"]
-        }
-        self.registry.register_server("test_server", server_config)
-
-        # Check health (should fail since server isn't running)
-        health = self.registry.check_server_health("test_server")
-        self.assertIsNotNone(health)
-        self.assertIn("status", health)
-
-
-class MCPToolTest(unittest.TestCase):
-    """Test MCP tool functionality"""
-
-    def test_tool_definition_structure(self):
-        """Test tool definition structure"""
-        from src.mcp_types import MCPTool
-
-        tool = MCPTool(
-            name="test_tool",
-            description="A test tool",
-            inputSchema={"type": "object", "properties": {}}
-        )
-
-        self.assertEqual(tool.name, "test_tool")
-        self.assertEqual(tool.description, "A test tool")
-
-        # Test to_dict
-        tool_dict = tool.to_dict()
-        self.assertIsInstance(tool_dict, dict)
-        self.assertEqual(tool_dict["name"], "test_tool")
-
-
-class MCPIntegrationTest(unittest.TestCase):
-    """Full integration tests for MCP system"""
-
-    def setUp(self):
-        """Set up integration test fixtures"""
-        self.temp_dir = tempfile.mkdtemp()
-
-        # Create test files
-        self.test_file = os.path.join(self.temp_dir, "test.txt")
-        with open(self.test_file, 'w') as f:
-            f.write("Hello, this is a test file!")
-
-        self.test_dir = self.temp_dir
-
-    def tearDown(self):
-        """Clean up integration test fixtures"""
         import shutil
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    def test_file_operations(self):
-        """Test basic file operations that MCP server would use"""
-        # Test file exists
-        self.assertTrue(os.path.exists(self.test_file))
+    def start_mock_server(self):
+        """Start the mock MCP server"""
+        cmd = [sys.executable, "mock_mcp_server.py", "stdio"]
+        self.mock_server_process = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            cwd=os.path.dirname(__file__)
+        )
+        # Give server time to start
+        time.sleep(0.5)
 
-        # Test file reading
-        with open(self.test_file, 'r') as f:
-            content = f.read()
-        self.assertEqual(content, "Hello, this is a test file!")
+    async def test_stdio_server_connection(self):
+        """Test connecting to mock stdio server"""
+        self.start_mock_server()
 
-        # Test directory listing
-        items = os.listdir(self.test_dir)
-        self.assertIn("test.txt", items)
+        # Create client
+        client = MCPClient(
+            server_name="mock_server",
+            transport=MCPTransport.STDIO,
+            command=[sys.executable, "mock_mcp_server.py", "stdio"],
+            timeout=10.0
+        )
 
-    def test_math_operations(self):
-        """Test math operations that MCP server might perform"""
-        # Test addition
-        result = 5 + 3
-        self.assertEqual(result, 8)
+        try:
+            # Connect and get server info
+            server_info = await client.connect()
+            self.assertIsNotNone(server_info)
+            self.assertEqual(server_info.name, "mock_stdio_server")
 
-        # Test with different types
-        result_float = 5.5 + 3.2
-        self.assertAlmostEqual(result_float, 8.7, places=1)
+            # Test tools listing
+            tools = await client.list_tools()
+            self.assertIsInstance(tools, list)
+            self.assertGreater(len(tools), 0)
+
+            tool_names = [t.name for t in tools]
+            self.assertIn("echo", tool_names)
+            self.assertIn("add_numbers", tool_names)
+
+            # Test tool calling
+            result = await client.call_tool("echo", {"message": "hello world"})
+            self.assertEqual(result, {"echoed": "hello world"})
+
+            result = await client.call_tool("add_numbers", {"a": 5, "b": 3})
+            self.assertEqual(result, {"sum": 8})
+
+            # Test resources listing
+            resources = await client.list_resources()
+            self.assertIsInstance(resources, list)
+            self.assertGreater(len(resources), 0)
+
+            # Test resource reading
+            resource_uris = [r.uri for r in resources]
+            self.assertIn("file:///tmp/mock_data.txt", resource_uris)
+
+            content = await client.read_resource("file:///tmp/mock_data.txt")
+            self.assertIn("mock data", content["contents"][0]["text"].lower())
+
+        finally:
+            await client.disconnect()
+
+    async def test_client_error_handling(self):
+        """Test client error handling"""
+        self.start_mock_server()
+
+        client = MCPClient(
+            server_name="mock_server",
+            transport=MCPTransport.STDIO,
+            command=[sys.executable, "mock_mcp_server.py", "stdio"],
+            timeout=10.0
+        )
+
+        try:
+            await client.connect()
+
+            # Test calling non-existent tool
+            with self.assertRaises(MCPProtocolError):
+                await client.call_tool("nonexistent_tool", {})
+
+            # Test reading non-existent resource
+            with self.assertRaises(MCPProtocolError):
+                await client.read_resource("file:///nonexistent.txt")
+
+        finally:
+            await client.disconnect()
+
+    async def test_client_timeout_handling(self):
+        """Test client timeout handling"""
+        # Create client with very short timeout
+        client = MCPClient(
+            server_name="slow_server",
+            transport=MCPTransport.STDIO,
+            command=[sys.executable, "-c", "import time; time.sleep(10)"],  # Slow command
+            timeout=0.1
+        )
+
+        with self.assertRaises(MCPTimeoutError):
+            await client.connect()
 
 
-class MCPPerformanceTest(unittest.TestCase):
-    """Performance tests for MCP operations"""
+class MCPRegistryIntegrationTest(unittest.TestCase):
+    """Test MCP registry integration"""
 
-    def test_operation_timing(self):
-        """Test that operations complete within reasonable time"""
-        import time
+    def setUp(self):
+        """Set up test fixtures"""
+        # Create a mock magic system that doesn't start async tasks
+        class MockMagic:
+            energy_level = 100
+            async def auto_heal(self, *args, **kwargs):
+                return False
 
-        start_time = time.time()
+        self.registry = MCPServerRegistry(magic_system=MockMagic())
+        self.temp_dir = tempfile.mkdtemp()
 
-        # Simulate a simple operation
-        result = sum(range(1000))
+    def tearDown(self):
+        """Clean up test fixtures"""
+        import shutil
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-        end_time = time.time()
-        duration = end_time - start_time
+    def test_registry_initialization(self):
+        """Test registry initialization"""
+        self.assertIsInstance(self.registry.configs, dict)
+        self.assertIsInstance(self.registry.status, dict)
 
-        # Should complete very quickly
-        self.assertLess(duration, 0.01)
-        self.assertEqual(result, 499500)
+    async def test_registry_with_mock_server(self):
+        """Test registry with mock server config"""
+        # Create temporary config file
+        config_path = os.path.join(self.temp_dir, "test_config.json")
+        config_data = {
+            "version": "1.0",
+            "servers": [{
+                "name": "test_mock_server",
+                "transport": "stdio",
+                "command": [sys.executable, "mock_mcp_server.py", "stdio"],
+                "enabled": True,
+                "timeout": 10.0,
+                "auto_reconnect": False
+            }]
+        }
 
-    def test_memory_usage(self):
-        """Test memory usage for operations"""
-        import psutil
-        import os
+        with open(config_path, 'w') as f:
+            json.dump(config_data, f)
 
-        process = psutil.Process(os.getpid())
-        initial_memory = process.memory_info().rss
+        # Load config
+        await self.registry.load_config(Path(config_path))
 
-        # Perform some operations
-        data = list(range(10000))
-        result = sum(data)
+        # Check server was loaded
+        self.assertIn("test_mock_server", self.registry.configs)
+        config = self.registry.configs["test_mock_server"]
+        self.assertEqual(config.transport, "stdio")
 
-        final_memory = process.memory_info().rss
-        memory_used = final_memory - initial_memory
+    async def test_registry_server_management(self):
+        """Test registry server management"""
+        from src.mcp_registry import MCPServerConfig
 
-        # Memory usage should be reasonable (less than 10MB increase)
-        self.assertLess(memory_used, 10 * 1024 * 1024)
-        self.assertEqual(result, 49995000)
+        # Create server config
+        config = MCPServerConfig(
+            name="managed_server",
+            transport="stdio",
+            command=[sys.executable, "mock_mcp_server.py", "stdio"],
+            enabled=True
+        )
+
+        # Register server
+        success = await self.registry.register_server(config)
+        self.assertTrue(success)
+        self.assertIn("managed_server", self.registry.configs)
+
+        # Unregister server
+        success = await self.registry.unregister_server("managed_server")
+        self.assertTrue(success)
+        self.assertNotIn("managed_server", self.registry.configs)
 
 
-class MCPConcurrencyTest(unittest.TestCase):
-    """Concurrency tests for MCP operations"""
+class MCPAgentIntegrationTest(unittest.TestCase):
+    """Test MCP agent integration layer"""
 
-    def test_async_operations(self):
-        """Test asynchronous operations"""
-        async def async_test():
-            await asyncio.sleep(0.01)
-            return "completed"
+    def setUp(self):
+        """Set up test fixtures"""
+        # Create a mock magic system that doesn't start async tasks
+        class MockMagic:
+            energy_level = 100
+            async def auto_heal(self, *args, **kwargs):
+                return False
 
-        async def run_test():
-            result = await async_test()
-            return result
+        self.registry = MCPServerRegistry(magic_system=MockMagic())
+        self.agent_interface = MCPAgentInterface(self.registry)
+        self.temp_dir = tempfile.mkdtemp()
 
-        result = asyncio.run(run_test())
-        self.assertEqual(result, "completed")
+    def tearDown(self):
+        """Clean up test fixtures"""
+        import shutil
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    def test_concurrent_operations(self):
-        """Test concurrent operations"""
-        async def worker(worker_id: int):
-            await asyncio.sleep(0.01)
-            return f"worker_{worker_id}"
+    def test_agent_interface_initialization(self):
+        """Test agent interface initialization"""
+        self.assertIsInstance(self.agent_interface.registry, MCPServerRegistry)
+        self.assertIsInstance(self.agent_interface.contexts, dict)
 
-        async def run_workers():
-            tasks = [worker(i) for i in range(5)]
-            results = await asyncio.gather(*tasks)
-            return results
+    def test_agent_context_management(self):
+        """Test agent context management"""
+        context = self.agent_interface.get_context("test_agent", "session_1")
+        self.assertEqual(context.agent_name, "test_agent")
+        self.assertEqual(context.session_id, "session_1")
 
-        results = asyncio.run(run_workers())
+        # Get same context again
+        context2 = self.agent_interface.get_context("test_agent", "session_1")
+        self.assertEqual(context, context2)
+
+        # Different session
+        context3 = self.agent_interface.get_context("test_agent", "session_2")
+        self.assertNotEqual(context, context3)
+
+    def test_agent_stats_tracking(self):
+        """Test agent statistics tracking"""
+        context = self.agent_interface.get_context("stats_agent")
+
+        # Record some operations
+        context.record_operation("tool_call", "server1", "tool1", True, 0.5)
+        context.record_operation("tool_call", "server1", "tool2", False, 0.3)
+        context.record_operation("resource_read", "server1", "uri1", True, 0.2)
+
+        stats = context.get_stats()
+        self.assertEqual(stats["tools_called"], 1)
+        self.assertEqual(stats["resources_read"], 1)
+        self.assertEqual(stats["errors_encountered"], 1)
+        self.assertAlmostEqual(stats["avg_tool_latency"], 0.5)
+
+    def test_discovery_with_permissions(self):
+        """Test tool and resource discovery with agent permissions"""
+        # Create mock server configs with permissions
+        from src.mcp_registry import MCPServerConfig
+
+        config1 = MCPServerConfig(
+            name="allowed_server",
+            transport="stdio",
+            allowed_agents=["agent1", "agent2"],
+            enabled=True
+        )
+        config1.tags = ["math", "tools"]
+
+        config2 = MCPServerConfig(
+            name="restricted_server",
+            transport="stdio",
+            allowed_agents=["agent2"],
+            enabled=True
+        )
+        config2.tags = ["files", "tools"]
+
+        self.registry.configs = {
+            "allowed_server": config1,
+            "restricted_server": config2
+        }
+
+        # Mock server status with tools
+        from src.mcp_registry import ServerStatus
+        from src.mcp_types import MCPTool, MCPResource
+
+        status1 = ServerStatus()
+        status1.tools = [
+            MCPTool(name="add", description="Add numbers", inputSchema={}),
+            MCPTool(name="multiply", description="Multiply numbers", inputSchema={})
+        ]
+        status1.resources = [
+            MCPResource(uri="file://math.txt", name="Math notes", description="Math notes")
+        ]
+
+        status2 = ServerStatus()
+        status2.tools = [
+            MCPTool(name="read_file", description="Read file", inputSchema={})
+        ]
+        status2.resources = [
+            MCPResource(uri="file://data.txt", name="Data file", description="Data file")
+        ]
+
+        self.registry.status = {
+            "allowed_server": status1,
+            "restricted_server": status2
+        }
+
+        # Test agent1 access
+        tools = self.agent_interface.discover_tools("agent1")
+        self.assertEqual(len(tools), 2)  # Can access allowed_server
+
+        resources = self.agent_interface.discover_resources("agent1")
+        self.assertEqual(len(resources), 1)  # Can access allowed_server resources
+
+        # Test agent2 access
+        tools = self.agent_interface.discover_tools("agent2")
+        self.assertEqual(len(tools), 3)  # Can access both servers
+
+        # Test agent3 access (no permissions)
+        tools = self.agent_interface.discover_tools("agent3")
+        self.assertEqual(len(tools), 0)  # No access
+
+
+class MCPSecurityIntegrationTest(unittest.TestCase):
+    """Test MCP security integration"""
+
+    def setUp(self):
+        """Set up test fixtures"""
+        self.security_manager = get_security_manager()
+
+        # Create a mock magic system that doesn't start async tasks
+        class MockMagic:
+            energy_level = 100
+            async def auto_heal(self, *args, **kwargs):
+                return False
+
+        self.client = MCPClient("secure_client", magic_system=MockMagic())
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        """Clean up test fixtures"""
+        import shutil
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    async def test_authenticated_tool_calls(self):
+        """Test tool calls with authentication"""
+        # Create a test token
+        token = await self.security_manager.create_token("test_user", expires_in=3600)
+        self.assertIsNotNone(token)
+        assert token is not None  # For type checker
+
+        # Authenticate with token
+        principal = await self.security_manager.authenticate(token)
+        self.assertIsNotNone(principal)
+        assert principal is not None  # For type checker
+        self.assertEqual(principal.id, "test_user")
+
+        # Test authorization
+        authorized = await self.security_manager.authorize(
+            principal, "call_tool", "tool:echo"
+        )
+        self.assertTrue(authorized)
+
+    async def test_rate_limiting_integration(self):
+        """Test rate limiting integration"""
+        # Create token for rate limiting test
+        token = await self.security_manager.create_token("rate_test_user", expires_in=3600)
+        self.assertIsNotNone(token)
+        assert token is not None  # For type checker
+
+        principal = await self.security_manager.authenticate(token)
+        self.assertIsNotNone(principal)
+        assert principal is not None  # For type checker
+
+        # Test multiple requests (within limit)
+        for i in range(3):
+            allowed, reason = await self.security_manager.check_rate_limit(principal, "call_tool")
+            self.assertTrue(allowed, f"Request {i+1} should be allowed")
+
+    def test_security_validation(self):
+        """Test security validation functions"""
+        from src.mcp_security import validate_path_traversal, validate_sql_injection, validate_tool_arguments
+
+        # Test path traversal validation
+        self.assertTrue(validate_path_traversal("safe/path/file.txt"))
+        self.assertFalse(validate_path_traversal("../../../etc/passwd"))
+
+        # Test SQL injection validation
+        self.assertTrue(validate_sql_injection("SELECT * FROM users"))
+        self.assertFalse(validate_sql_injection("SELECT * FROM users; DROP TABLE users;"))
+
+        # Test tool argument validation
+        safe_args = validate_tool_arguments("read_file", {"path": "safe/file.txt"})
+        self.assertEqual(safe_args["path"], "safe/file.txt")
+
+        with self.assertRaises(ValueError):
+            validate_tool_arguments("read_file", {"path": "../../../unsafe.txt"})
+
+
+class MCPConcurrencyIntegrationTest(unittest.TestCase):
+    """Test MCP concurrency and performance"""
+
+    def setUp(self):
+        """Set up test fixtures"""
+        # Create a mock magic system that doesn't start async tasks
+        class MockMagic:
+            energy_level = 100
+            async def auto_heal(self, *args, **kwargs):
+                return False
+
+        self.registry = MCPServerRegistry(magic_system=MockMagic())
+        self.agent_interface = MCPAgentInterface(self.registry)
+
+    async def test_concurrent_agent_operations(self):
+        """Test concurrent operations from multiple agents"""
+        async def agent_task(agent_id: int):
+            """Simulate agent operations"""
+            context = self.agent_interface.get_context(f"agent_{agent_id}")
+
+            # Record some mock operations
+            context.record_operation("tool_call", "mock_server", f"tool_{agent_id}", True, 0.1)
+            await asyncio.sleep(0.01)  # Simulate async work
+            context.record_operation("resource_read", "mock_server", f"resource_{agent_id}", True, 0.05)
+
+            return context.get_stats()
+
+        # Run multiple agents concurrently
+        tasks = [agent_task(i) for i in range(5)]
+        results = await asyncio.gather(*tasks)
+
+        # Verify all agents completed
         self.assertEqual(len(results), 5)
-        self.assertIn("worker_0", results)
-        self.assertIn("worker_4", results)
+        for stats in results:
+            self.assertEqual(stats["tools_called"], 1)
+            self.assertEqual(stats["resources_read"], 1)
+
+    def test_performance_metrics(self):
+        """Test performance metrics collection"""
+        context = self.agent_interface.get_context("perf_agent")
+
+        # Simulate various operations
+        operations = [
+            ("tool_call", "server1", "tool1", True, 0.1),
+            ("tool_call", "server1", "tool2", True, 0.2),
+            ("tool_call", "server1", "tool3", False, 0.15),
+            ("resource_read", "server1", "res1", True, 0.05),
+            ("resource_read", "server1", "res2", True, 0.08),
+        ]
+
+        for op_type, server, target, success, latency in operations:
+            context.record_operation(op_type, server, target, success, latency)
+
+        stats = context.get_stats()
+
+        self.assertEqual(stats["tools_called"], 2)
+        self.assertEqual(stats["resources_read"], 2)
+        self.assertEqual(stats["errors_encountered"], 1)
+        self.assertAlmostEqual(stats["avg_tool_latency"], 0.15, places=2)
+        self.assertAlmostEqual(stats["success_rate"], 0.8, places=1)
 
 
 def run_integration_tests():
     """Run all MCP integration tests"""
-    print("🧪 Running MCP Integration Test Suite")
+    print("[TEST] Running MCP Integration Test Suite")
     print("=" * 60)
 
     # Create test suite
@@ -306,12 +495,11 @@ def run_integration_tests():
 
     # Add test classes
     test_classes = [
-        MCPIntegrationTest,
-        MCPClientTest,
-        MCPRegistryTest,
-        MCPToolTest,
-        MCPPerformanceTest,
-        MCPConcurrencyTest
+        MCPMockServerTest,
+        MCPRegistryIntegrationTest,
+        MCPAgentIntegrationTest,
+        MCPSecurityIntegrationTest,
+        MCPConcurrencyIntegrationTest
     ]
 
     for test_class in test_classes:
@@ -323,26 +511,27 @@ def run_integration_tests():
 
     # Summary
     print("\n" + "=" * 60)
-    print("📊 Test Results Summary:"    print(f"   Ran: {result.testsRun} tests")
+    print("[SUMMARY] Test Results:")
+    print(f"   Ran: {result.testsRun} tests")
     print(f"   Passed: {result.testsRun - len(result.failures) - len(result.errors)}")
     print(f"   Failed: {len(result.failures)}")
     print(f"   Errors: {len(result.errors)}")
 
     if result.failures:
-        print(f"\n❌ Failures: {len(result.failures)}")
+        print(f"\n[FAILED] Failures: {len(result.failures)}")
         for test, traceback in result.failures:
             print(f"   - {test}")
 
     if result.errors:
-        print(f"\n💥 Errors: {len(result.errors)}")
+        print(f"\n[ERROR] Errors: {len(result.errors)}")
         for test, traceback in result.errors:
             print(f"   - {test}")
 
     if result.wasSuccessful():
-        print("\n✅ All MCP integration tests passed!")
+        print("\n[SUCCESS] All MCP integration tests passed!")
         return True
     else:
-        print("\n❌ Some MCP integration tests failed!")
+        print("\n[FAILED] Some MCP integration tests failed!")
         return False
 
 

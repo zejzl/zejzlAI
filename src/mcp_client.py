@@ -22,7 +22,8 @@ from src.mcp_types import (
 from src.magic import FairyMagic, CircuitBreaker, CircuitBreakerConfig
 from src.mcp_security import (
     get_security_manager, SecurityLevel, Permission,
-    authenticate_token, check_authorization, check_rate_limit
+    authenticate_token, check_authorization, check_rate_limit,
+    validate_tool_arguments
 )
 
 logger = logging.getLogger("MCPClient")
@@ -282,6 +283,9 @@ class MCPClient:
             manager = get_security_manager()
             principal = manager.principals.get("default_agent")
 
+        # Validate and sanitize tool arguments for security
+        validated_arguments = validate_tool_arguments(tool_name, arguments or {})
+
         logger.debug(f"Calling tool: {tool_name} by principal: {principal.id if principal else 'unauthenticated'}")
 
         request = MCPRequest(
@@ -289,7 +293,7 @@ class MCPClient:
             method=MCPMethod.TOOLS_CALL,
             params={
                 "name": tool_name,
-                "arguments": arguments or {}
+                "arguments": validated_arguments
             }
         )
 
@@ -328,12 +332,16 @@ class MCPClient:
         if not self.connected:
             raise MCPConnectionError("Not connected to server")
 
-        logger.debug(f"Reading resource: {uri}")
+        # Validate resource URI for security
+        from src.mcp_security import sanitize_resource_uri
+        validated_uri = sanitize_resource_uri(uri)
+
+        logger.debug(f"Reading resource: {validated_uri}")
 
         request = MCPRequest(
             id=self._next_request_id(),
             method=MCPMethod.RESOURCES_READ,
-            params={"uri": uri}
+            params={"uri": validated_uri}
         )
 
         response = await self._send_request(request)
