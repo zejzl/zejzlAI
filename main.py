@@ -136,6 +136,17 @@ async def run_pantheon_mode():
     print("\n[OK] Pantheon orchestration complete!")
 
 
+# Future Menu Options (for reference):
+#         1. Single Agent - Observe-Reason-Act loop
+#         2. Collaboration Mode (Grok + Claude) - Dual AI planning
+#         3. Swarm Mode (Multi-agent) - Async team coordination
+#         4. Pantheon Mode (9-agent) - Full AI orchestration with validation & learning
+#         5. Learning Loop - Continuous optimization cycle
+#         6. Offline Mode - Cached/local fallback (no API, uses vault/KB)
+#         7. Community Vault Sync - Pull/push evolutions and tools
+#         8. Save Game - Invoke progress save script
+#         9. Quit
+
 def run_interactive_menu(debug: bool = True, max_iterations: int = 10, max_rounds: int = 5, skip_boot: bool = False):
     """
     Run interactive menu mode - user selects agent mode.
