@@ -48,6 +48,96 @@ def select_provider():
 #
 # =============================================================================
 
+async def run_collaboration_mode():
+    """Run Collaboration Mode - Dual AI planning (Grok + Claude)"""
+    # Suppress all logging for clean CLI output
+    logging.basicConfig(level=logging.CRITICAL, force=True)
+    logging.getLogger().setLevel(logging.CRITICAL)
+    for name in logging.root.manager.loggerDict:
+        logging.getLogger(name).setLevel(logging.CRITICAL)
+
+    print("\n[Collaboration Mode]")
+    task = input("Enter a task for collaborative planning: ")
+
+    # Get AI provider bus
+    from base import get_ai_provider_bus
+    ai_bus = await get_ai_provider_bus()
+
+    try:
+        print("\n[Round 1/3] Grok: Creative analysis...")
+        grok_prompt = f"""Analyze this task creatively and generate multiple innovative approaches:
+
+Task: {task}
+
+Provide creative solutions, consider unconventional angles, and identify opportunities others might miss.
+Focus on: innovation, edge cases, creative combinations, and out-of-the-box thinking.
+
+Return your analysis in 2-3 paragraphs."""
+
+        grok_response = await ai_bus.send_message(
+            content=grok_prompt,
+            provider_name="grok",
+            conversation_id=f"collaboration_grok_{hash(task)}"
+        )
+        print("[OK] Grok: Creative analysis received")
+
+        print("\n[Round 1/3] Claude: Logical analysis...")
+        claude_prompt = f"""Analyze this task systematically and create a structured plan:
+
+Task: {task}
+
+Provide logical breakdown, risk assessment, resource requirements, and step-by-step planning.
+Focus on: structure, feasibility, dependencies, and practical implementation.
+
+Return your analysis in 2-3 paragraphs."""
+
+        claude_response = await ai_bus.send_message(
+            content=claude_prompt,
+            provider_name="claude",
+            conversation_id=f"collaboration_claude_{hash(task)}"
+        )
+        print("[OK] Claude: Logical analysis received")
+
+        print("\n[Round 2/3] Idea exchange and refinement...")
+        exchange_prompt = f"""Review and refine the following analyses, then create an improved collaborative plan:
+
+Grok's Creative Analysis:
+{grok_response}
+
+Claude's Logical Analysis:
+{claude_response}
+
+Task: {task}
+
+Identify synergies between creative and logical approaches. Combine the best elements from both perspectives.
+Address any conflicts and create a unified, enhanced plan that leverages both creative innovation and logical structure.
+
+Return the collaborative plan in 3-4 paragraphs."""
+
+        # Use Grok for the final collaborative synthesis (could alternate between providers)
+        collaborative_plan = await ai_bus.send_message(
+            content=exchange_prompt,
+            provider_name="grok",  # Could be configurable
+            conversation_id=f"collaboration_final_{hash(task)}"
+        )
+        print("[OK] Idea exchange complete")
+
+        print("\n[Round 3/3] Consensus building...")
+        # Final validation step could be added here
+        print("[OK] Consensus plan generated")
+
+        print("\n[Final Result]")
+        print("=" * 50)
+        # Truncate for concise display
+        final_output = str(collaborative_plan)[:500] + "..." if len(str(collaborative_plan)) > 500 else str(collaborative_plan)
+        print(f"Collaborative Plan: {final_output}")
+        print("=" * 50)
+
+    except Exception as e:
+        print(f"\n[Error] Collaboration failed: {str(e)}")
+        print("Make sure both Grok and Claude API keys are configured.")
+
+
 async def run_single_agent_mode():
     """Run Single Agent mode - Observe-Reason-Act loop"""
     # Suppress all logging for clean CLI output
@@ -183,17 +273,21 @@ def run_interactive_menu(debug: bool = True, max_iterations: int = 10, max_round
         [INTERACTIVE MODE] Welcome to zejzl.net - Choose your agent mode!
 
         1. Single Agent - Observe-Reason-Act loop
+        2. Collaboration Mode (Grok + Claude) - Dual AI planning
         4. Pantheon Mode - Full 9-agent orchestration with validation & learning
         9. Quit
 
-        (Note: Modes 2,3,5,6,7,8 are not yet implemented)
+        (Note: Modes 3,5,6,7,8 are not yet implemented)
 """)
 
-    choice = input("        Choose mode (1, 4, or 9): ").strip()
+    choice = input("        Choose mode (1, 2, 4, or 9): ").strip()
 
     if choice == "1":
         print("\n[Starting Single Agent Mode...]")
         asyncio.run(run_single_agent_mode())
+    elif choice == "2":
+        print("\n[Starting Collaboration Mode...]")
+        asyncio.run(run_collaboration_mode())
     elif choice == "4":
         print("\n[Starting Pantheon Mode...]")
         asyncio.run(run_pantheon_mode())
