@@ -1,7 +1,7 @@
 # src/agents/improver.py
 import asyncio
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger("ImproverAgent")
 
@@ -34,7 +34,7 @@ class ImproverAgent:
             "Continuous improvement strategies"
         ]
 
-    async def improve(self, analysis: Dict[str, Any], learned_patterns: Dict[str, Any]) -> Dict[str, Any]:
+    async def improve(self, analysis: Dict[str, Any], learned_patterns: Dict[str, Any], provider: Optional[str] = None) -> Dict[str, Any]:
         """
         Use AI to generate sophisticated improvement suggestions based on analysis and learned patterns.
         Includes magic-based self-healing recommendations.
@@ -116,7 +116,7 @@ Provide your response as a JSON object with this structure:
             # Call AI
             response = await ai_bus.send_message(
                 content=prompt,
-                provider_name="grok",  # Use Grok for improvement suggestions
+                provider_name=provider or "grok",  # Use specified provider or default to Grok
                 conversation_id=f"improver_{hash(str(analysis) + str(learned_patterns))}"
             )
 

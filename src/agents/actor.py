@@ -1,7 +1,7 @@
 # src/agents/actor.py
 import asyncio
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("ActorAgent")
 
@@ -35,7 +35,7 @@ class ActorAgent:
         ]
         self.state = {}
 
-    async def act(self, plan: Dict[str, Any]) -> Dict[str, Any]:
+    async def act(self, plan: Dict[str, Any], provider: Optional[str] = None) -> Dict[str, Any]:
         """
         Use AI to determine how to execute subtasks and provide execution guidance.
         """
@@ -70,7 +70,7 @@ Return ONLY valid JSON:
                 # Call AI
                 response = await ai_bus.send_message(
                     content=prompt,
-                    provider_name="grok",  # Use Grok for action planning
+                    provider_name=provider or "grok",  # Use specified provider or default to Grok
                     conversation_id=f"actor_{hash(str(plan))}_{i}"
                 )
 

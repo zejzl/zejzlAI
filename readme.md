@@ -353,7 +353,7 @@ LOG_LEVEL=INFO
 |----------|-------|--------------|
 | ChatGPT | gpt-3.5-turbo | OpenAI API |
 | Claude | claude-3-opus-20240229 | Anthropic API |
-| Gemini | gemini-pro | Google AI API |
+| Gemini | gemini-2.5-flash | Google AI API |
 | Grok | grok-1 | xAI API |
 | DeepSeek | deepseek-coder | DeepSeek API |
 | Qwen | qwen-turbo | Alibaba Cloud API |

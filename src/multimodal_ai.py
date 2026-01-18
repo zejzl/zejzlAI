@@ -464,7 +464,7 @@ class GeminiVisionProvider(MultiModalProvider):
     """Google Gemini Vision provider for images and text"""
 
     def __init__(self, api_key: str):
-        super().__init__(api_key, "gemini-pro-vision")
+        super().__init__(api_key, "gemini-2.5-flash")
         self.supported_modalities = [ModalityType.TEXT, ModalityType.IMAGE]
 
     @property
@@ -473,7 +473,7 @@ class GeminiVisionProvider(MultiModalProvider):
 
     @property
     def default_model(self) -> str:
-        return "gemini-pro-vision"
+        return "gemini-2.5-flash"
 
     async def initialize(self):
         from aiohttp import ClientSession

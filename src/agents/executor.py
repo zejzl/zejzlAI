@@ -1,7 +1,7 @@
 # src/agents/executor.py
 import asyncio
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger("ExecutorAgent")
 
@@ -41,7 +41,7 @@ class ExecutorAgent:
             "Execution monitoring and alerting"
         ]
 
-    async def execute(self, validated_task: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, validated_task: Dict[str, Any], provider: Optional[str] = None) -> Dict[str, Any]:
         """
         Stubbed execution of a validated task.
         """

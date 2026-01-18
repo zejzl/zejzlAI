@@ -401,6 +401,26 @@ class CustomProvider(AIProvider):
 
 ## CLI Usage
 
+### Interactive CLI (main.py)
+The main interactive CLI provides a user-friendly interface for running the Pantheon system:
+
+```bash
+python main.py
+```
+
+**Features:**
+- **Provider Selection**: Choose from 7 AI providers (Grok, ChatGPT, Claude, Gemini, DeepSeek, Qwen, Zai)
+- **Agent Modes**:
+  - `1. Single Agent`: Observe-Reason-Act loop with concise status output
+  - `4. Pantheon Mode`: Full 9-agent orchestration with ultra-concise progress updates
+  - `9. Quit`: Clean exit with confirmation
+
+**Output Format:**
+- Clean, minimal status messages ([OK] prefixes)
+- No verbose JSON dumps or debug logging
+- Press Enter to exit after completion
+
+### Framework CLI (ai_framework.py)
 - **Chat**: `python ai_framework.py chat provider "message"`
 - **Interactive**: `python ai_framework.py interactive provider`
 - **Management**: `python ai_framework.py list|status|set-api-key|set-default`
@@ -437,6 +457,6 @@ class CustomProvider(AIProvider):
   All Phase 9 code is now live on GitHub and ready for use! 🎉
 
 
-This document should be updated as the codebase evolves. Last updated: 2026-01-17</content>
+This document should be updated as the codebase evolves. Last updated: 2026-01-18</content>
 <parameter name="filePath">C:\Users\Administrator\Desktop\ZejzlAI\zejzl_net\AGENTS.md
 

@@ -1,7 +1,7 @@
 # src/agents/analyzer.py
 import asyncio
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("AnalyzerAgent")
 
@@ -34,7 +34,7 @@ class AnalyzerAgent:
             "System health monitoring"
         ]
 
-    async def analyze(self, memory_events: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def analyze(self, memory_events: List[Dict[str, Any]], provider: Optional[str] = None) -> Dict[str, Any]:
         """
         Use AI to analyze system performance and generate insights from memory events.
         """
@@ -108,7 +108,7 @@ Provide your response as a JSON object with this structure:
             # Call AI
             response = await ai_bus.send_message(
                 content=prompt,
-                provider_name="grok",  # Use Grok for analysis
+                provider_name=provider or "grok",  # Use specified provider or default to Grok
                 conversation_id=f"analyzer_{hash(str(memory_events))}"
             )
 

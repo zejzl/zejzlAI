@@ -1,7 +1,7 @@
 # src/agents/reasoner.py
 import asyncio
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("ReasonerAgent")
 
@@ -35,7 +35,7 @@ class ReasonerAgent:
         ]
         self.state = {}
 
-    async def reason(self, observation: Dict[str, Any]) -> Dict[str, Any]:
+    async def reason(self, observation: Dict[str, Any], provider: Optional[str] = None) -> Dict[str, Any]:
         """
         Use AI to reason on an observation and produce a comprehensive plan.
         """
@@ -66,7 +66,7 @@ Return ONLY valid JSON:
             # Call AI
             response = await ai_bus.send_message(
                 content=prompt,
-                provider_name="grok",  # Use Grok for reasoning
+                provider_name=provider or "grok",  # Use specified provider or default to Grok
                 conversation_id=f"reasoner_{hash(str(observation))}"
             )
 

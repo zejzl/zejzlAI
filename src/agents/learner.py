@@ -113,7 +113,7 @@ class LearnerAgent:
             logger.warning(f"Failed to load learner patterns: {e}")
 
     async def learn(self, memory_events: List[Dict[str, Any]],
-                   profiling_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+                   profiling_data: Optional[Dict[str, Any]] = None, provider: Optional[str] = None) -> Dict[str, Any]:
         """
         Advanced learning process that analyzes event patterns and optimizes future behavior.
         Now integrates with performance profiling data for data-driven insights.

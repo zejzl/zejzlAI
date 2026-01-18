@@ -1,12 +1,45 @@
 import asyncio
 import sys
+import logging
 
+# Completely disable all logging for CLI usage
+logging.getLogger().setLevel(logging.CRITICAL)
+# Suppress all zejzl loggers
+for name in ['zejzl', 'zejzl.performance', 'zejzl.debug', 'zejzl.ai', 'zejzl.memory']:
+    logging.getLogger(name).setLevel(logging.CRITICAL)
+
+def select_provider():
+    """Allow user to select an AI provider"""
+    print("\nAvailable AI Providers:")
+    print("1. grok (default)")
+    print("2. chatgpt")
+    print("3. claude")
+    print("4. gemini")
+    print("5. deepseek")
+    print("6. qwen")
+    print("7. zai")
+
+    choice = input("\nSelect provider (1-7, or press Enter for grok): ").strip()
+
+    provider_map = {
+        "1": "grok",
+        "2": "chatgpt",
+        "3": "claude",
+        "4": "gemini",
+        "5": "deepseek",
+        "6": "qwen",
+        "7": "zai"
+    }
+
+    return provider_map.get(choice, "grok")
 
 async def run_single_agent_mode():
     """Run Single Agent mode - Observe-Reason-Act loop"""
     from src.agents.observer import ObserverAgent
     from src.agents.reasoner import ReasonerAgent
     from src.agents.actor import ActorAgent
+
+    provider = select_provider()
 
     observer = ObserverAgent()
     reasoner = ReasonerAgent()
@@ -15,16 +48,16 @@ async def run_single_agent_mode():
     task = input("\nEnter a task for the Single Agent: ")
 
     print("\n[Observer] Processing task...")
-    observation = await observer.observe(task)
-    print(f"Observation: {observation}")
+    observation = await observer.observe(task, provider)
+    print(f"[OK] Observation received")
 
     print("\n[Reasoner] Creating plan...")
-    plan = await reasoner.reason(observation)
-    print(f"Plan: {plan}")
+    plan = await reasoner.reason(observation, provider)
+    print(f"[OK] Plan created")
 
     print("\n[Actor] Executing plan...")
-    execution = await actor.act(plan)
-    print(f"Execution: {execution}\n")
+    execution = await actor.act(plan, provider)
+    print(f"[OK] Actions executed\n")
 
 
 async def run_pantheon_mode():
@@ -39,6 +72,8 @@ async def run_pantheon_mode():
     from src.agents.learner import LearnerAgent
     from src.agents.improver import ImproverAgent
 
+    provider = select_provider()
+
     observer = ObserverAgent()
     reasoner = ReasonerAgent()
     actor = ActorAgent()
@@ -52,47 +87,47 @@ async def run_pantheon_mode():
     task = input("\nEnter a task for the Pantheon: ")
 
     print("\n[1/9 Observer] Gathering observations...")
-    observation = await observer.observe(task)
+    observation = await observer.observe(task, provider)
     await memory.store({"type": "observation", "data": observation})
-    print(f"Observation: {observation}")
+    print(f"[OK] Observation received")
 
     print("\n[2/9 Reasoner] Creating execution plan...")
-    plan = await reasoner.reason(observation)
+    plan = await reasoner.reason(observation, provider)
     await memory.store({"type": "plan", "data": plan})
-    print(f"Plan: {plan}")
+    print(f"[OK] Plan created")
 
     print("\n[3/9 Actor] Executing planned actions...")
-    execution = await actor.act(plan)
+    execution = await actor.act(plan, provider)
     await memory.store({"type": "execution", "data": execution})
-    print(f"Execution: {execution}")
+    print(f"[OK] Actions executed")
 
     print("\n[4/9 Validator] Validating execution...")
-    validation = await validator.validate(execution)
+    validation = await validator.validate(execution, provider)
     await memory.store({"type": "validation", "data": validation})
-    print(f"Validation: {validation}")
+    print(f"[OK] Validation complete")
 
     print("\n[5/9 Executor] Performing validated tasks...")
-    execution_result = await executor.execute(validation)
+    execution_result = await executor.execute(validation, provider)
     await memory.store({"type": "executor", "data": execution_result})
-    print(f"Executor Result: {execution_result}")
+    print(f"[OK] Tasks executed")
 
     print("\n[6/9 Memory] Recalling stored events...")
     events = await memory.recall()
-    print(f"Memory Events: {len(events)} events stored")
+    print(f"[OK] {len(events)} events stored")
 
     print("\n[7/9 Analyzer] Analyzing metrics...")
-    analysis = await analyzer.analyze(events)
-    print(f"Analysis: {analysis}")
+    analysis = await analyzer.analyze(events, provider)
+    print(f"[OK] Analysis complete")
 
     print("\n[8/9 Learner] Learning patterns...")
-    learned = await learner.learn(events)
-    print(f"Learned: {learned}")
+    learned = await learner.learn(events, provider=provider)
+    print(f"[OK] Learning complete")
 
     print("\n[9/9 Improver] Generating improvements...")
-    improvement = await improver.improve(analysis, learned)
-    print(f"Improvement: {improvement}\n")
+    improvement = await improver.improve(analysis, learned, provider)
+    print(f"[OK] Improvements generated\n")
 
-    print("\n✓ Pantheon orchestration complete!")
+    print("\n[OK] Pantheon orchestration complete!")
 
 
 def run_interactive_menu(debug: bool = True, max_iterations: int = 10, max_rounds: int = 5, skip_boot: bool = False):
@@ -126,6 +161,7 @@ def run_interactive_menu(debug: bool = True, max_iterations: int = 10, max_round
         asyncio.run(run_pantheon_mode())
     elif choice == "9":
         print("\n        Goodbye! :)\n")
+        input("        Press Enter to exit...")
         sys.exit(0)
     else:
         print(f"\n        Mode {choice} is not yet implemented. Please choose 1, 4, or 9.\n")
@@ -144,7 +180,9 @@ if __name__ == "__main__":
             again = input("\n        Run another task? (y/n): ").strip().lower()
             if again != 'y':
                 print("\n        Goodbye! :)\n")
+                input("        Press Enter to exit...")
                 break
     except KeyboardInterrupt:
         print("\n\n        Interrupted. Goodbye! :)\n")
+        input("        Press Enter to exit...")
         sys.exit(0)

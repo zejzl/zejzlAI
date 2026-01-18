@@ -114,7 +114,7 @@ class ValidatorAgent:
                 can_proceed=True  # Allow to proceed with caution
             )
 
-    async def validate(self, execution_summary: Dict[str, Any]) -> Dict[str, Any]:
+    async def validate(self, execution_summary: Dict[str, Any], provider: Optional[str] = None) -> Dict[str, Any]:
         """
         Validate execution results using security-aware analysis and AI assessment.
         """
@@ -136,7 +136,7 @@ class ValidatorAgent:
             })
 
             # Get AI assessment for quality validation
-            ai_validation = await self._get_ai_quality_validation(execution_summary)
+            ai_validation = await self._get_ai_quality_validation(execution_summary, provider)
 
             # Combine security and quality validations
             overall_validation = self._combine_validations(execution_validation, ai_validation)
@@ -193,7 +193,7 @@ class ValidatorAgent:
             logger.warning(f"[{self.name}] Using enhanced fallback validation with security awareness")
             return feedback
 
-    async def _get_ai_quality_validation(self, execution_summary: Dict[str, Any]) -> Dict[str, Any]:
+    async def _get_ai_quality_validation(self, execution_summary: Dict[str, Any], provider: Optional[str] = None) -> Dict[str, Any]:
         """
         Get AI-based quality validation for execution results.
         """
@@ -236,7 +236,7 @@ Return ONLY valid JSON with quality assessment:
             # Call AI for quality assessment
             response = await ai_bus.send_message(
                 content=prompt,
-                provider_name="grok",
+                provider_name=provider or "grok",
                 conversation_id=f"quality_validator_{hash(str(execution_summary))}"
             )
 

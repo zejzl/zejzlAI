@@ -250,7 +250,7 @@ class RedisPersistence(PersistenceLayer):
             "providers": {
                 "chatgpt": {"api_key": os.environ.get("OPENAI_API_KEY", ""), "model": "gpt-3.5-turbo"},
                 "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-3-opus-20240229"},
-                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-pro"},
+                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-2.5-flash"},
                 "zai": {"api_key": os.environ.get("ZAI_API_KEY", ""), "model": "zai-1"},
                 "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-1"},
                 "deepseek": {"api_key": os.environ.get("DEEPSEEK_API_KEY", ""), "model": "deepseek-coder"},
@@ -522,7 +522,7 @@ class SQLitePersistence(PersistenceLayer):
             "providers": {
                 "chatgpt": {"api_key": os.environ.get("OPENAI_API_KEY", ""), "model": "gpt-3.5-turbo"},
                 "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-3-opus-20240229"},
-                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-pro"},
+                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-2.5-flash"},
                 "zai": {"api_key": os.environ.get("ZAI_API_KEY", ""), "model": "zai-1"},
                 "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-1"},
                 "deepseek": {"api_key": os.environ.get("DEEPSEEK_API_KEY", ""), "model": "deepseek-coder"},
@@ -954,7 +954,7 @@ class GeminiProvider(AIProvider):
     
     @property
     def default_model(self) -> str:
-        return "gemini-pro"
+        return "gemini-2.5-flash"
     
     async def initialize(self):
         self.session = aiohttp.ClientSession()

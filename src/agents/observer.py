@@ -1,7 +1,7 @@
 # src/agents/observer.py
 import asyncio
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger("ObserverAgent")
 
@@ -35,7 +35,7 @@ class ObserverAgent:
         ]
         self.state = {}
 
-    async def observe(self, task: str) -> Dict[str, Any]:
+    async def observe(self, task: str, provider: Optional[str] = None) -> Dict[str, Any]:
         """
         Use AI to analyze and break down the task into observable components.
         """
@@ -63,7 +63,7 @@ Return ONLY valid JSON:
             # Call AI
             response = await ai_bus.send_message(
                 content=prompt,
-                provider_name="grok",  # Use Grok for observation
+                provider_name=provider or "grok",  # Use specified provider or default to Grok
                 conversation_id=f"observer_{hash(task)}"
             )
 

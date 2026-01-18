@@ -42,8 +42,9 @@ class CostCalculator:
             "claude-3-opus-20240229": {"input": 0.003, "output": 0.015}, # $3/$15 per 1K tokens
         },
         "gemini": {
-            "gemini-pro": {"input": 0.00025, "output": 0.0005},    # $0.25/$0.50 per 1K tokens
-            "gemini-pro-vision": {"input": 0.00025, "output": 0.0005}, # Same as pro
+            "gemini-2.5-flash": {"input": 0.00015, "output": 0.0006},    # $0.15/$0.60 per 1K tokens (actually per 1M)
+            "gemini-2.5-pro": {"input": 0.00125, "output": 0.005},       # $1.25/$5.00 per 1K tokens (actually per 1M)
+            "gemini-3-pro-preview": {"input": 0.0025, "output": 0.01},   # Estimated pricing
         },
         "grok": {
             "grok-1": {"input": 0.005, "output": 0.015},  # Estimated pricing
