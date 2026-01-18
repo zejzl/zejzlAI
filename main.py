@@ -48,6 +48,129 @@ def select_provider():
 #
 # =============================================================================
 
+async def run_swarm_mode():
+    """Run Swarm Mode - Multi-agent async team coordination"""
+    # Suppress all logging for clean CLI output
+    logging.basicConfig(level=logging.CRITICAL, force=True)
+    logging.getLogger().setLevel(logging.CRITICAL)
+    for name in logging.root.manager.loggerDict:
+        logging.getLogger(name).setLevel(logging.CRITICAL)
+
+    print("\n[Swarm Mode]")
+    task = input("Enter a task for swarm coordination: ")
+
+    # Swarm configuration
+    swarm_size = 4  # Number of agents in the swarm
+    perspectives = [
+        "technical implementation focus",
+        "user experience focus",
+        "business strategy focus",
+        "risk assessment focus"
+    ]
+
+    # Get AI provider bus
+    from base import get_ai_provider_bus
+    ai_bus = await get_ai_provider_bus()
+
+    try:
+        print(f"\n[Deploying {swarm_size}-agent swarm...]")
+
+        # Create swarm tasks
+        swarm_tasks = []
+        for i in range(swarm_size):
+            perspective = perspectives[i % len(perspectives)]
+            agent_id = f"swarm_agent_{i+1}"
+
+            # Create specialized prompt for this swarm agent
+            swarm_prompt = f"""You are Swarm Agent {i+1} specializing in {perspective}.
+
+Task: {task}
+
+Your mission: Analyze this task from your specialized {perspective} perspective.
+Provide unique insights, recommendations, and considerations that complement other swarm agents.
+
+Focus on: {perspective}
+Be thorough but concise in your analysis.
+
+Return your specialized analysis."""
+
+            # Create async task for this agent
+            task_coro = ai_bus.send_message(
+                content=swarm_prompt,
+                provider_name="grok",  # Could rotate providers
+                conversation_id=f"swarm_{agent_id}_{hash(task)}"
+            )
+            swarm_tasks.append((agent_id, perspective, task_coro))
+
+        # Execute swarm asynchronously
+        print("\n[Swarm coordination in progress...]")
+        swarm_results = []
+
+        for agent_id, perspective, task_coro in swarm_tasks:
+            print(f"[OK] Agent {agent_id}: {perspective} analyzing...")
+            try:
+                result = await task_coro
+                swarm_results.append({
+                    'agent': agent_id,
+                    'perspective': perspective,
+                    'analysis': result
+                })
+                print(f"[OK] Agent {agent_id}: Analysis complete")
+            except Exception as e:
+                print(f"[Error] Agent {agent_id}: Failed - {str(e)}")
+                swarm_results.append({
+                    'agent': agent_id,
+                    'perspective': perspective,
+                    'analysis': f"Analysis failed: {str(e)}"
+                })
+
+        print("\n[Synthesizing swarm intelligence...]")
+
+        # Create synthesis prompt
+        synthesis_prompt = f"""Synthesize the following swarm analyses into a unified, comprehensive solution:
+
+Task: {task}
+
+Swarm Results:
+"""
+
+        for result in swarm_results:
+            synthesis_prompt += f"\n--- {result['agent']} ({result['perspective']}) ---\n"
+            # Truncate individual analyses for synthesis prompt
+            analysis = str(result['analysis'])[:300] + "..." if len(str(result['analysis'])) > 300 else str(result['analysis'])
+            synthesis_prompt += f"{analysis}\n"
+
+        synthesis_prompt += """
+Create a unified solution that:
+1. Combines the best insights from all perspectives
+2. Resolves any conflicting recommendations
+3. Provides a comprehensive, actionable plan
+4. Maintains balance across all perspectives
+
+Return the synthesized swarm solution."""
+
+        # Use Claude for synthesis (different from swarm agents)
+        synthesis_result = await ai_bus.send_message(
+            content=synthesis_prompt,
+            provider_name="claude",
+            conversation_id=f"swarm_synthesis_{hash(task)}"
+        )
+
+        print("[OK] Swarm synthesis complete")
+
+        print("\n[Final Swarm Result]")
+        print("=" * 60)
+        # Truncate final result for display
+        final_output = str(synthesis_result)[:800] + "..." if len(str(synthesis_result)) > 800 else str(synthesis_result)
+        print(f"Swarm Solution: {final_output}")
+        print("=" * 60)
+        print(f"\n[Swarm Stats: {len(swarm_results)} agents contributed]")
+
+    except Exception as e:
+        print(f"\n[Error] Swarm coordination failed: {str(e)}")
+        print("Make sure API keys are configured.")
+
+
 async def run_collaboration_mode():
     """Run Collaboration Mode - Dual AI planning (Grok + Claude)"""
     # Suppress all logging for clean CLI output
@@ -274,13 +397,14 @@ def run_interactive_menu(debug: bool = True, max_iterations: int = 10, max_round
 
         1. Single Agent - Observe-Reason-Act loop
         2. Collaboration Mode (Grok + Claude) - Dual AI planning
+        3. Swarm Mode (Multi-agent) - Async team coordination
         4. Pantheon Mode - Full 9-agent orchestration with validation & learning
         9. Quit
 
-        (Note: Modes 3,5,6,7,8 are not yet implemented)
+        (Note: Modes 5,6,7,8 are not yet implemented)
 """)
 
-    choice = input("        Choose mode (1, 2, 4, or 9): ").strip()
+    choice = input("        Choose mode (1, 2, 3, 4, or 9): ").strip()
 
     if choice == "1":
         print("\n[Starting Single Agent Mode...]")
@@ -288,6 +412,9 @@ def run_interactive_menu(debug: bool = True, max_iterations: int = 10, max_round
     elif choice == "2":
         print("\n[Starting Collaboration Mode...]")
         asyncio.run(run_collaboration_mode())
+    elif choice == "3":
+        print("\n[Starting Swarm Mode...]")
+        asyncio.run(run_swarm_mode())
     elif choice == "4":
         print("\n[Starting Pantheon Mode...]")
         asyncio.run(run_pantheon_mode())
