@@ -50,11 +50,17 @@ def select_provider():
 
 async def run_swarm_mode():
     """Run Swarm Mode - Multi-agent async team coordination"""
-    # Suppress all logging for clean CLI output
-    logging.basicConfig(level=logging.CRITICAL, force=True)
+    # Complete logging suppression for clean CLI output
+    logging.basicConfig(level=logging.CRITICAL, force=True, handlers=[])
     logging.getLogger().setLevel(logging.CRITICAL)
-    for name in logging.root.manager.loggerDict:
+    # Disable all handlers to prevent any output
+    for handler in logging.getLogger().handlers[:]:
+        logging.getLogger().removeHandler(handler)
+    # Suppress all existing and future loggers
+    for name in list(logging.root.manager.loggerDict.keys()) + ['zejzl', 'zejzl.performance', 'zejzl.debug', 'ai_framework']:
         logging.getLogger(name).setLevel(logging.CRITICAL)
+        for handler in logging.getLogger(name).handlers[:]:
+            logging.getLogger(name).removeHandler(handler)
 
     print("\n[Swarm Mode]")
     task = input("Enter a task for swarm coordination: ")
@@ -173,11 +179,17 @@ Return the synthesized swarm solution."""
 
 async def run_collaboration_mode():
     """Run Collaboration Mode - Dual AI planning (Grok + Claude)"""
-    # Suppress all logging for clean CLI output
-    logging.basicConfig(level=logging.CRITICAL, force=True)
+    # Complete logging suppression for clean CLI output
+    logging.basicConfig(level=logging.CRITICAL, force=True, handlers=[])
     logging.getLogger().setLevel(logging.CRITICAL)
-    for name in logging.root.manager.loggerDict:
+    # Disable all handlers to prevent any output
+    for handler in logging.getLogger().handlers[:]:
+        logging.getLogger().removeHandler(handler)
+    # Suppress all existing and future loggers
+    for name in list(logging.root.manager.loggerDict.keys()) + ['zejzl', 'zejzl.performance', 'zejzl.debug', 'ai_framework']:
         logging.getLogger(name).setLevel(logging.CRITICAL)
+        for handler in logging.getLogger(name).handlers[:]:
+            logging.getLogger(name).removeHandler(handler)
 
     print("\n[Collaboration Mode]")
     task = input("Enter a task for collaborative planning: ")
@@ -263,11 +275,17 @@ Return the collaborative plan in 3-4 paragraphs."""
 
 async def run_single_agent_mode():
     """Run Single Agent mode - Observe-Reason-Act loop"""
-    # Suppress all logging for clean CLI output
-    logging.basicConfig(level=logging.CRITICAL, force=True)
+    # Complete logging suppression for clean CLI output
+    logging.basicConfig(level=logging.CRITICAL, force=True, handlers=[])
     logging.getLogger().setLevel(logging.CRITICAL)
-    for name in logging.root.manager.loggerDict:
+    # Disable all handlers to prevent any output
+    for handler in logging.getLogger().handlers[:]:
+        logging.getLogger().removeHandler(handler)
+    # Suppress all existing and future loggers
+    for name in list(logging.root.manager.loggerDict.keys()) + ['zejzl', 'zejzl.performance', 'zejzl.debug', 'ai_framework']:
         logging.getLogger(name).setLevel(logging.CRITICAL)
+        for handler in logging.getLogger(name).handlers[:]:
+            logging.getLogger(name).removeHandler(handler)
 
     from src.agents.observer import ObserverAgent
     from src.agents.reasoner import ReasonerAgent
@@ -296,11 +314,17 @@ async def run_single_agent_mode():
 
 async def run_pantheon_mode():
     """Run full 9-agent Pantheon orchestration"""
-    # Suppress all logging for clean CLI output
-    logging.basicConfig(level=logging.CRITICAL, force=True)
+    # Complete logging suppression for clean CLI output
+    logging.basicConfig(level=logging.CRITICAL, force=True, handlers=[])
     logging.getLogger().setLevel(logging.CRITICAL)
-    for name in logging.root.manager.loggerDict:
+    # Disable all handlers to prevent any output
+    for handler in logging.getLogger().handlers[:]:
+        logging.getLogger().removeHandler(handler)
+    # Suppress all existing and future loggers
+    for name in list(logging.root.manager.loggerDict.keys()) + ['zejzl', 'zejzl.performance', 'zejzl.debug', 'ai_framework']:
         logging.getLogger(name).setLevel(logging.CRITICAL)
+        for handler in logging.getLogger(name).handlers[:]:
+            logging.getLogger(name).removeHandler(handler)
 
     from src.agents.observer import ObserverAgent
     from src.agents.reasoner import ReasonerAgent
