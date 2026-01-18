@@ -429,6 +429,14 @@ ZEJZL.NET uses **TOON (Token-Oriented Object Notation)** for agent communication
 
 **Test TOON integration**: `python test_toon_integration.py`
 
+### Redis State Management
+**Save system state**: `python save_redis.py --all --verbose`
+**Load system state**: `python load_redis.py --config`
+- **save_redis.py**: Save configurations, magic state, and learning patterns
+- **load_redis.py**: Load and inspect saved system state
+- **Selective operations**: `--config`, `--magic`, `--learning`, `--all`
+- **Output formats**: Formatted text (default) or `--json`
+
 ### Framework CLI (ai_framework.py)
 - **Chat**: `python ai_framework.py chat provider "message"`
 - **Interactive**: `python ai_framework.py interactive provider`
