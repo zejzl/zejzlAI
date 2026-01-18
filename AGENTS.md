@@ -411,14 +411,23 @@ python main.py
 **Features:**
 - **Provider Selection**: Choose from 7 AI providers (Grok, ChatGPT, Claude, Gemini, DeepSeek, Qwen, Zai)
 - **Agent Modes**:
-  - `1. Single Agent`: Observe-Reason-Act loop with concise status output
-  - `4. Pantheon Mode`: Full 9-agent orchestration with ultra-concise progress updates
-  - `9. Quit`: Clean exit with confirmation
+  - `1. Single Agent`: Observe-Reason-Act loop
+  - `2. Collaboration Mode`: Grok + Claude dual AI planning
+  - `3. Swarm Mode`: Multi-agent async team coordination
+  - `4. Pantheon Mode`: Full 9-agent orchestration with validation & learning
+  - `9. Quit`
+- **TOON Integration**: Token-efficient agent communications (36.1% savings vs JSON)
+- **Output Format**: Clean, minimal status messages ([OK] prefixes)
+- **Press Enter to exit** after completion
 
-**Output Format:**
-- Clean, minimal status messages ([OK] prefixes)
-- No verbose JSON dumps or debug logging
-- Press Enter to exit after completion
+### TOON Token Efficiency
+ZEJZL.NET uses **TOON (Token-Oriented Object Notation)** for agent communications, providing:
+- **~40% token reduction** compared to JSON
+- **Cost savings** on AI API calls
+- **Better performance** with fewer tokens
+- **Backward compatibility** with JSON fallback
+
+**Test TOON integration**: `python test_toon_integration.py`
 
 ### Framework CLI (ai_framework.py)
 - **Chat**: `python ai_framework.py chat provider "message"`
