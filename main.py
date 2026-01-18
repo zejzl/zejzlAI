@@ -2,12 +2,6 @@ import asyncio
 import sys
 import logging
 
-# Completely disable all logging for CLI usage
-logging.getLogger().setLevel(logging.CRITICAL)
-# Suppress all zejzl loggers
-for name in ['zejzl', 'zejzl.performance', 'zejzl.debug', 'zejzl.ai', 'zejzl.memory']:
-    logging.getLogger(name).setLevel(logging.CRITICAL)
-
 def select_provider():
     """Allow user to select an AI provider"""
     print("\nAvailable AI Providers:")
@@ -35,6 +29,12 @@ def select_provider():
 
 async def run_single_agent_mode():
     """Run Single Agent mode - Observe-Reason-Act loop"""
+    # Suppress all logging for clean CLI output
+    logging.basicConfig(level=logging.CRITICAL, force=True)
+    logging.getLogger().setLevel(logging.CRITICAL)
+    for name in logging.root.manager.loggerDict:
+        logging.getLogger(name).setLevel(logging.CRITICAL)
+
     from src.agents.observer import ObserverAgent
     from src.agents.reasoner import ReasonerAgent
     from src.agents.actor import ActorAgent
@@ -62,6 +62,12 @@ async def run_single_agent_mode():
 
 async def run_pantheon_mode():
     """Run full 9-agent Pantheon orchestration"""
+    # Suppress all logging for clean CLI output
+    logging.basicConfig(level=logging.CRITICAL, force=True)
+    logging.getLogger().setLevel(logging.CRITICAL)
+    for name in logging.root.manager.loggerDict:
+        logging.getLogger(name).setLevel(logging.CRITICAL)
+
     from src.agents.observer import ObserverAgent
     from src.agents.reasoner import ReasonerAgent
     from src.agents.actor import ActorAgent
