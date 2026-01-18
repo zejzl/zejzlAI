@@ -652,6 +652,78 @@ class SQLitePersistence(PersistenceLayer):
                 hour, hour, hour, message.token_usage.total_tokens, hour, message.token_usage.cost_usd, hour
             ))
 
+    async def save_magic_state(self, magic_state: Dict):
+        """Save magic system state to SQLite database"""
+        if not self.conn:
+            raise RuntimeError("SQLite not initialized")
+
+        # Store as JSON in a magic_state table
+        await self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS magic_state (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
+
+        state_json = json.dumps(magic_state)
+        await self.conn.execute("""
+            INSERT OR REPLACE INTO magic_state (key, value, updated_at)
+            VALUES (?, ?, ?)
+        """, ("state", state_json, datetime.now().isoformat()))
+
+        await self.conn.commit()
+
+    async def load_magic_state(self) -> Dict:
+        """Load magic system state from SQLite database"""
+        if not self.conn:
+            raise RuntimeError("SQLite not initialized")
+
+        cursor = await self.conn.execute("""
+            SELECT value FROM magic_state WHERE key = 'state'
+        """)
+
+        row = await cursor.fetchone()
+        if row:
+            return json.loads(row[0])
+        return {}  # Return empty dict if no state saved
+
+    async def save_learner_patterns(self, patterns_state: Dict):
+        """Save learner patterns to SQLite database"""
+        if not self.conn:
+            raise RuntimeError("SQLite not initialized")
+
+        # Store as JSON in a learner_patterns table
+        await self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS learner_patterns (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
+
+        patterns_json = json.dumps(patterns_state)
+        await self.conn.execute("""
+            INSERT OR REPLACE INTO learner_patterns (key, value, updated_at)
+            VALUES (?, ?, ?)
+        """, ("patterns", patterns_json, datetime.now().isoformat()))
+
+        await self.conn.commit()
+
+    async def load_learner_patterns(self) -> Dict:
+        """Load learner patterns from SQLite database"""
+        if not self.conn:
+            raise RuntimeError("SQLite not initialized")
+
+        cursor = await self.conn.execute("""
+            SELECT value FROM learner_patterns WHERE key = 'patterns'
+        """)
+
+        row = await cursor.fetchone()
+        if row:
+            return json.loads(row[0])
+        return {}  # Return empty dict if no patterns saved
+
     async def cleanup(self):
         if self.conn:
             await self.conn.close()

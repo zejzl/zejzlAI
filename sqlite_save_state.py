@@ -63,91 +63,24 @@ async def save_all_state(db_path=None, verbose=False):
         if verbose:
             print("Saving magic system state...")
         magic_state = {
-            "energy_level": 85.5,
-            "acorn_reserve": 12,
-            "spells_cast": 47,
-            "healing_sessions": 23,
+            "energy_level": 92.3,
+            "acorn_reserve": 8,
+            "spells_cast": 29,
+            "healing_sessions": 15,
             "last_updated": asyncio.get_event_loop().time()
         }
-        await persistence.save_magic_state(magic_state)
-        if verbose:
-            print("[OK] Magic state saved")
-
-        # Save learning patterns
-        if verbose:
-            print("Saving agent learning patterns...")
-        learning_patterns = {
-            "success_patterns": [
-                {"type": "observation", "pattern": "clear_task"},
-                {"type": "planning", "pattern": "step_by_step"}
-            ],
-            "failure_patterns": [
-                {"type": "vague_request", "frequency": 5}
-            ],
-            "performance_metrics": {
-                "avg_response_time": 2.3,
-                "success_rate": 0.87,
-                "total_interactions": 156
-            },
-            "optimization_suggestions": [
-                "Use TOON format for better token efficiency",
-                "Implement parallel agent processing",
-                "Add confidence scoring to responses"
-            ],
-            "last_updated": asyncio.get_event_loop().time()
-        }
-        await persistence.save_learner_patterns(learning_patterns)
-        if verbose:
-            print("[OK] Learning patterns saved")
-
-        print(f"[SUCCESS] All system state saved to SQLite database: {db_path}")
-
-        # Show summary
-        print("\n[STATS] State Summary:")
-        print(f"   • Configuration: {len(config.get('providers', {}))} providers configured")
-        print("   • Magic System: Energy and spell data preserved")
-        print(f"   • Learning: {len(learning_patterns.get('success_patterns', []))} success patterns saved")
+        try:
+            await persistence.save_magic_state(magic_state)
+            if verbose:
+                print("[OK] Magic state saved with current energy levels")
+            else:
+                print("[SUCCESS] Magic state saved successfully!")
+        except AttributeError:
+            print("   [WARNING] Magic state saving not supported by SQLite persistence")
+        except Exception as e:
+            print(f"   [ERROR] Error saving magic state: {e}")
     except Exception as e:
-        print(f"[ERROR] Error saving state: {e}")
-        return False
-    finally:
-        await persistence.cleanup()
-
-    return True
-
-
-async def save_config_only(db_path=None, verbose=False):
-    """Save only configuration state"""
-    if not db_path:
-        db_path = str(Path.home() / ".ai_framework.db")
-
-    print(f"Saving configuration to SQLite: {db_path}")
-
-    persistence = SQLitePersistence(db_path)
-    await persistence.initialize()
-
-    try:
-        config = {
-            "providers": {
-                "chatgpt": {"api_key": os.environ.get("OPENAI_API_KEY", ""), "model": "gpt-3.5-turbo"},
-                "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-3-opus-20240229"},
-                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-2.5-flash"},
-                "zai": {"api_key": os.environ.get("ZAI_API_KEY", ""), "model": "zai-1"},
-                "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-1"},
-                "deepseek": {"api_key": os.environ.get("DEEPSEEK_API_KEY", ""), "model": "deepseek-coder"},
-                "qwen": {"api_key": os.environ.get("QWEN_API_KEY", ""), "model": "qwen-turbo"}
-            },
-            "default_provider": "chatgpt",
-            "redis_url": "redis://localhost:6379",
-            "sqlite_path": db_path
-        }
-        await persistence.save_config(config)
-        if verbose:
-            print(f"[OK] Configuration saved: {len(config['providers'])} providers")
-        else:
-            print("[SUCCESS] Configuration saved successfully!")
-    except Exception as e:
-        print(f"[ERROR] Error saving configuration: {e}")
+        print(f"[ERROR] Error saving magic state: {e}")
         return False
     finally:
         await persistence.cleanup()
