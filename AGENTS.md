@@ -437,6 +437,15 @@ ZEJZL.NET uses **TOON (Token-Oriented Object Notation)** for agent communication
 - **Selective operations**: `--config`, `--magic`, `--learning`, `--all`
 - **Output formats**: Formatted text (default) or `--json`
 
+### SQLite State Management
+**Save system state**: `python sqlite_save_state.py --all --db /path/to/db.sqlite`
+**Load system state**: `python sqlite_load_state.py --config --db /path/to/db.sqlite`
+- **sqlite_save_state.py**: Save state directly to SQLite database
+- **sqlite_load_state.py**: Load and inspect state from SQLite database
+- **Database info**: `python sqlite_load_state.py --info --db /path/to/db.sqlite`
+- **Selective operations**: `--config`, `--magic`, `--learning`, `--all`
+- **Custom database path**: `--db PATH` (default: ~/.ai_framework.db)
+
 ### Framework CLI (ai_framework.py)
 - **Chat**: `python ai_framework.py chat provider "message"`
 - **Interactive**: `python ai_framework.py interactive provider`
