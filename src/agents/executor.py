@@ -3,10 +3,13 @@ import asyncio
 import logging
 from typing import Any, Dict, Optional
 
+from base import PantheonAgent, AgentConfig
+from messagebus import Message
+
 logger = logging.getLogger("ExecutorAgent")
 
 
-class ExecutorAgent:
+class ExecutorAgent(PantheonAgent):
     """
     Executor Agent for Pantheon 9-Agent System.
     Responsible for safely executing validated tasks, with retries.
@@ -25,8 +28,14 @@ class ExecutorAgent:
     - Execution monitoring and alerting
     """
 
-    def __init__(self):
-        self.name = "Executor"
+    def __init__(self, message_bus=None):
+        config = AgentConfig(
+            name="Executor",
+            role="Safe Execution & Error Recovery",
+            channels=["executor_channel"]
+        )
+        super().__init__(config, message_bus)
+
         self.specialization = "Safe Execution & Error Recovery"
         self.responsibilities = [
             "Execute validated tasks with safety checks",
@@ -40,6 +49,10 @@ class ExecutorAgent:
             "Failure recovery and rollback",
             "Execution monitoring and alerting"
         ]
+
+    async def process(self, message: Message):
+        """Process incoming message (not implemented)"""
+        pass
 
     async def execute(self, validated_task: Dict[str, Any], provider: Optional[str] = None) -> Dict[str, Any]:
         """

@@ -3,15 +3,24 @@ import asyncio
 import logging
 from typing import Any, Dict, Optional
 
+from base import PantheonAgent, AgentConfig
+from messagebus import Message
+
 logger = logging.getLogger("ImproverAgent")
 
 
-class ImproverAgent:
+class ImproverAgent(PantheonAgent):
     """Identifies optimization opportunities and drives system improvements"""
 
-    def __init__(self):
+    def __init__(self, message_bus=None):
         from src.agent_personality import AGENT_PERSONALITIES
-        self.name = "Improver"
+        config = AgentConfig(
+            name="Improver",
+            role="System Optimization & Continuous Improvement",
+            channels=["improver_channel"]
+        )
+        super().__init__(config, message_bus)
+
         self.specialization = "System Optimization & Continuous Improvement"
         self.responsibilities = [
             "Identify optimization opportunities",
@@ -34,6 +43,10 @@ class ImproverAgent:
             "Continuous improvement strategies"
         ]
 
+    async def process(self, message: Message):
+        """Process incoming message (not implemented)"""
+        pass
+
     async def improve(self, analysis: Dict[str, Any], learned_patterns: Dict[str, Any], provider: Optional[str] = None) -> Dict[str, Any]:
         """
         Use AI to generate sophisticated improvement suggestions based on analysis and learned patterns.
@@ -42,10 +55,6 @@ class ImproverAgent:
         logger.debug("[%s] Improving system based on analysis and learned patterns", self.name)
 
         try:
-            # Get AI provider bus
-            from base import get_ai_provider_bus
-            ai_bus = await get_ai_provider_bus()
-
             # Prepare analysis data for AI
             health_score = analysis.get("health_score", 50)
             bottlenecks = learned_patterns.get("bottlenecks", [])
@@ -113,10 +122,10 @@ Provide your response as a JSON object with this structure:
 
 {self.personality.get_communication_prompt() if self.personality else 'Focus on practical, implementable suggestions'} that leverage the magic system capabilities."""
 
-            # Call AI
-            response = await ai_bus.send_message(
-                content=prompt,
-                provider_name=provider or "grok",  # Use specified provider or default to Grok
+            # Call AI via the integrated call_ai method
+            response = await self.call_ai(
+                prompt=prompt,
+                provider=provider,
                 conversation_id=f"improver_{hash(str(analysis) + str(learned_patterns))}"
             )
 

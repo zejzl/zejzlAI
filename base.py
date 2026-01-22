@@ -68,8 +68,9 @@ class PantheonAgent(ABC):
     9. Improver - Optimizes and refines
     """
     
-    def __init__(self, config: AgentConfig, message_bus: AsyncMessageBus):
+    def __init__(self, config: AgentConfig, message_bus: Optional[AsyncMessageBus] = None):
         self.config = config
+        self.name = config.name
         self.bus = message_bus
         self.running = False
         self.subscriptions: List[asyncio.Queue] = []

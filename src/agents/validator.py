@@ -3,17 +3,25 @@ import asyncio
 import logging
 from typing import Any, Dict, Optional
 
+from base import PantheonAgent, AgentConfig
+from messagebus import Message
 from src.security_validator import security_validator, ValidationResult, RiskLevel, ApprovalRequirement
 
 logger = logging.getLogger("ValidatorAgent")
 
 
-class ValidatorAgent:
+class ValidatorAgent(PantheonAgent):
     """Validates execution results and ensures quality standards"""
 
-    def __init__(self):
+    def __init__(self, message_bus=None):
         from src.agent_personality import AGENT_PERSONALITIES
-        self.name = "Validator"
+        config = AgentConfig(
+            name="Validator",
+            role="Quality Assurance & Validation",
+            channels=["validator_channel"]
+        )
+        super().__init__(config, message_bus)
+
         self.specialization = "Quality Assurance & Validation"
         self.responsibilities = [
             "Validate execution results against requirements",
@@ -36,6 +44,10 @@ class ValidatorAgent:
             "Corrective action planning"
         ]
         self.state = {}
+
+    async def process(self, message: Message):
+        """Process incoming message (not implemented)"""
+        pass
 
     async def validate_operation(self, operation: str, context: Optional[Dict[str, Any]] = None,
                                 user: Optional[str] = None) -> ValidationResult:
@@ -198,10 +210,6 @@ class ValidatorAgent:
         Get AI-based quality validation for execution results.
         """
         try:
-            # Get AI provider bus
-            from base import get_ai_provider_bus
-            ai_bus = await get_ai_provider_bus()
-
             # Get personality-enhanced prompt
             personality_prompt = self.personality.get_personality_prompt() if self.personality else ""
 
@@ -233,10 +241,10 @@ Return ONLY valid JSON with quality assessment:
     "ai_generated": true
 }}"""
 
-            # Call AI for quality assessment
-            response = await ai_bus.send_message(
-                content=prompt,
-                provider_name=provider or "grok",
+            # Call AI via the integrated call_ai method
+            response = await self.call_ai(
+                prompt=prompt,
+                provider=provider,
                 conversation_id=f"quality_validator_{hash(str(execution_summary))}"
             )
 

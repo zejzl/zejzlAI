@@ -11,10 +11,13 @@ import logging
 from typing import Any, Dict, List, Optional
 from collections import defaultdict, Counter
 
+from base import PantheonAgent, AgentConfig
+from messagebus import Message
+
 logger = logging.getLogger("LearnerAgent")
 
 
-class LearnerAgent:
+class LearnerAgent(PantheonAgent):
     """
     Learner Agent for Pantheon 9-Agent System.
     Responsible for learning patterns from memory/events and optimizing the learning loop.
@@ -33,8 +36,14 @@ class LearnerAgent:
     - Continuous improvement methodologies
     """
 
-    def __init__(self, persistence=None):
-        self.name = "Learner"
+    def __init__(self, message_bus=None, persistence=None):
+        config = AgentConfig(
+            name="Learner",
+            role="Pattern Recognition & Continuous Optimization",
+            channels=["learner_channel"]
+        )
+        super().__init__(config, message_bus)
+
         self.specialization = "Pattern Recognition & Continuous Optimization"
         self.responsibilities = [
             "Analyze historical data for patterns and trends",
@@ -83,6 +92,10 @@ class LearnerAgent:
             logger.debug("Learner patterns saved successfully")
         except Exception as e:
             logger.warning(f"Failed to save learner patterns: {e}")
+
+    async def process(self, message: Message):
+        """Process incoming message (not implemented)"""
+        pass
 
     async def load_patterns(self):
         """Load learned patterns from persistence"""

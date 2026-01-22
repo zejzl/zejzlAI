@@ -3,15 +3,24 @@ import asyncio
 import logging
 from typing import Any, Dict, List, Optional
 
+from base import PantheonAgent, AgentConfig
+from messagebus import Message
+
 logger = logging.getLogger("AnalyzerAgent")
 
 
-class AnalyzerAgent:
+class AnalyzerAgent(PantheonAgent):
     """Analyzes system performance and generates insights"""
 
-    def __init__(self):
+    def __init__(self, message_bus=None):
         from src.agent_personality import AGENT_PERSONALITIES
-        self.name = "Analyzer"
+        config = AgentConfig(
+            name="Analyzer",
+            role="Performance Analysis & Insights",
+            channels=["analyzer_channel"]
+        )
+        super().__init__(config, message_bus)
+
         self.specialization = "Performance Analysis & Insights"
         self.responsibilities = [
             "Analyze system performance metrics",
@@ -34,6 +43,10 @@ class AnalyzerAgent:
             "System health monitoring"
         ]
 
+    async def process(self, message: Message):
+        """Process incoming message (not implemented)"""
+        pass
+
     async def analyze(self, memory_events: List[Dict[str, Any]], provider: Optional[str] = None) -> Dict[str, Any]:
         """
         Use AI to analyze system performance and generate insights from memory events.
@@ -41,10 +54,6 @@ class AnalyzerAgent:
         logger.debug(f"[{self.name}] Analyzing {len(memory_events)} events")
 
         try:
-            # Get AI provider bus
-            from base import get_ai_provider_bus
-            ai_bus = await get_ai_provider_bus()
-
             # Basic metrics calculation
             metrics = {}
             event_types = []
@@ -105,10 +114,10 @@ Provide your response as a JSON object with this structure:
 
 {self.personality.get_communication_prompt() if self.personality else 'Be analytical and provide actionable insights'} based on the event data."""
 
-            # Call AI
-            response = await ai_bus.send_message(
-                content=prompt,
-                provider_name=provider or "grok",  # Use specified provider or default to Grok
+            # Call AI via the integrated call_ai method
+            response = await self.call_ai(
+                prompt=prompt,
+                provider=provider,
                 conversation_id=f"analyzer_{hash(str(memory_events))}"
             )
 
