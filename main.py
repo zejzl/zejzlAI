@@ -427,6 +427,18 @@ async def run_pantheon_mode():
 
     provider = select_provider()
 
+    # Get the AI provider bus for all agents to use
+    from base import get_ai_provider_bus
+    ai_bus = await get_ai_provider_bus()
+    available_provider = get_available_provider(ai_bus, provider)
+
+    if not available_provider:
+        print(f"[ERROR] No AI providers available. Please check your API key configuration.")
+        print(f"[INFO] Make sure environment variables are set for your preferred providers.")
+        return
+
+    print(f"[INFO] Using provider: {available_provider}")
+
     # Import all agent classes
     from src.agents.observer import ObserverAgent
     from src.agents.reasoner import ReasonerAgent
@@ -467,27 +479,27 @@ async def run_pantheon_mode():
             return
 
     print("\n[1/9 Observer] Gathering observations...")
-    observation = await observer.observe(task, provider)
+    observation = await observer.observe(task, available_provider)
     await memory.store({"type": "observation", "data": observation})
     print(f"[OK] Observation received")
 
     print("\n[2/9 Reasoner] Creating execution plan...")
-    plan = await reasoner.reason(observation, provider)
+    plan = await reasoner.reason(observation, available_provider)
     await memory.store({"type": "plan", "data": plan})
     print(f"[OK] Plan created")
 
     print("\n[3/9 Actor] Executing planned actions...")
-    execution = await actor.act(plan, provider)
+    execution = await actor.act(plan, available_provider)
     await memory.store({"type": "execution", "data": execution})
     print(f"[OK] Actions executed")
 
     print("\n[4/9 Validator] Validating execution...")
-    validation = await validator.validate(execution, provider)
+    validation = await validator.validate(execution, available_provider)
     await memory.store({"type": "validation", "data": validation})
     print(f"[OK] Validation complete")
 
     print("\n[5/9 Executor] Performing validated tasks...")
-    execution_result = await executor.execute(validation, provider)
+    execution_result = await executor.execute(validation, available_provider)
     await memory.store({"type": "executor", "data": execution_result})
     print(f"[OK] Tasks executed")
 
@@ -497,51 +509,35 @@ async def run_pantheon_mode():
 
     print("\n[7/9 Analyzer] Analyzing metrics...")
     try:
-        # Get AI provider bus and ensure provider is available
-        from base import get_ai_provider_bus
-        ai_bus = await get_ai_provider_bus()
-        available_provider = get_available_provider(ai_bus, provider)
-
-        if available_provider:
-            analysis = await asyncio.wait_for(
-                analyzer.analyze(events, available_provider),
-                timeout=60.0
-            )
-            print(f"[OK] Analysis complete")
-        else:
-            raise Exception("No AI providers available")
+        analysis = await asyncio.wait_for(
+            analyzer.analyze(events, available_provider),
+            timeout=60.0
+        )
+        print(f"[OK] Analysis complete")
     except Exception as e:
-        print(f"[ERROR] Analysis failed: {str(e)[:50]}...")
+        print(f"[ERROR] Analysis failed: {str(e)[:80]}...")
         analysis = {"error": "Analysis failed", "events_count": len(events)}
 
     print("\n[8/9 Learner] Learning patterns...")
     try:
         learned = await asyncio.wait_for(
-            learner.learn(events, provider=provider),
+            learner.learn(events, provider=available_provider),
             timeout=60.0
         )
         print(f"[OK] Learning complete")
     except Exception as e:
-        print(f"[ERROR] Learning failed: {str(e)[:50]}...")
+        print(f"[ERROR] Learning failed: {str(e)[:80]}...")
         learned = {"error": "Learning failed", "patterns_found": 0}
 
     print("\n[9/9 Improver] Generating improvements...")
     try:
-        # Get AI provider bus and ensure provider is available
-        from base import get_ai_provider_bus
-        ai_bus = await get_ai_provider_bus()
-        available_provider = get_available_provider(ai_bus, provider)
-
-        if available_provider:
-            improvement = await asyncio.wait_for(
-                improver.improve(analysis, learned, available_provider),
-                timeout=60.0
-            )
-            print(f"[OK] Improvements generated\n")
-        else:
-            raise Exception("No AI providers available")
+        improvement = await asyncio.wait_for(
+            improver.improve(analysis, learned, available_provider),
+            timeout=60.0
+        )
+        print(f"[OK] Improvements generated\n")
     except Exception as e:
-        print(f"[ERROR] Improvement failed: {str(e)[:50]}...")
+        print(f"[ERROR] Improvement failed: {str(e)[:80]}...")
         improvement = {"error": "Improvement failed", "suggestions": []}
 
     print("\n[OK] Pantheon orchestration complete!")
