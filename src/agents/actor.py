@@ -7,36 +7,52 @@ logger = logging.getLogger("ActorAgent")
 
 
 class ActorAgent:
-    """Executes plans and coordinates task implementation"""
+    """
+    Actor Agent for Pantheon 9-Agent System.
+    Responsible for determining how to execute subtasks and provide execution guidance.
 
-    def __init__(self):
-        from src.agent_personality import AGENT_PERSONALITIES
-        self.name = "Actor"
-        self.specialization = "Plan Execution & Task Coordination"
-        self.responsibilities = [
-            "Execute planned subtasks in proper sequence",
-            "Coordinate with other agents as needed",
-            "Monitor execution progress and quality",
-            "Adapt execution based on real-time feedback"
-        ]
-        self.expertise_areas = [
-            "Task execution",
-            "Process coordination",
-            "Quality monitoring",
-            "Adaptive execution"
-        ]
-        # Load personality
-        self.personality = AGENT_PERSONALITIES.get("Actor")
-        self.expertise_areas = [
-            "Tool integration and API calling",
-            "Sequential task execution",
-            "Error handling and recovery",
-            "Execution monitoring and logging"
-        ]
-        self.state = {}
+    SPECIALIZATION: Action Planning & Execution Strategy
 
-    async def act(self, plan: Dict[str, Any], provider: Optional[str] = None) -> Dict[str, Any]:
-        """
+    EXECUTION PLANNING CAPABILITIES:
+    - AI-powered execution strategy development
+    - Intelligent fallback planning for reliability
+    - Task-type-specific execution approaches
+    - Comprehensive risk assessment and mitigation
+
+    INTELLIGENT FALLBACK SYSTEM:
+    - Rule-based execution planning when AI unavailable
+    - Subtask analysis for appropriate tool selection
+    - Duration estimation and resource planning
+    - Risk identification and mitigation strategies
+
+    SUPPORTED EXECUTION TYPES:
+    - Research Tasks: Systematic information gathering and analysis
+    - Development Tasks: Phased implementation with testing
+    - Writing Tasks: Structured content creation workflow
+    - Planning Tasks: Timeline creation and milestone setting
+    - Testing Tasks: Comprehensive validation procedures
+
+    EXECUTION FEATURES:
+    - Tool and resource requirement identification
+    - Time estimation based on task complexity
+    - Risk assessment and mitigation planning
+    - Step-by-step execution guidance
+    - Quality assurance and validation criteria
+
+    RESPONSIBILITIES:
+    - Convert high-level plans into detailed execution steps
+    - Identify required tools, resources, and skills
+    - Assess execution risks and provide mitigation strategies
+    - Create comprehensive execution guidance with timelines
+    - Ensure execution feasibility and success probability
+
+    EXPERTISE AREAS:
+    - Execution planning and strategic sequencing
+    - Resource assessment and requirement analysis
+    - Risk analysis and contingency planning
+    - Timeline estimation and milestone setting
+    - Quality assurance and success criteria definition
+    """
         Use AI to determine how to execute subtasks and provide execution guidance.
         """
         logger.debug(f"[{self.name}] Acting on plan: {plan}")
@@ -116,27 +132,115 @@ Return ONLY valid JSON:
 
         except Exception as e:
             logger.error(f"[{self.name}] AI action planning failed: {e}")
-            # Fallback to stub
-            results = []
-            for subtask in plan.get("subtasks", []):
-                subtask_desc = subtask if isinstance(subtask, str) else subtask.get("description", str(subtask))
-                result = {
-                    "subtask": subtask,
-                    "execution_plan": [f"Execute '{subtask_desc}' (stub)"],
-                    "tools_needed": [],
-                    "expected_outcome": "Stub execution",
-                    "risk_mitigation": "None",
-                    "estimated_duration": "Unknown",
-                    "ai_generated": False,
-                    "error": str(e)
-                }
-                results.append(result)
-
+            # Enhanced fallback: Generate intelligent execution plans based on subtask analysis
+            results = self._generate_fallback_execution_plans(plan.get("subtasks", []), str(e))
             execution_summary = {
                 "plan": plan,
                 "results": results,
+                "total_subtasks": len(results),
                 "timestamp": asyncio.get_event_loop().time(),
-                "ai_generated": False
+                "ai_generated": False,
+                "fallback_reason": str(e),
+                "fallback_type": "intelligent_rule_based"
             }
-            logger.warning(f"[{self.name}] Using fallback stub execution")
+            logger.warning(f"[{self.name}] Using intelligent fallback execution planning")
             return execution_summary
+
+    def _generate_fallback_execution_plans(self, subtasks: List[str], error_reason: str) -> List[Dict[str, Any]]:
+        """
+        Generate intelligent execution plans for subtasks based on their content analysis.
+        Provides realistic execution steps, tools, and estimates without AI.
+        """
+        results = []
+
+        for i, subtask in enumerate(subtasks):
+            subtask_desc = subtask if isinstance(subtask, str) else subtask.get("description", str(subtask))
+            subtask_lower = subtask_desc.lower()
+
+            # Analyze subtask type and generate appropriate execution plan
+            if any(keyword in subtask_lower for keyword in ['research', 'investigate', 'analyze', 'gather']):
+                # Research/analysis subtasks
+                execution_plan = [
+                    f"Identify relevant sources and data for {subtask_desc}",
+                    f"Collect and organize information related to {subtask_desc}",
+                    f"Analyze findings and extract key insights",
+                    f"Document results and prepare summary"
+                ]
+                tools_needed = ["search_engines", "note_taking", "data_analysis"]
+                estimated_duration = "2-4 hours"
+                risks = ["Information overload", "Source reliability issues"]
+
+            elif any(keyword in subtask_lower for keyword in ['create', 'build', 'develop', 'implement']):
+                # Creation/development subtasks
+                execution_plan = [
+                    f"Design approach and architecture for {subtask_desc}",
+                    f"Implement core functionality for {subtask_desc}",
+                    f"Test implementation and fix issues",
+                    f"Refine and optimize the solution"
+                ]
+                tools_needed = ["development_tools", "testing_frameworks", "version_control"]
+                estimated_duration = "4-8 hours"
+                risks = ["Technical complexity", "Integration challenges"]
+
+            elif any(keyword in subtask_lower for keyword in ['write', 'document', 'report']):
+                # Writing/documentation subtasks
+                execution_plan = [
+                    f"Outline content structure for {subtask_desc}",
+                    f"Write initial draft with key information",
+                    f"Review and edit for clarity and accuracy",
+                    f"Format and finalize the document"
+                ]
+                tools_needed = ["word_processing", "research_tools", "editing_tools"]
+                estimated_duration = "2-6 hours"
+                risks = ["Content organization", "Time estimation accuracy"]
+
+            elif any(keyword in subtask_lower for keyword in ['plan', 'organize', 'schedule']):
+                # Planning/organizational subtasks
+                execution_plan = [
+                    f"Define objectives and deliverables for {subtask_desc}",
+                    f"Break down into specific actionable items",
+                    f"Estimate time and resource requirements",
+                    f"Create timeline and milestone schedule"
+                ]
+                tools_needed = ["project_management", "scheduling_tools", "resource_planning"]
+                estimated_duration = "1-3 hours"
+                risks = ["Scope creep", "Resource availability"]
+
+            elif any(keyword in subtask_lower for keyword in ['test', 'validate', 'verify']):
+                # Testing/validation subtasks
+                execution_plan = [
+                    f"Define test criteria and success metrics for {subtask_desc}",
+                    f"Execute tests systematically",
+                    f"Analyze results and identify issues",
+                    f"Document findings and recommendations"
+                ]
+                tools_needed = ["testing_tools", "monitoring_tools", "reporting_tools"]
+                estimated_duration = "1-4 hours"
+                risks = ["Incomplete test coverage", "False results"]
+
+            else:
+                # Generic fallback for unknown subtask types
+                execution_plan = [
+                    f"Analyze requirements for {subtask_desc}",
+                    f"Execute the main activities for {subtask_desc}",
+                    f"Verify completion and quality of {subtask_desc}"
+                ]
+                tools_needed = ["basic_tools", "verification_methods"]
+                estimated_duration = "1-2 hours"
+                risks = ["Unclear requirements", "Quality assessment"]
+
+            # Create result entry
+            result = {
+                "subtask": subtask,
+                "execution_plan": execution_plan,
+                "tools_needed": tools_needed,
+                "expected_outcome": f"Successfully complete {subtask_desc} with quality results",
+                "risk_mitigation": f"Address identified risks: {', '.join(risks[:2])}",
+                "estimated_duration": estimated_duration,
+                "ai_generated": False,
+                "fallback_reason": error_reason,
+                "planning_method": "rule_based_analysis"
+            }
+            results.append(result)
+
+        return results
