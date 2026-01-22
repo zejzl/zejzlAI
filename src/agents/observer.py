@@ -3,15 +3,24 @@ import asyncio
 import logging
 from typing import Any, Dict, Optional
 
+from base import PantheonAgent, AgentConfig
+from messagebus import Message
+
 logger = logging.getLogger("ObserverAgent")
 
 
-class ObserverAgent:
+class ObserverAgent(PantheonAgent):
     """Analyzes and decomposes tasks into manageable components"""
 
-    def __init__(self):
+    def __init__(self, message_bus=None):
         from src.agent_personality import AGENT_PERSONALITIES
-        self.name = "Observer"
+        config = AgentConfig(
+            name="Observer",
+            role="Task Analysis & Decomposition",
+            channels=["observer_channel"]
+        )
+        super().__init__(config, message_bus)
+
         self.specialization = "Task Analysis & Decomposition"
         self.responsibilities = [
             "Analyze incoming tasks for complexity and requirements",
@@ -35,6 +44,10 @@ class ObserverAgent:
         ]
         self.state = {}
 
+    async def process(self, message: Message):
+        """Process incoming message (not implemented)"""
+        pass
+
     async def observe(self, task: str, provider: Optional[str] = None) -> Dict[str, Any]:
         """
         Use AI to analyze and break down the task into observable components.
@@ -42,10 +55,6 @@ class ObserverAgent:
         logger.debug(f"[{self.name}] Observing task: {task}")
 
         try:
-            # Get AI provider bus
-            from base import get_ai_provider_bus
-            ai_bus = await get_ai_provider_bus()
-
             # Create observation prompt
             # Get personality-enhanced prompt
             personality_prompt = self.personality.get_personality_prompt() if self.personality else ""
@@ -71,10 +80,10 @@ estimated_effort: "Medium" """
 
 {format_instruction}"""
 
-            # Call AI
-            response = await ai_bus.send_message(
-                content=prompt,
-                provider_name=provider or "grok",  # Use specified provider or default to Grok
+            # Call AI via the integrated call_ai method
+            response = await self.call_ai(
+                prompt=prompt,
+                provider=provider,
                 conversation_id=f"observer_{hash(task)}"
             )
 

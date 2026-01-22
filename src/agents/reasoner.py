@@ -3,15 +3,24 @@ import asyncio
 import logging
 from typing import Any, Dict, List, Optional
 
+from base import PantheonAgent, AgentConfig
+from messagebus import Message
+
 logger = logging.getLogger("ReasonerAgent")
 
 
-class ReasonerAgent:
+class ReasonerAgent(PantheonAgent):
     """Develops strategic plans and logical reasoning for task execution"""
 
-    def __init__(self):
+    def __init__(self, message_bus=None):
         from src.agent_personality import AGENT_PERSONALITIES
-        self.name = "Reasoner"
+        config = AgentConfig(
+            name="Reasoner",
+            role="Strategic Planning & Logical Reasoning",
+            channels=["reasoner_channel"]
+        )
+        super().__init__(config, message_bus)
+
         self.specialization = "Strategic Planning & Logical Reasoning"
         self.responsibilities = [
             "Analyze task observations to develop comprehensive plans",
@@ -35,6 +44,10 @@ class ReasonerAgent:
         ]
         self.state = {}
 
+    async def process(self, message: Message):
+        """Process incoming message (not implemented)"""
+        pass
+
     async def reason(self, observation: Dict[str, Any], provider: Optional[str] = None) -> Dict[str, Any]:
         """
         Use AI to reason on an observation and produce a comprehensive plan.
@@ -42,10 +55,6 @@ class ReasonerAgent:
         logger.debug(f"[{self.name}] Reasoning on observation: {observation}")
 
         try:
-            # Get AI provider bus
-            from base import get_ai_provider_bus
-            ai_bus = await get_ai_provider_bus()
-
             # Get personality-enhanced prompt
             personality_prompt = self.personality.get_personality_prompt() if self.personality else ""
 
@@ -63,10 +72,10 @@ Return ONLY valid JSON:
     "approach": "strategy"
 }}"""
 
-            # Call AI
-            response = await ai_bus.send_message(
-                content=prompt,
-                provider_name=provider or "grok",  # Use specified provider or default to Grok
+            # Call AI via the integrated call_ai method
+            response = await self.call_ai(
+                prompt=prompt,
+                provider=provider,
                 conversation_id=f"reasoner_{hash(str(observation))}"
             )
 

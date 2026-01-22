@@ -3,15 +3,24 @@ import asyncio
 import logging
 from typing import Any, Dict, List, Optional
 
+from base import PantheonAgent, AgentConfig
+from messagebus import Message
+
 logger = logging.getLogger("ActorAgent")
 
 
-class ActorAgent:
+class ActorAgent(PantheonAgent):
     """Executes plans and coordinates task implementation"""
 
-    def __init__(self):
+    def __init__(self, message_bus=None):
         from src.agent_personality import AGENT_PERSONALITIES
-        self.name = "Actor"
+        config = AgentConfig(
+            name="Actor",
+            role="Plan Execution & Task Coordination",
+            channels=["actor_channel"]
+        )
+        super().__init__(config, message_bus)
+
         self.specialization = "Plan Execution & Task Coordination"
         self.responsibilities = [
             "Execute planned subtasks in proper sequence",
@@ -35,6 +44,10 @@ class ActorAgent:
         ]
         self.state = {}
 
+    async def process(self, message: Message):
+        """Process incoming message (not implemented)"""
+        pass
+
     async def act(self, plan: Dict[str, Any], provider: Optional[str] = None) -> Dict[str, Any]:
         """
         Use AI to determine how to execute subtasks and provide execution guidance.
@@ -42,10 +55,6 @@ class ActorAgent:
         logger.debug(f"[{self.name}] Acting on plan: {plan}")
 
         try:
-            # Get AI provider bus
-            from base import get_ai_provider_bus
-            ai_bus = await get_ai_provider_bus()
-
             subtasks = plan.get("subtasks", [])
             results = []
 
@@ -67,10 +76,10 @@ Return ONLY valid JSON:
     "estimated_duration": "time estimate"
 }}"""
 
-                # Call AI
-                response = await ai_bus.send_message(
-                    content=prompt,
-                    provider_name=provider or "grok",  # Use specified provider or default to Grok
+                # Call AI via the integrated call_ai method
+                response = await self.call_ai(
+                    prompt=prompt,
+                    provider=provider,
                     conversation_id=f"actor_{hash(str(plan))}_{i}"
                 )
 

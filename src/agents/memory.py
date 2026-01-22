@@ -3,10 +3,13 @@ import asyncio
 import logging
 from typing import Any, Dict, List
 
+from base import PantheonAgent, AgentConfig
+from messagebus import Message
+
 logger = logging.getLogger("MemoryAgent")
 
 
-class MemoryAgent:
+class MemoryAgent(PantheonAgent):
     """
     Memory Agent for Pantheon 9-Agent System.
     Responsible for storing and recalling state, observations, and execution history.
@@ -25,8 +28,14 @@ class MemoryAgent:
     - State management and caching
     """
 
-    def __init__(self):
-        self.name = "Memory"
+    def __init__(self, message_bus=None):
+        config = AgentConfig(
+            name="Memory",
+            role="State Management & Historical Data",
+            channels=["memory_channel"]
+        )
+        super().__init__(config, message_bus)
+
         self.specialization = "State Management & Historical Data"
         self.responsibilities = [
             "Store and organize system events and data",
@@ -41,6 +50,10 @@ class MemoryAgent:
             "State management and caching"
         ]
         self.memory_store: List[Dict[str, Any]] = []
+
+    async def process(self, message: Message):
+        """Process incoming message (not implemented)"""
+        pass
 
     async def store(self, event: Dict[str, Any]):
         """
