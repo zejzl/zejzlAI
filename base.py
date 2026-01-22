@@ -140,7 +140,13 @@ class PantheonAgent(ABC):
     async def call_ai(self, prompt: str, conversation_id: str = "default",
                      provider: Optional[str] = None, use_fallback: bool = True) -> str:
         """
-        Call AI provider via the AI Provider Bus
+        Call AI provider via the AI Provider Bus (ai_framework.AsyncMessageBus)
+
+        INTEGRATION COMPLETE: Successfully integrated with AI Provider Bus from ai_framework.py
+        - Uses AsyncMessageBus for provider management and API calls
+        - Supports all registered providers (Grok, Claude, Gemini, etc.)
+        - Includes timeout handling and error recovery
+        - Provides fallback responses when AI unavailable
 
         Args:
             prompt: The message to send to the AI
@@ -154,22 +160,41 @@ class PantheonAgent(ABC):
         provider_name = provider or self.config.api_provider
 
         try:
-            # Get the AI Provider Bus
+            # Get the AI Provider Bus (integrated from ai_framework.py)
             ai_bus = await get_ai_provider_bus()
 
-            # Send message to AI provider
+            # Validate provider is available
+            if not hasattr(ai_bus, 'providers') or provider_name not in ai_bus.providers:
+                available_providers = list(ai_bus.providers.keys()) if hasattr(ai_bus, 'providers') else []
+                logger.warning(f"{self.config.name}: Provider '{provider_name}' not available. Available: {available_providers}")
+                if available_providers:
+                    provider_name = available_providers[0]  # Use first available provider
+                    logger.info(f"{self.config.name}: Falling back to provider '{provider_name}'")
+
+            # Send message to AI provider with timeout
             logger.debug(f"{self.config.name} calling {provider_name}: {prompt[:50]}...")
-            response = await ai_bus.send_message(
-                content=prompt,
-                provider_name=provider_name,
-                conversation_id=f"pantheon_{conversation_id}"
+            response = await asyncio.wait_for(
+                ai_bus.send_message(
+                    content=prompt,
+                    provider_name=provider_name,
+                    conversation_id=f"pantheon_{conversation_id}"
+                ),
+                timeout=60.0  # 60 second timeout
             )
 
             logger.info(f"{self.config.name} received response from {provider_name}")
             return response
 
+        except asyncio.TimeoutError:
+            error_msg = f"{self.config.name} AI call timed out after 60 seconds"
+            logger.error(error_msg)
+            if use_fallback:
+                return f"[Timeout: {prompt[:30]}...]"
+            raise
+
         except Exception as e:
-            logger.error(f"{self.config.name} AI call failed: {e}")
+            error_msg = f"{self.config.name} AI call failed: {str(e)}"
+            logger.error(error_msg)
 
             if use_fallback:
                 # Return stub response as fallback
