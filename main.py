@@ -27,26 +27,6 @@ def select_provider():
 
     return provider_map.get(choice, "grok")
 
-# =============================================================================
-# COLLABORATION MODE IMPLEMENTATION PLAN
-# =============================================================================
-#
-# Goal: Enable Option 2 - Collaboration Mode (Grok + Claude dual AI planning)
-#
-# Implementation Steps:
-# 1. Create run_collaboration_mode() function
-# 2. Implement dual AI consensus logic
-# 3. Add option 2 to interactive menu
-# 4. Update provider selection to include Claude
-# 5. Test and document the feature
-#
-# Key Features:
-# - Grok provides creative/analytical perspective
-# - Claude provides structured/logical perspective
-# - Consensus-based planning with idea exchange
-# - Ultra-concise output format
-#
-# =============================================================================
 
 async def run_swarm_mode():
     """Run Swarm Mode - Multi-agent async team coordination"""
