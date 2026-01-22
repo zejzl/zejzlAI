@@ -115,15 +115,24 @@ Return your specialized analysis."""
         for agent_id, perspective, task_coro in swarm_tasks:
             print(f"[OK] Agent {agent_id}: {perspective} analyzing...")
             try:
-                result = await task_coro
+                result = await asyncio.wait_for(task_coro, timeout=60.0)
                 swarm_results.append({
                     'agent': agent_id,
                     'perspective': perspective,
                     'analysis': result
                 })
                 print(f"[OK] Agent {agent_id}: Analysis complete")
+            except asyncio.TimeoutError:
+                error_msg = f"Agent {agent_id}: Timeout after 60 seconds"
+                print(f"[ERROR] {error_msg}")
+                swarm_results.append({
+                    'agent': agent_id,
+                    'perspective': perspective,
+                    'analysis': f"Analysis failed: {error_msg}"
+                })
             except Exception as e:
-                print(f"[Error] Agent {agent_id}: Failed - {str(e)}")
+                error_msg = f"Agent {agent_id}: {str(e)}"
+                print(f"[ERROR] {error_msg}")
                 swarm_results.append({
                     'agent': agent_id,
                     'perspective': perspective,
@@ -172,9 +181,22 @@ Return the synthesized swarm solution."""
         print("=" * 60)
         print(f"\n[Swarm Stats: {len(swarm_results)} agents contributed]")
 
+    except asyncio.TimeoutError:
+        print("\n[ERROR] Swarm coordination timed out after 60 seconds. AI providers may be slow or unavailable.")
     except Exception as e:
-        print(f"\n[Error] Swarm coordination failed: {str(e)}")
-        print("Make sure API keys are configured.")
+        error_msg = str(e)
+        if "quota" in error_msg.lower() or "rate limit" in error_msg.lower():
+            print(f"\n[ERROR] API quota/rate limit exceeded: {error_msg}")
+            print("[INFO] Please try again later or use different providers.")
+        elif "authentication" in error_msg.lower() or "api key" in error_msg.lower():
+            print(f"\n[ERROR] Authentication failed: {error_msg}")
+            print("[INFO] Please check your API key configuration.")
+        elif "network" in error_msg.lower() or "connection" in error_msg.lower():
+            print(f"\n[ERROR] Network connection failed: {error_msg}")
+            print("[INFO] Please check your internet connection and try again.")
+        else:
+            print(f"\n[ERROR] Swarm coordination failed: {error_msg}")
+            print("[INFO] Make sure API keys are configured.")
 
 
 async def run_collaboration_mode():
@@ -199,7 +221,7 @@ async def run_collaboration_mode():
     ai_bus = await get_ai_provider_bus()
 
     try:
-        print("\n[Round 1/3] Grok: Creative analysis...")
+        # Define prompts for each AI
         grok_prompt = f"""Analyze this task creatively and generate multiple innovative approaches:
 
 Task: {task}
@@ -209,14 +231,6 @@ Focus on: innovation, edge cases, creative combinations, and out-of-the-box thin
 
 Return your analysis in 2-3 paragraphs."""
 
-        grok_response = await ai_bus.send_message(
-            content=grok_prompt,
-            provider_name="grok",
-            conversation_id=f"collaboration_grok_{hash(task)}"
-        )
-        print("[OK] Grok: Creative analysis received")
-
-        print("\n[Round 1/3] Claude: Logical analysis...")
         claude_prompt = f"""Analyze this task systematically and create a structured plan:
 
 Task: {task}
@@ -226,10 +240,25 @@ Focus on: structure, feasibility, dependencies, and practical implementation.
 
 Return your analysis in 2-3 paragraphs."""
 
-        claude_response = await ai_bus.send_message(
-            content=claude_prompt,
-            provider_name="claude",
-            conversation_id=f"collaboration_claude_{hash(task)}"
+        print("\n[Round 1/3] Grok: Creative analysis...")
+        grok_response = await asyncio.wait_for(
+            ai_bus.send_message(
+                content=grok_prompt,
+                provider_name="grok",
+                conversation_id=f"collaboration_grok_{hash(task)}"
+            ),
+            timeout=60.0
+        )
+        print("[OK] Grok: Creative analysis received")
+
+        print("\n[Round 1/3] Claude: Logical analysis...")
+        claude_response = await asyncio.wait_for(
+            ai_bus.send_message(
+                content=claude_prompt,
+                provider_name="claude",
+                conversation_id=f"collaboration_claude_{hash(task)}"
+            ),
+            timeout=60.0
         )
         print("[OK] Claude: Logical analysis received")
 
@@ -250,10 +279,13 @@ Address any conflicts and create a unified, enhanced plan that leverages both cr
 Return the collaborative plan in 3-4 paragraphs."""
 
         # Use Grok for the final collaborative synthesis (could alternate between providers)
-        collaborative_plan = await ai_bus.send_message(
-            content=exchange_prompt,
-            provider_name="grok",  # Could be configurable
-            conversation_id=f"collaboration_final_{hash(task)}"
+        collaborative_plan = await asyncio.wait_for(
+            ai_bus.send_message(
+                content=exchange_prompt,
+                provider_name="grok",  # Could be configurable
+                conversation_id=f"collaboration_final_{hash(task)}"
+            ),
+            timeout=60.0
         )
         print("[OK] Idea exchange complete")
 
@@ -268,9 +300,22 @@ Return the collaborative plan in 3-4 paragraphs."""
         print(f"Collaborative Plan: {final_output}")
         print("=" * 50)
 
+    except asyncio.TimeoutError:
+        print("\n[ERROR] Collaboration timed out after 60 seconds. One or both AI providers may be slow or unavailable.")
     except Exception as e:
-        print(f"\n[Error] Collaboration failed: {str(e)}")
-        print("Make sure both Grok and Claude API keys are configured.")
+        error_msg = str(e)
+        if "quota" in error_msg.lower() or "rate limit" in error_msg.lower():
+            print(f"\n[ERROR] API quota/rate limit exceeded: {error_msg}")
+            print("[INFO] Please try again later or use different providers.")
+        elif "authentication" in error_msg.lower() or "api key" in error_msg.lower():
+            print(f"\n[ERROR] Authentication failed: {error_msg}")
+            print("[INFO] Please check your Grok and Claude API key configuration.")
+        elif "network" in error_msg.lower() or "connection" in error_msg.lower():
+            print(f"\n[ERROR] Network connection failed: {error_msg}")
+            print("[INFO] Please check your internet connection and try again.")
+        else:
+            print(f"\n[ERROR] Collaboration failed: {error_msg}")
+            print("[INFO] Make sure both Grok and Claude API keys are configured.")
 
 
 async def run_single_agent_mode():
@@ -297,19 +342,73 @@ async def run_single_agent_mode():
     reasoner = ReasonerAgent()
     actor = ActorAgent()
 
-    task = input("\nEnter a task for the Single Agent: ")
+    # Get user task with validation
+    while True:
+        try:
+            task = input("\nEnter a task for the Single Agent: ").strip()
+            if not task:
+                print("[ERROR] Task cannot be empty. Please enter a valid task.")
+                continue
+            if len(task) > 1000:
+                print("[ERROR] Task is too long (max 1000 characters). Please enter a shorter task.")
+                continue
+            break
+        except KeyboardInterrupt:
+            print("\n[INFO] Operation cancelled by user.")
+            return
+        except EOFError:
+            print("\n[ERROR] Input stream closed. Exiting.")
+            return
 
-    print("\n[Observer] Processing task...")
-    observation = await observer.observe(task, provider)
-    print(f"[OK] Observation received")
+    try:
+        print("\n[Observer] Processing task...")
+        observation = await asyncio.wait_for(
+            observer.observe(task, provider),
+            timeout=60.0  # 60 second timeout
+        )
+        print(f"[OK] Observation received")
 
-    print("\n[Reasoner] Creating plan...")
-    plan = await reasoner.reason(observation, provider)
-    print(f"[OK] Plan created")
+        print("\n[Reasoner] Creating plan...")
+        plan = await asyncio.wait_for(
+            reasoner.reason(observation, provider),
+            timeout=60.0
+        )
+        print(f"[OK] Plan created")
 
-    print("\n[Actor] Executing plan...")
-    execution = await actor.act(plan, provider)
-    print(f"[OK] Actions executed\n")
+        print("\n[Actor] Executing plan...")
+        execution = await asyncio.wait_for(
+            actor.act(plan, provider),
+            timeout=60.0
+        )
+        print(f"[OK] Actions executed\n")
+
+    except asyncio.TimeoutError:
+        print("\n[ERROR] Operation timed out after 60 seconds. The AI provider may be slow or unavailable.")
+    except Exception as e:
+        error_msg = str(e)
+        if "quota" in error_msg.lower() or "rate limit" in error_msg.lower():
+            print(f"\n[ERROR] API quota/rate limit exceeded: {error_msg}")
+            print("[INFO] Please try again later or switch to a different provider.")
+        elif "authentication" in error_msg.lower() or "api key" in error_msg.lower():
+            print(f"\n[ERROR] Authentication failed: {error_msg}")
+            print("[INFO] Please check your API key configuration.")
+        elif "network" in error_msg.lower() or "connection" in error_msg.lower():
+            print(f"\n[ERROR] Network connection failed: {error_msg}")
+            print("[INFO] Please check your internet connection and try again.")
+        else:
+            print(f"\n[ERROR] Unexpected error: {error_msg}")
+            print("[INFO] If this persists, please check the logs for more details.")
+
+
+def get_available_provider(ai_bus, preferred_provider="grok"):
+    """Get an available provider, falling back to any available provider"""
+    if ai_bus and hasattr(ai_bus, 'providers') and ai_bus.providers:
+        # Check if preferred provider is available
+        if preferred_provider in ai_bus.providers:
+            return preferred_provider
+        # Fall back to first available provider
+        return list(ai_bus.providers.keys())[0]
+    return None
 
 
 async def run_pantheon_mode():
@@ -326,6 +425,9 @@ async def run_pantheon_mode():
         for handler in logging.getLogger(name).handlers[:]:
             logging.getLogger(name).removeHandler(handler)
 
+    provider = select_provider()
+
+    # Import all agent classes
     from src.agents.observer import ObserverAgent
     from src.agents.reasoner import ReasonerAgent
     from src.agents.actor import ActorAgent
@@ -335,8 +437,6 @@ async def run_pantheon_mode():
     from src.agents.analyzer import AnalyzerAgent
     from src.agents.learner import LearnerAgent
     from src.agents.improver import ImproverAgent
-
-    provider = select_provider()
 
     observer = ObserverAgent()
     reasoner = ReasonerAgent()
@@ -348,7 +448,23 @@ async def run_pantheon_mode():
     learner = LearnerAgent()
     improver = ImproverAgent()
 
-    task = input("\nEnter a task for the Pantheon: ")
+    # Get user task with validation
+    while True:
+        try:
+            task = input("\nEnter a task for the Pantheon: ").strip()
+            if not task:
+                print("[ERROR] Task cannot be empty. Please enter a valid task.")
+                continue
+            if len(task) > 1000:
+                print("[ERROR] Task is too long (max 1000 characters). Please enter a shorter task.")
+                continue
+            break
+        except KeyboardInterrupt:
+            print("\n[INFO] Operation cancelled by user.")
+            return
+        except EOFError:
+            print("\n[ERROR] Input stream closed. Exiting.")
+            return
 
     print("\n[1/9 Observer] Gathering observations...")
     observation = await observer.observe(task, provider)
@@ -380,16 +496,53 @@ async def run_pantheon_mode():
     print(f"[OK] {len(events)} events stored")
 
     print("\n[7/9 Analyzer] Analyzing metrics...")
-    analysis = await analyzer.analyze(events, provider)
-    print(f"[OK] Analysis complete")
+    try:
+        # Get AI provider bus and ensure provider is available
+        from base import get_ai_provider_bus
+        ai_bus = await get_ai_provider_bus()
+        available_provider = get_available_provider(ai_bus, provider)
+
+        if available_provider:
+            analysis = await asyncio.wait_for(
+                analyzer.analyze(events, available_provider),
+                timeout=60.0
+            )
+            print(f"[OK] Analysis complete")
+        else:
+            raise Exception("No AI providers available")
+    except Exception as e:
+        print(f"[ERROR] Analysis failed: {str(e)[:50]}...")
+        analysis = {"error": "Analysis failed", "events_count": len(events)}
 
     print("\n[8/9 Learner] Learning patterns...")
-    learned = await learner.learn(events, provider=provider)
-    print(f"[OK] Learning complete")
+    try:
+        learned = await asyncio.wait_for(
+            learner.learn(events, provider=provider),
+            timeout=60.0
+        )
+        print(f"[OK] Learning complete")
+    except Exception as e:
+        print(f"[ERROR] Learning failed: {str(e)[:50]}...")
+        learned = {"error": "Learning failed", "patterns_found": 0}
 
     print("\n[9/9 Improver] Generating improvements...")
-    improvement = await improver.improve(analysis, learned, provider)
-    print(f"[OK] Improvements generated\n")
+    try:
+        # Get AI provider bus and ensure provider is available
+        from base import get_ai_provider_bus
+        ai_bus = await get_ai_provider_bus()
+        available_provider = get_available_provider(ai_bus, provider)
+
+        if available_provider:
+            improvement = await asyncio.wait_for(
+                improver.improve(analysis, learned, available_provider),
+                timeout=60.0
+            )
+            print(f"[OK] Improvements generated\n")
+        else:
+            raise Exception("No AI providers available")
+    except Exception as e:
+        print(f"[ERROR] Improvement failed: {str(e)[:50]}...")
+        improvement = {"error": "Improvement failed", "suggestions": []}
 
     print("\n[OK] Pantheon orchestration complete!")
 
