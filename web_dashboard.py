@@ -330,6 +330,9 @@ async def magic_action(action: str, background_tasks: BackgroundTasks):
             result = await dashboard.magic.blue_spark_heal("dashboard_request", "Web interface healing")
             return {"success": True, "result": result}
 
+        # Broadcast the update
+        background_tasks.add_task(broadcast_update, "magic_update", await dashboard.get_system_status())
+
         return {"success": False, "error": f"Unknown action: {action}"}
 
     except Exception as e:
@@ -347,6 +350,17 @@ async def websocket_endpoint(websocket: WebSocket):
             status = await dashboard.get_system_status()
             await websocket.send_json(status)
             await asyncio.sleep(5)
+
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+
+async def broadcast_update(update_type: str, data: Any):
+    """Broadcasts updates to all connected WebSocket clients."""
+    for client in dashboard.connected_clients:
+        try:
+            await client.send_json({"type": update_type, "data": data, "last_updated": datetime.now().isoformat()})
+        except Exception as e:
+            logger.error(f"Failed to send update to client: {e}")
 
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
@@ -377,6 +391,9 @@ async def chat_endpoint(request: Request, background_tasks: BackgroundTasks):
         # Record the interaction
         mode = "consensus" if consensus else "single"
         record_metric("dashboard_chat", 1, {"provider": provider, "mode": mode})
+
+        # Broadcast the update
+        background_tasks.add_task(broadcast_update, "analytics_update", await dashboard.get_system_status())
 
         return {
             "response": response,

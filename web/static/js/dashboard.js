@@ -12,10 +12,10 @@ class DashboardManager {
 
     init() {
         this.setupEventListeners();
-        this.loadInitialData();
-        this.setupWebSocket();
-        this.updateTimestamp();
-        setInterval(() => this.updateTimestamp(), 1000);
+        loadInitialData();
+        setupWebSocket();
+        updateTimestamp();
+        setInterval(updateTimestamp, 1000);
     }
 
     setupEventListeners() {
@@ -535,9 +535,25 @@ class DashboardManager {
         const chatInput = document.getElementById('chat-input');
         const sendBtn = document.getElementById('send-btn');
         const clearBtn = document.getElementById('clear-chat');
+        const chatFileInput = document.getElementById('chat-file-input');
+        const chatAttachments = document.getElementById('chat-attachments');
+
+        if (chatFileInput) {
+            chatFileInput.addEventListener('change', (e) => {
+                this.chatFiles = e.target.files;
+                chatAttachments.textContent = this.chatFiles.length > 0 ? `${this.chatFiles.length} files selected` : 'No files selected';
+            });
+        }
 
         if (sendBtn) {
-            sendBtn.addEventListener('click', () => this.sendChatMessage());
+            sendBtn.addEventListener('click', () => {
+                const message = chatInput.value.trim();
+                this.sendChatMessage(message, this.chatFiles);
+                chatInput.value = '';
+                chatFileInput.value = '';
+                this.chatFiles = null;
+                chatAttachments.textContent = 'No files selected';
+            });
         }
 
         if (chatInput) {
@@ -554,27 +570,27 @@ class DashboardManager {
         }
     }
 
-    async sendChatMessage() {
-        const chatInput = document.getElementById('chat-input');
-        const message = chatInput.value.trim();
+    async sendChatMessage(message, files) {
+        if (!message && (!files || files.length === 0)) return;
 
-        if (!message) return;
-
-        // Add user message to chat
         this.addChatMessage(message, 'user');
-
-        // Clear input
-        chatInput.value = '';
-
-        // Show typing indicator
         this.showTypingIndicator();
 
         try {
             const provider = document.getElementById('chat-provider').value;
-            const mode = document.getElementById('chat-mode').value;
-            const streaming = document.getElementById('streaming').checked;
+            const attachments = [];
 
-            const response = await fetch('/api/chat', {
+            if (files) {
+                for (const file of files) {
+                    const base64 = await this.fileToBase64(file);
+                    attachments.push({
+                        type: file.type.startsWith('image/') ? 'image' : 'document',
+                        data: base64
+                    });
+                }
+            }
+
+            const response = await fetch('/api/multimodal/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -582,7 +598,7 @@ class DashboardManager {
                 body: JSON.stringify({
                     message: message,
                     provider: provider,
-                    stream: streaming
+                    attachments: attachments
                 })
             });
 
