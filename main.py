@@ -636,6 +636,66 @@ async def run_offline_mode():
         await ai_bus.enable_offline_mode(False)
 
 
+async def run_vault_mode():
+    """Run Community Vault Mode - Browse and share tools, configs, and evolutions"""
+    # Complete logging suppression for clean CLI output
+    logging.basicConfig(level=logging.CRITICAL, force=True, handlers=[])
+    logging.getLogger().setLevel(logging.CRITICAL)
+    # Disable all handlers to prevent any output
+    for handler in logging.getLogger().handlers[:]:
+        logging.getLogger().removeHandler(handler)
+    # Suppress all existing and future loggers
+    for name in list(logging.root.manager.loggerDict.keys()) + ['zejzl', 'zejzl.performance', 'zejzl.debug', 'ai_framework']:
+        logging.getLogger(name).setLevel(logging.CRITICAL)
+        for handler in logging.getLogger(name).handlers[:]:
+            logging.getLogger(name).removeHandler(handler)
+
+    print("\n[Community Vault Mode]")
+    print("Browse and share tools, configurations, agent evolutions, and more.")
+    print("The Community Vault enables collaborative development and knowledge sharing.")
+
+    try:
+        # Initialize vault
+        from community_vault import CommunityVault
+        vault = CommunityVault()
+
+        # Get vault statistics
+        stats = await vault.get_stats()
+        print("\n[Vault Statistics]")
+        print(f"Total Items: {stats.get('total_items', 0)}")
+        print(f"Total Downloads: {stats.get('total_downloads', 0)}")
+        print(f"Average Rating: {stats.get('average_rating', 0):.1f}")
+        print(f"Categories: {len(stats.get('categories', {}))}")
+
+        # Show available categories
+        categories = await vault.get_categories()
+        print("\n[Available Categories]")
+        for category in categories:
+            count = stats.get('categories', {}).get(category['id'], 0)
+            print(f"  {category['name']}: {count} items")
+
+        # Show featured items
+        featured = await vault.get_featured_items(5)
+        if featured:
+            print("\n[Featured Items]")
+            for item in featured:
+                print(f"  ⭐ {item.name} by {item.author}")
+                print(f"     {item.description[:60]}{'...' if len(item.description) > 60 else ''}")
+                print(f"     ⭐ {item.rating:.1f} rating, {item.downloads} downloads")
+                print()
+
+        print("[Community Vault Demo Complete]")
+        print("Visit the web dashboard to browse, download, and publish items!")
+        print("Use the Community Vault tab to explore the full collection.")
+
+    except Exception as e:
+        error_msg = str(e)
+        print(f"\n[ERROR] Community Vault failed: {error_msg[:100]}...")
+        print("[INFO] The vault system may not be fully initialized yet.")
+
+    print("\n[TIP] Access the full Community Vault experience through the web dashboard!")
+
+
 async def run_learning_loop_mode():
     """Run Learning Loop Mode - Single optimization cycle for system improvement"""
     # Complete logging suppression for clean CLI output
@@ -728,12 +788,13 @@ def run_interactive_menu(debug: bool = True, max_iterations: int = 10, max_round
         4. Pantheon Mode - Full 9-agent orchestration with validation & learning
         5. Learning Loop - Single optimization cycle for system improvement
         6. Offline Mode - Cached responses for offline operation
+        7. Community Vault - Browse and share tools, configs, and evolutions
         9. Quit
 
-        (Note: Modes 7,8 are not yet implemented)
+        (Note: Mode 8 is not yet implemented)
 """)
 
-    choice = input("        Choose mode (1, 2, 3, 4, 5, 6, or 9): ").strip()
+    choice = input("        Choose mode (1, 2, 3, 4, 5, 6, 7, or 9): ").strip()
 
     if choice == "1":
         print("\n[Starting Single Agent Mode...]")
@@ -753,12 +814,15 @@ def run_interactive_menu(debug: bool = True, max_iterations: int = 10, max_round
     elif choice == "6":
         print("\n[Starting Offline Mode...]")
         asyncio.run(run_offline_mode())
+    elif choice == "7":
+        print("\n[Starting Community Vault Mode...]")
+        asyncio.run(run_vault_mode())
     elif choice == "9":
         print("\n        Goodbye! :)\n")
         input("        Press Enter to exit...")
         sys.exit(0)
     else:
-        print(f"\n        Mode {choice} is not yet implemented. Please choose 1-6, or 9.\n")
+        print(f"\n        Mode {choice} is not yet implemented. Please choose 1-7, or 9.\n")
 
     return choice
 

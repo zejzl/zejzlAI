@@ -42,12 +42,22 @@ except ImportError:
     get_security_manager = None
     MCPAgentInterface = None
     initialize_mcp = None
+
+# Import Community Vault
+try:
+    from community_vault import CommunityVault
+except ImportError:
+    CommunityVault = None
+
 from telemetry import get_telemetry
 from src.performance import record_metric
 from src.logging_debug import debug_monitor, logger as debug_logger
 
 # Initialize analytics globally
 analytics = UsageAnalytics()
+
+# Initialize community vault
+vault = CommunityVault()
 
 logger = logging.getLogger(__name__)
 
@@ -955,6 +965,239 @@ async def get_mcp_security_status():
         logger.error(f"MCP security endpoint error: {e}")
         return {"success": False, "error": str(e)}
 
+@app.get("/api/mcp/security/principals")
+async def get_mcp_security_principals():
+    """Get all security principals"""
+    try:
+        if not dashboard.mcp_security_manager:
+            return {"success": False, "error": "MCP Security not available"}
+
+        principals = {}
+        for id, principal in dashboard.mcp_security_manager.principals.items():
+            principals[id] = {
+                "id": principal.id,
+                "name": principal.name,
+                "type": principal.type,
+                "security_level": principal.security_level.value,
+                "permissions": [p.value for p in principal.permissions],
+                "created_at": principal.created_at.isoformat(),
+                "last_active": principal.last_active.isoformat()
+            }
+
+        return {
+            "success": True,
+            "principals": principals,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"MCP security principals endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/mcp/security/principals")
+async def create_mcp_security_principal(request: Request):
+    """Create a new security principal"""
+    try:
+        if not dashboard.mcp_security_manager:
+            return {"success": False, "error": "MCP Security not available"}
+
+        data = await request.json()
+        principal_id = data.get("id")
+        name = data.get("name")
+        principal_type = data.get("type", "user")
+        security_level = data.get("security_level", "USER")
+        permissions = data.get("permissions", [])
+
+        if not principal_id or not name:
+            return {"success": False, "error": "Principal ID and name are required"}
+
+        from src.mcp_security import SecurityLevel, Permission
+
+        # Convert string to enum
+        try:
+            level = SecurityLevel(security_level.upper())
+        except ValueError:
+            return {"success": False, "error": f"Invalid security level: {security_level}"}
+
+        # Convert permissions
+        permission_enums = []
+        for perm in permissions:
+            try:
+                permission_enums.append(Permission(perm.upper()))
+            except ValueError:
+                return {"success": False, "error": f"Invalid permission: {perm}"}
+
+        principal = await dashboard.mcp_security_manager.create_principal(
+            principal_id, name, principal_type, level, set(permission_enums)
+        )
+
+        return {
+            "success": True,
+            "principal": {
+                "id": principal.id,
+                "name": principal.name,
+                "type": principal.type,
+                "security_level": principal.security_level.value,
+                "permissions": [p.value for p in principal.permissions]
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Create MCP security principal endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/mcp/security/tokens")
+async def get_mcp_security_tokens():
+    """Get all active access tokens"""
+    try:
+        if not dashboard.mcp_security_manager:
+            return {"success": False, "error": "MCP Security not available"}
+
+        tokens = {}
+        for token_str, token in dashboard.mcp_security_manager.tokens.items():
+            tokens[token_str[:8] + "..."] = {
+                "principal_id": token.principal_id,
+                "expires_at": token.expires_at.isoformat(),
+                "permissions": [p.value for p in token.permissions],
+                "created_at": token.created_at.isoformat()
+            }
+
+        return {
+            "success": True,
+            "tokens": tokens,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"MCP security tokens endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/mcp/security/tokens")
+async def create_mcp_security_token(request: Request):
+    """Create a new access token"""
+    try:
+        if not dashboard.mcp_security_manager:
+            return {"success": False, "error": "MCP Security not available"}
+
+        data = await request.json()
+        principal_id = data.get("principal_id")
+        expires_in = data.get("expires_in", 3600)
+        permissions = data.get("permissions", [])
+
+        if not principal_id:
+            return {"success": False, "error": "Principal ID is required"}
+
+        # Convert permissions
+        permission_enums = []
+        for perm in permissions:
+            try:
+                from src.mcp_security import Permission
+                permission_enums.append(Permission(perm.upper()))
+            except ValueError:
+                return {"success": False, "error": f"Invalid permission: {perm}"}
+
+        token = await dashboard.mcp_security_manager.create_token(
+            principal_id, expires_in, set(permission_enums) if permission_enums else None
+        )
+
+        if not token:
+            return {"success": False, "error": "Failed to create token - principal not found"}
+
+        return {
+            "success": True,
+            "token": token,
+            "expires_in": expires_in,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Create MCP security token endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.delete("/api/mcp/security/tokens/{token_prefix}")
+async def revoke_mcp_security_token(token_prefix: str):
+    """Revoke an access token by prefix"""
+    try:
+        if not dashboard.mcp_security_manager:
+            return {"success": False, "error": "MCP Security not available"}
+
+        # Find token by prefix
+        target_token = None
+        for token_str in dashboard.mcp_security_manager.tokens:
+            if token_str.startswith(token_prefix):
+                target_token = token_str
+                break
+
+        if not target_token:
+            return {"success": False, "error": "Token not found"}
+
+        success = await dashboard.mcp_security_manager.revoke_token(target_token)
+
+        return {
+            "success": success,
+            "message": "Token revoked successfully" if success else "Failed to revoke token",
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Revoke MCP security token endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/mcp/security/audit")
+async def get_mcp_security_audit(limit: int = 100, principal_id: str = None, action: str = None):
+    """Get audit log events"""
+    try:
+        if not dashboard.mcp_security_manager:
+            return {"success": False, "error": "MCP Security not available"}
+
+        events = await dashboard.mcp_security_manager.get_audit_events(
+            limit=limit, principal_id=principal_id, action=action
+        )
+
+        audit_events = []
+        for event in events:
+            audit_events.append({
+                "timestamp": event.timestamp.isoformat(),
+                "principal_id": event.principal_id,
+                "action": event.action,
+                "resource": event.resource,
+                "success": event.success,
+                "details": event.details,
+                "ip_address": event.ip_address,
+                "user_agent": event.user_agent
+            })
+
+        return {
+            "success": True,
+            "events": audit_events,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"MCP security audit endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/mcp/security/rate-limits")
+async def get_mcp_security_rate_limits():
+    """Get rate limit rules and status"""
+    try:
+        if not dashboard.mcp_security_manager:
+            return {"success": False, "error": "MCP Security not available"}
+
+        rules = {}
+        for name, rule in dashboard.mcp_security_manager.rate_rules.items():
+            rules[name] = {
+                "name": rule.name,
+                "max_requests": rule.max_requests,
+                "window_seconds": rule.window_seconds,
+                "burst_limit": rule.burst_limit,
+                "cooldown_seconds": rule.cooldown_seconds
+            }
+
+        return {
+            "success": True,
+            "rules": rules,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"MCP security rate limits endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
 @app.post("/api/mcp/tool-call")
 async def call_mcp_tool(request: Request):
     """Call an MCP tool through the web interface"""
@@ -1217,32 +1460,201 @@ async def request_user_approval(request: Request):
         validation_data = data.get("validation", {})
         user_id = data.get("user_id", "web_user")
 
-        if not operation:
-            return {"success": False, "error": "Operation required"}
-
-        # Convert dict back to ValidationResult
-        from src.security_validator import ValidationResult, RiskLevel, ApprovalRequirement
-
-        validation = ValidationResult(
-            is_safe=validation_data.get("is_safe", False),
-            risk_level=RiskLevel(validation_data.get("risk_level", "medium_risk")),
-            approval_required=ApprovalRequirement(validation_data.get("approval_required", "user_confirm")),
-            violations=validation_data.get("violations", []),
-            recommendations=validation_data.get("recommendations", []),
-            requires_user_approval=validation_data.get("requires_user_approval", True),
-            requires_admin_approval=validation_data.get("requires_admin_approval", False),
-            can_proceed=validation_data.get("can_proceed", False)
-        )
-
-        approved = await security_validator.request_user_approval(operation, validation, user_id)
+        approval_request = security_validator.request_approval(operation, validation_data, user_id)
 
         return {
             "success": True,
-            "approved": approved,
-            "message": "Approval request submitted"
+            "data": {
+                "request_id": approval_request.id,
+                "status": approval_request.status.value,
+                "requires_approval": approval_request.requires_user_approval or approval_request.requires_admin_approval
+            }
         }
+
     except Exception as e:
         logger.error(f"Request approval endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+# Community Vault API Endpoints
+
+@app.get("/api/vault/categories")
+async def get_vault_categories():
+    """Get available vault categories"""
+    try:
+        categories = await vault.get_categories()
+        return {"success": True, "data": categories}
+    except Exception as e:
+        logger.error(f"Vault categories endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/vault/stats")
+async def get_vault_stats():
+    """Get vault statistics"""
+    try:
+        stats = await vault.get_stats()
+        return {"success": True, "data": stats}
+    except Exception as e:
+        logger.error(f"Vault stats endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/vault/featured")
+async def get_featured_items(limit: int = 10):
+    """Get featured vault items"""
+    try:
+        items = await vault.get_featured_items(limit)
+        return {"success": True, "data": [item.to_dict() for item in items]}
+    except Exception as e:
+        logger.error(f"Featured items endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/vault/search")
+async def search_vault_items(
+    q: str = "",
+    category: str = None,
+    author: str = None,
+    tags: str = None,
+    sort_by: str = "downloads",
+    sort_order: str = "desc",
+    limit: int = 20,
+    offset: int = 0
+):
+    """Search vault items"""
+    try:
+        # Parse tags if provided
+        tag_list = tags.split(",") if tags else None
+
+        items = await vault.search_items(
+            query=q,
+            category=category,
+            author=author,
+            tags=tag_list,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            limit=limit,
+            offset=offset
+        )
+
+        return {
+            "success": True,
+            "data": [item.to_dict() for item in items],
+            "pagination": {
+                "limit": limit,
+                "offset": offset,
+                "has_more": len(items) == limit
+            }
+        }
+    except Exception as e:
+        logger.error(f"Vault search endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/vault/item/{item_id}")
+async def get_vault_item(item_id: str):
+    """Get a specific vault item"""
+    try:
+        item = await vault.get_item(item_id)
+        if item:
+            return {"success": True, "data": item.to_dict()}
+        else:
+            return {"success": False, "error": "Item not found"}
+    except Exception as e:
+        logger.error(f"Get vault item endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/vault/publish")
+async def publish_vault_item(request: Request):
+    """Publish a new vault item"""
+    try:
+        data = await request.json()
+        item_data = data.get("item", {})
+        author = data.get("author", "anonymous")
+
+        # Basic validation
+        required_fields = ["name", "description", "category"]
+        for field in required_fields:
+            if field not in item_data:
+                return {"success": False, "error": f"Missing required field: {field}"}
+
+        success, result = await vault.publish_item(item_data, author=author)
+
+        if success:
+            return {"success": True, "data": {"item_id": result}}
+        else:
+            return {"success": False, "error": result}
+
+    except Exception as e:
+        logger.error(f"Publish vault item endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/vault/download/{item_id}")
+async def download_vault_item(item_id: str, request: Request):
+    """Download a vault item"""
+    try:
+        # Get client info for download tracking
+        client_ip = request.client.host if request.client else None
+        user_agent = request.headers.get("User-Agent")
+
+        content = await vault.download_item(
+            item_id=item_id,
+            ip_address=client_ip,
+            user_agent=user_agent
+        )
+
+        if content:
+            item = await vault.get_item(item_id)
+            if item:
+                return {
+                    "success": True,
+                    "data": {
+                        "item": item.to_dict(),
+                        "content": base64.b64encode(content).decode('utf-8'),
+                        "content_type": item.content_type
+                    }
+                }
+
+        return {"success": False, "error": "Item not found or download failed"}
+
+    except Exception as e:
+        logger.error(f"Download vault item endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/vault/rate/{item_id}")
+async def rate_vault_item(item_id: str, request: Request):
+    """Rate a vault item"""
+    try:
+        data = await request.json()
+        user_id = data.get("user_id", "anonymous")
+        rating = data.get("rating", 0)
+        review = data.get("review")
+
+        if not 1 <= rating <= 5:
+            return {"success": False, "error": "Rating must be between 1 and 5"}
+
+        success = await vault.rate_item(item_id, user_id, rating, review)
+
+        if success:
+            return {"success": True, "message": "Rating submitted successfully"}
+        else:
+            return {"success": False, "error": "Failed to submit rating"}
+
+    except Exception as e:
+        logger.error(f"Rate vault item endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.delete("/api/vault/item/{item_id}")
+async def delete_vault_item(item_id: str, author: str = "admin"):
+    """Delete a vault item (admin only)"""
+    try:
+        # In a real implementation, you'd check admin permissions
+        # For now, we'll just check if the item exists
+        item = await vault.get_item(item_id)
+        if not item:
+            return {"success": False, "error": "Item not found"}
+
+        # For now, just return success (actual deletion would require more complex logic)
+        return {"success": True, "message": "Item deletion not yet implemented"}
+
+    except Exception as e:
+        logger.error(f"Delete vault item endpoint error: {e}")
         return {"success": False, "error": str(e)}
 
 

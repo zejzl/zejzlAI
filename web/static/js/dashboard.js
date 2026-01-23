@@ -98,6 +98,26 @@ class DashboardManager {
             this.executeMCPTool();
         });
 
+        // Vault functionality
+        document.getElementById('vault-search-btn')?.addEventListener('click', () => {
+            this.searchVaultItems();
+        });
+
+        document.getElementById('vault-publish-btn')?.addEventListener('click', () => {
+            this.showPublishVaultItemModal();
+        });
+
+        document.getElementById('vault-load-more')?.addEventListener('click', () => {
+            this.loadMoreVaultItems();
+        });
+
+        // Vault search on Enter key
+        document.getElementById('vault-search')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.searchVaultItems();
+            }
+        });
+
         // Security scan
         document.getElementById('security-scan-btn')?.addEventListener('click', () => {
             this.runSecurityScan();
@@ -165,6 +185,9 @@ class DashboardManager {
                     break;
                 case 'mcp':
                     await this.loadMCPData();
+                    break;
+                case 'vault':
+                    await this.loadVaultData();
                     break;
             }
         } catch (error) {
@@ -392,6 +415,122 @@ class DashboardManager {
             }
         } catch (error) {
             console.error('Failed to load MCP data:', error);
+        }
+    }
+
+    async loadVaultData() {
+        try {
+            const [stats, categories, featured] = await Promise.all([
+                this.api.get('/vault/stats'),
+                this.api.get('/vault/categories'),
+                this.api.get('/vault/featured', { limit: 12 })
+            ]);
+
+            if (stats.success) {
+                this.updateVaultStats(stats.data);
+            }
+
+            if (categories.success) {
+                this.populateVaultCategories(categories.data);
+            }
+
+            if (featured.success) {
+                this.displayVaultItems(featured.data);
+            }
+        } catch (error) {
+            console.error('Failed to load vault data:', error);
+        }
+    }
+
+    updateVaultStats(stats) {
+        const elements = {
+            'vault-total-items': stats.total_items || 0,
+            'vault-total-downloads': stats.total_downloads || 0,
+            'vault-avg-rating': stats.average_rating ? stats.average_rating.toFixed(1) : '0.0',
+            'vault-categories-count': Object.keys(stats.categories || {}).length
+        };
+
+        Object.entries(elements).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = value;
+            }
+        });
+    }
+
+    populateVaultCategories(categories) {
+        const select = document.getElementById('vault-category-filter');
+        if (!select) return;
+
+        // Clear existing options except "All Categories"
+        select.innerHTML = '<option value="">All Categories</option>';
+
+        categories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category.id;
+            option.textContent = category.name;
+            select.appendChild(option);
+        });
+    }
+
+    displayVaultItems(items) {
+        const grid = document.getElementById('vault-items-grid');
+        if (!grid) return;
+
+        if (!items || items.length === 0) {
+            grid.innerHTML = `
+                <div class="col-span-full text-center text-gray-400 py-12">
+                    <i data-lucide="package" class="w-16 h-16 mx-auto mb-4 opacity-50"></i>
+                    <p class="text-lg mb-2">No items found</p>
+                    <p class="text-sm">Try adjusting your search or filters</p>
+                </div>
+            `;
+            return;
+        }
+
+        grid.innerHTML = items.map(item => `
+            <div class="bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-blue-500 transition-colors">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-white text-lg mb-1">${item.name}</h4>
+                        <p class="text-sm text-gray-300 mb-2">${item.description}</p>
+                        <div class="flex items-center space-x-4 text-xs text-gray-400">
+                            <span>by ${item.author}</span>
+                            <span>v${item.version}</span>
+                            <span class="capitalize">${item.category}</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="flex items-center mb-1">
+                            <i data-lucide="star" class="w-4 h-4 text-yellow-400 mr-1"></i>
+                            <span class="text-sm font-medium">${item.rating.toFixed(1)}</span>
+                        </div>
+                        <div class="text-xs text-gray-400">
+                            ${item.downloads} downloads
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div class="flex flex-wrap gap-1">
+                        ${item.tags.slice(0, 3).map(tag => `<span class="px-2 py-1 bg-blue-600 text-xs rounded">${tag}</span>`).join('')}
+                        ${item.tags.length > 3 ? `<span class="px-2 py-1 bg-gray-600 text-xs rounded">+${item.tags.length - 3}</span>` : ''}
+                    </div>
+                    <div class="flex space-x-2">
+                        <button class="text-blue-400 hover:text-blue-300 p-1" onclick="dashboardManager.viewVaultItem('${item.id}')">
+                            <i data-lucide="eye" class="w-4 h-4"></i>
+                        </button>
+                        <button class="text-green-400 hover:text-green-300 p-1" onclick="dashboardManager.downloadVaultItem('${item.id}')">
+                            <i data-lucide="download" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        // Re-initialize Lucide icons
+        if (window.lucide) {
+            window.lucide.createIcons();
         }
     }
 
@@ -1760,6 +1899,295 @@ class DashboardManager {
             this.ui.showNotification('Error', 'Failed to refresh cache statistics', 'error');
         } finally {
             this.ui.hideLoading('#refresh-cache-btn');
+        }
+    }
+
+    // Vault Methods
+    async searchVaultItems() {
+        try {
+            const searchQuery = document.getElementById('vault-search')?.value || '';
+            const category = document.getElementById('vault-category-filter')?.value || '';
+            const sortBy = document.getElementById('vault-sort-by')?.value || 'downloads';
+
+            this.ui.showLoading('#vault-items-grid', 'Searching vault...');
+
+            const response = await this.api.get('/vault/search', {
+                q: searchQuery,
+                category: category || undefined,
+                sort_by: sortBy,
+                limit: 12
+            });
+
+            if (response.success) {
+                this.displayVaultItems(response.data);
+                const loadMoreBtn = document.getElementById('vault-load-more');
+                if (loadMoreBtn) {
+                    loadMoreBtn.classList.toggle('hidden', !response.pagination?.has_more);
+                }
+            } else {
+                this.ui.showNotification('Error', response.error || 'Search failed', 'error');
+            }
+
+        } catch (error) {
+            console.error('Vault search error:', error);
+            this.ui.showNotification('Error', 'Failed to search vault', 'error');
+        } finally {
+            this.ui.hideLoading('#vault-items-grid');
+        }
+    }
+
+    async loadMoreVaultItems() {
+        // For now, just reload with increased limit
+        // In a full implementation, this would use pagination
+        const loadMoreBtn = document.getElementById('vault-load-more');
+        if (loadMoreBtn) {
+            loadMoreBtn.textContent = 'Loading...';
+        }
+
+        try {
+            const searchQuery = document.getElementById('vault-search')?.value || '';
+            const category = document.getElementById('vault-category-filter')?.value || '';
+            const sortBy = document.getElementById('vault-sort-by')?.value || 'downloads';
+
+            const response = await this.api.get('/vault/search', {
+                q: searchQuery,
+                category: category || undefined,
+                sort_by: sortBy,
+                limit: 24  // Load more items
+            });
+
+            if (response.success) {
+                this.displayVaultItems(response.data);
+                if (loadMoreBtn) {
+                    loadMoreBtn.classList.add('hidden');
+                }
+            }
+
+        } catch (error) {
+            console.error('Load more vault items error:', error);
+        } finally {
+            if (loadMoreBtn) {
+                loadMoreBtn.textContent = 'Load More Items';
+            }
+        }
+    }
+
+    async viewVaultItem(itemId) {
+        try {
+            const response = await this.api.get(`/vault/item/${itemId}`);
+            if (response.success) {
+                const item = response.data;
+                this.showVaultItemModal(item);
+            } else {
+                this.ui.showNotification('Error', 'Failed to load item details', 'error');
+            }
+        } catch (error) {
+            console.error('View vault item error:', error);
+            this.ui.showNotification('Error', 'Failed to load item details', 'error');
+        }
+    }
+
+    async downloadVaultItem(itemId) {
+        try {
+            this.ui.showNotification('Info', 'Downloading item...', 'info');
+            const response = await fetch(`/api/vault/download/${itemId}`);
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    // Create download link
+                    const content = data.data.content;
+                    const blob = new Blob([Uint8Array.from(atob(content), c => c.charCodeAt(0))]);
+                    const url = URL.createObjectURL(blob);
+
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${data.data.item.name}.${data.data.item.content_type}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                    this.ui.showNotification('Success', 'Item downloaded successfully', 'success');
+
+                    // Refresh stats
+                    await this.loadVaultData();
+                } else {
+                    this.ui.showNotification('Error', data.error || 'Download failed', 'error');
+                }
+            } else {
+                this.ui.showNotification('Error', 'Download failed', 'error');
+            }
+
+        } catch (error) {
+            console.error('Download vault item error:', error);
+            this.ui.showNotification('Error', 'Failed to download item', 'error');
+        }
+    }
+
+    showVaultItemModal(item) {
+        const modalContent = `
+            <div class="space-y-4">
+                <div>
+                    <h3 class="text-xl font-bold">${item.name}</h3>
+                    <p class="text-gray-300 mt-2">${item.description}</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <span class="text-gray-400">Author:</span>
+                        <span class="text-white ml-2">${item.author}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-400">Version:</span>
+                        <span class="text-white ml-2">${item.version}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-400">Category:</span>
+                        <span class="text-white ml-2 capitalize">${item.category}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-400">Downloads:</span>
+                        <span class="text-white ml-2">${item.downloads}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-400">Rating:</span>
+                        <span class="text-white ml-2">${item.rating.toFixed(1)} (${item.rating_count} reviews)</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-400">Size:</span>
+                        <span class="text-white ml-2">${this.ui.formatNumber(item.size_bytes)} bytes</span>
+                    </div>
+                </div>
+
+                ${item.dependencies && item.dependencies.length > 0 ? `
+                <div>
+                    <h4 class="font-semibold mb-2">Dependencies:</h4>
+                    <div class="flex flex-wrap gap-1">
+                        ${item.dependencies.map(dep => `<span class="px-2 py-1 bg-blue-600 text-xs rounded">${dep}</span>`).join('')}
+                    </div>
+                </div>
+                ` : ''}
+
+                <div>
+                    <h4 class="font-semibold mb-2">Tags:</h4>
+                    <div class="flex flex-wrap gap-1">
+                        ${item.tags.map(tag => `<span class="px-2 py-1 bg-purple-600 text-xs rounded">${tag}</span>`).join('')}
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-2 mt-6">
+                <button class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500" onclick="uiManager.closeModal('vault-item-modal')">
+                    Close
+                </button>
+                <button class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-500" onclick="dashboardManager.downloadVaultItem('${item.id}')">
+                    <i data-lucide="download" class="w-4 h-4 mr-1 inline"></i>Download
+                </button>
+            </div>
+        `;
+
+        this.ui.showModal('vault-item-modal', modalContent, { title: `${item.name} Details` });
+    }
+
+    showPublishVaultItemModal() {
+        const modalContent = `
+            <form id="publish-vault-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Name</label>
+                    <input type="text" name="name" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-2">Description</label>
+                    <textarea name="description" required rows="3" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Category</label>
+                        <select name="category" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                            <option value="">Select Category</option>
+                            <option value="tool">Tool</option>
+                            <option value="config">Configuration</option>
+                            <option value="agent">Agent</option>
+                            <option value="evolution">Evolution</option>
+                            <option value="dataset">Dataset</option>
+                            <option value="template">Template</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Version</label>
+                        <input type="text" name="version" value="1.0.0" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-2">Tags (comma-separated)</label>
+                    <input type="text" name="tags" placeholder="ai, utility, tool" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-2">Content</label>
+                    <textarea name="content" rows="6" placeholder="Enter your content here..." class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white font-mono text-sm"></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-2">
+                    <button type="button" class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500" onclick="uiManager.closeModal('publish-vault-modal')">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500">
+                        Publish Item
+                    </button>
+                </div>
+            </form>
+        `;
+
+        this.ui.showModal('publish-vault-modal', modalContent, { title: 'Publish to Community Vault' });
+
+        // Handle form submission
+        const form = document.getElementById('publish-vault-form');
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.publishVaultItem(new FormData(form));
+            });
+        }
+    }
+
+    async publishVaultItem(formData) {
+        try {
+            const itemData = {
+                name: formData.get('name'),
+                description: formData.get('description'),
+                category: formData.get('category'),
+                version: formData.get('version'),
+                tags: formData.get('tags') ? formData.get('tags').split(',').map(t => t.trim()) : [],
+                content: formData.get('content'),
+                content_type: 'text'  // For now, text content
+            };
+
+            this.ui.showLoading('#publish-vault-form', 'Publishing item...');
+
+            const response = await this.api.post('/vault/publish', {
+                item: itemData,
+                author: 'web_user'  // In a real app, this would come from authentication
+            });
+
+            if (response.success) {
+                this.ui.closeModal('publish-vault-modal');
+                this.ui.showNotification('Success', 'Item published to Community Vault!', 'success');
+                await this.loadVaultData(); // Refresh the vault
+            } else {
+                this.ui.showNotification('Error', response.error || 'Failed to publish item', 'error');
+            }
+
+        } catch (error) {
+            console.error('Publish vault item error:', error);
+            this.ui.showNotification('Error', 'Failed to publish item', 'error');
+        } finally {
+            this.ui.hideLoading('#publish-vault-form');
         }
     }
 

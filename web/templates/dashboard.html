@@ -73,8 +73,11 @@
             <button class="nav-tab px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors" data-tab="security">
                 <i data-lucide="shield" class="w-4 h-4 inline mr-2"></i>Security
             </button>
-            <button class="nav-tab px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors" data-tab="mcp">
+             <button class="nav-tab px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors" data-tab="mcp">
                 <i data-lucide="server" class="w-4 h-4 inline mr-2"></i>MCP
+            </button>
+            <button class="nav-tab px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors" data-tab="vault">
+                <i data-lucide="package" class="w-4 h-4 inline mr-2"></i>Community Vault
             </button>
             </div>
 
@@ -644,6 +647,91 @@
                   </div>
                   <div id="tool-result" class="mt-4 p-3 bg-gray-900 rounded-lg font-mono text-sm max-h-32 overflow-y-auto hidden">
                       <!-- Tool execution results will be shown here -->
+                  </div>
+              </div>
+          </div>
+
+          <!-- Community Vault Tab -->
+          <div id="vault-tab" class="tab-content hidden">
+              <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+                  <!-- Vault Stats -->
+                  <div class="lg:col-span-1">
+                      <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                          <h3 class="text-lg font-semibold mb-4 flex items-center">
+                              <i data-lucide="bar-chart-3" class="w-5 h-5 mr-2"></i>Vault Stats
+                          </h3>
+                          <div class="space-y-3">
+                              <div class="flex justify-between">
+                                  <span class="text-sm text-gray-400">Total Items</span>
+                                  <span class="text-lg font-semibold text-blue-400" id="vault-total-items">-</span>
+                              </div>
+                              <div class="flex justify-between">
+                                  <span class="text-sm text-gray-400">Total Downloads</span>
+                                  <span class="text-lg font-semibold text-green-400" id="vault-total-downloads">-</span>
+                              </div>
+                              <div class="flex justify-between">
+                                  <span class="text-sm text-gray-400">Avg Rating</span>
+                                  <span class="text-lg font-semibold text-yellow-400" id="vault-avg-rating">-</span>
+                              </div>
+                              <div class="flex justify-between">
+                                  <span class="text-sm text-gray-400">Categories</span>
+                                  <span class="text-lg font-semibold text-purple-400" id="vault-categories-count">-</span>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+
+                  <!-- Vault Search and Filters -->
+                  <div class="lg:col-span-3">
+                      <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-6">
+                          <h3 class="text-lg font-semibold mb-4 flex items-center">
+                              <i data-lucide="search" class="w-5 h-5 mr-2"></i>Search & Filter
+                          </h3>
+                          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                              <div>
+                                  <input type="text" id="vault-search" placeholder="Search items..."
+                                      class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400">
+                              </div>
+                              <div>
+                                  <select id="vault-category-filter" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                                      <option value="">All Categories</option>
+                                  </select>
+                              </div>
+                              <div>
+                                  <select id="vault-sort-by" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                                      <option value="downloads">Most Downloads</option>
+                                      <option value="rating">Highest Rated</option>
+                                      <option value="created_at">Newest</option>
+                                      <option value="updated_at">Recently Updated</option>
+                                  </select>
+                              </div>
+                              <div class="flex space-x-2">
+                                  <button id="vault-search-btn" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors">
+                                      <i data-lucide="search" class="w-4 h-4"></i>
+                                  </button>
+                                  <button id="vault-publish-btn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition-colors">
+                                      <i data-lucide="plus" class="w-4 h-4"></i>
+                                  </button>
+                              </div>
+                          </div>
+                      </div>
+
+                      <!-- Vault Items Grid -->
+                      <div id="vault-items-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                          <!-- Items will be populated by JavaScript -->
+                          <div class="col-span-full text-center text-gray-400 py-12">
+                              <i data-lucide="package" class="w-16 h-16 mx-auto mb-4 opacity-50"></i>
+                              <p class="text-lg mb-2">Loading Community Vault...</p>
+                              <p class="text-sm">Discover tools, configs, and agent evolutions</p>
+                          </div>
+                      </div>
+
+                      <!-- Load More Button -->
+                      <div class="text-center mt-6">
+                          <button id="vault-load-more" class="bg-gray-700 hover:bg-gray-600 px-6 py-2 rounded-lg transition-colors hidden">
+                              Load More Items
+                          </button>
+                      </div>
                   </div>
               </div>
           </div>

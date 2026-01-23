@@ -222,11 +222,86 @@ class BaseMCPServer(ABC):
     async def _handle_tools_list(self, request_id: Any) -> Dict[str, Any]:
         """Handle tools/list request"""
         logger.debug("Handling tools/list request")
-        
+
         tools = [tool.to_mcp_tool() for tool in self.tools.values()]
-        
+
         return {
             "jsonrpc": "2.0",
             "id": request_id,
             "result": {
-                "tools": [tool.to_dict()
+                "tools": [tool.to_dict() for tool in tools]
+            }
+        }
+
+    async def _handle_tools_call(self, request_id: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle tools/call request"""
+        tool_name = params.get("name")
+        tool_args = params.get("arguments", {})
+
+        logger.info(f"Handling tools/call: {tool_name}")
+
+        if not tool_name:
+            return self._create_error_response(request_id, MCPErrorCode.INVALID_PARAMS, "Tool name is required")
+
+        tool_def = self.tools.get(tool_name)
+        if not tool_def:
+            return self._create_error_response(request_id, MCPErrorCode.TOOL_NOT_FOUND, f"Tool not found: {tool_name}")
+
+        try:
+            # Call the tool handler
+            result = await tool_def.handler(tool_args)
+
+            return {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "result": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": str(result)
+                        }
+                    ]
+                }
+            }
+
+        except Exception as e:
+            logger.error(f"Tool execution failed: {e}")
+            return self._create_error_response(request_id, MCPErrorCode.INTERNAL_ERROR, f"Tool execution failed: {e}")
+
+    def _create_error_response(self, request_id: Any, error_code: MCPErrorCode, message: str) -> Dict[str, Any]:
+        """Create an error response"""
+        return {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "error": {
+                "code": error_code,
+                "message": message
+            }
+        }
+
+    # Default tool handlers
+    async def _handle_ping(self, args: Dict[str, Any]) -> str:
+        """Handle ping tool"""
+        return f"Pong from {self.server_name}!"
+
+
+class CodeAnalysisMCPServer(BaseMCPServer):
+    """Placeholder - implemented in separate file"""
+
+    def get_server_info(self) -> MCPServerInfo:
+        return MCPServerInfo(
+            name="code_analysis",
+            version="1.0.0",
+            capabilities=MCPServerCapabilities(tools={"listChanged": True})
+        )
+
+
+class DataScienceMCPServer(BaseMCPServer):
+    """Placeholder - implemented in separate file"""
+
+    def get_server_info(self) -> MCPServerInfo:
+        return MCPServerInfo(
+            name="data_science",
+            version="1.0.0",
+            capabilities=MCPServerCapabilities(tools={"listChanged": True})
+        )

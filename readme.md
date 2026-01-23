@@ -324,6 +324,34 @@ python single_session_test_loop.py
 python interactive_session_example.py
 ```
 
+**Run MCP integration tests:**
+```bash
+python test_mcp_integration.py
+```
+
+### Running MCP Servers
+
+**Test MCP Server (for development/testing):**
+```bash
+python src/mcp_servers/test_server.py --stdio
+```
+
+**Code Analysis MCP Server:**
+```bash
+python src/mcp_servers/code_analysis.py --stdio
+```
+
+**Data Science MCP Server:**
+```bash
+python src/mcp_servers/data_science.py --stdio
+```
+
+**Other MCP Servers (filesystem, database, websearch, github):**
+```bash
+# These servers run automatically when accessed through the MCP client/registry
+# Configure in web dashboard or use programmatically
+```
+
 ## Configuration
 
 ### Environment Variables (.env)
@@ -379,6 +407,7 @@ zejzl_net/
 ├── test_basic.py                # Unit tests
 ├── test_integration.py          # Integration tests
 ├── test_magic_integration.py    # Magic system tests (Phase 4)
+├── test_mcp_integration.py      # MCP integration tests (Phase 10)
 ├── orchestrate.sh               # Master orchestration script (Phase 4)
 ├── start.sh                     # Quick start script (Phase 4)
 ├── Dockerfile                   # Docker containerization (Phase 5)
@@ -417,12 +446,15 @@ zejzl_net/
     │   ├── analyzer.py          # Enhanced with technical personality
     │   ├── learner.py           # Enhanced with learning loop (Phase 4)
     │   └── improver.py          # Enhanced with creative personality (Phase 4)
-    ├── mcp_servers/             # Built-in MCP servers (Phase 9)
+    ├── mcp_servers/             # MCP servers (Phase 9-10)
     │   ├── base_server.py       # Abstract base server with JSON-RPC 2.0
     │   ├── filesystem.py        # Filesystem operations (7 tools)
     │   ├── database.py          # SQLite database access (6 tools)
     │   ├── websearch.py         # DuckDuckGo search (3 tools)
-    │   └── github.py            # GitHub API integration (8 tools)
+    │   ├── github.py            # GitHub API integration (8 tools)
+    │   ├── test_server.py      # Test server for MCP integration testing
+    │   ├── code_analysis.py     # Code analysis server (6 tools) - Phase 10
+    │   └── data_science.py      # Data science server (6 tools) - Phase 10
     └── web/                     # Web dashboard templates (Phase 5)
         └── templates/
             └── dashboard.html   # Real-time monitoring interface
@@ -491,11 +523,13 @@ zejzl_net/
 - [x] **MCP Protocol Client**: Full JSON-RPC 2.0 implementation with circuit breaker integration and magic system support
 - [x] **Server Registry**: Dynamic multi-server management with health monitoring, auto-reconnection, and access control
 - [x] **Agent Integration Layer**: High-level API for agents with context management, caching, and usage tracking
-- [x] **Built-in MCP Servers**: 4 production-ready servers providing 24 tools
+- [x] **Built-in MCP Servers**: 6 production-ready servers providing 36+ tools
   - **Filesystem Server** (7 tools): File I/O, search, metadata with secure path validation
   - **Database Server** (6 tools): SQLite queries, schema introspection, SQL injection prevention
   - **Web Search Server** (3 tools): DuckDuckGo search, news, instant answers (no API key required)
   - **GitHub Server** (8 tools): Repository operations, issues, PRs, file access, search (token auth)
+  - **Code Analysis Server** (6 tools): Codebase analysis, complexity metrics, dependency analysis, quality assessment
+  - **Data Science Server** (6 tools): Dataset analysis, statistics, correlations, outlier detection, visualization
 - [x] **MCP Agent Mixin**: Drop-in capabilities for existing agents with decorators and base classes
 - [x] **MCP-Enhanced Observer**: Example implementation with web search, filesystem, and database integration
 - [x] **Comprehensive Documentation**: MCP_INTEGRATION_GUIDE.md and MCP_SERVERS_GUIDE.md with examples
@@ -510,11 +544,11 @@ zejzl_net/
 - [x] **Dangerous Command Detection**: Pattern matching for risky operations like `rm -rf /`, `dd` commands, etc.
 - [x] **Audit Trail**: Security event logging and approval history tracking
 
-### Future Enhancements (Phase 10+)
-- [ ] **MCP Security Layer**: Authorization, rate limiting, audit logging (Task 5)
-- [ ] **MCP Testing Suite**: Integration tests with real servers (Task 6)
-- [ ] **Web Dashboard MCP**: Integration of MCP status and tools (Task 7)
-- [ ] Custom MCP servers for domain-specific tools
+### Phase 10 Enhancements (Complete) ✅
+- [x] **MCP Security Layer**: Authorization, rate limiting, audit logging with web dashboard API endpoints
+- [x] **MCP Testing Suite**: Comprehensive integration tests with real server testing (15 tests passing)
+- [x] **Web Dashboard MCP**: Full UI integration with server management, tool execution, and real-time monitoring
+- [x] **Custom MCP Servers**: Domain-specific servers for code analysis and data science operations
 - [ ] MCP tool composition and workflows
 - [ ] Vector database integration for semantic memory
 - [ ] Distributed agent deployment (multi-node)
@@ -593,4 +627,4 @@ python test_magic_integration.py  # Test magic system
 
 ---
 
-**Status**: Security Validator Complete | **Version**: 0.0.9.1 | **Phase**: 9.1 Complete (MCP + Security Validator)
+**Status**: Phase 10 Complete | **Version**: 0.0.10.0 | **Phase**: 10 Complete (MCP Ecosystem + Custom Servers)
