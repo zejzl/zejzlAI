@@ -547,6 +547,95 @@ async def run_pantheon_mode():
     print("\n[OK] Pantheon orchestration complete!")
 
 
+async def run_offline_mode():
+    """Run Offline Mode - demonstrates cached responses for offline operation"""
+    # Complete logging suppression for clean CLI output
+    logging.basicConfig(level=logging.CRITICAL, force=True, handlers=[])
+    logging.getLogger().setLevel(logging.CRITICAL)
+    # Disable all handlers to prevent any output
+    for handler in logging.getLogger().handlers[:]:
+        logging.getLogger().removeHandler(handler)
+    # Suppress all existing and future loggers
+    for name in list(logging.root.manager.loggerDict.keys()) + ['zejzl', 'zejzl.performance', 'zejzl.debug', 'ai_framework']:
+        logging.getLogger(name).setLevel(logging.CRITICAL)
+        for handler in logging.getLogger(name).handlers[:]:
+            logging.getLogger(name).removeHandler(handler)
+
+    print("\n[Offline Mode]")
+    print("This mode demonstrates offline AI capabilities using cached responses.")
+    print("Responses will be served from cache when available, or indicate offline status.")
+
+    provider = select_provider()
+
+    # Get AI provider bus and enable offline mode
+    from base import get_ai_provider_bus
+    ai_bus = await get_ai_provider_bus()
+    await ai_bus.enable_offline_mode(True)
+
+    print(f"\n[INFO] Offline mode enabled for provider: {provider}")
+    print("[INFO] Cache will be populated with responses for future offline use")
+
+    try:
+        # Test connectivity
+        is_online = await ai_bus.check_connectivity()
+        print(f"[INFO] Current connectivity: {'ONLINE' if is_online else 'OFFLINE'}")
+
+        # Demonstrate with a few sample queries
+        sample_queries = [
+            "What is the capital of France?",
+            "Explain machine learning in simple terms",
+            "Write a hello world program in Python",
+            "What are the benefits of offline AI?"
+        ]
+
+        print("\n[Testing Offline Capabilities]")
+        print("=" * 50)
+
+        for i, query in enumerate(sample_queries, 1):
+            print(f"\n[Query {i}] {query}")
+
+            try:
+                response = await ai_bus.send_message(query, provider)
+                print(f"[Response] {response[:100]}{'...' if len(response) > 100 else ''}")
+
+                # Small delay to avoid overwhelming
+                await asyncio.sleep(0.5)
+
+            except Exception as e:
+                print(f"[ERROR] Failed to get response: {str(e)[:50]}")
+
+        # Show cache statistics
+        print("\n[Cache Statistics]")
+        print("=" * 50)
+
+        try:
+            stats = await ai_bus.get_cache_stats()
+            print(f"Total cached responses: {stats.get('total_entries', 0)}")
+            print(f"Cache size: {stats.get('total_size_mb', 0):.1f} MB")
+            print(f"Cache usage: {stats.get('usage_percent', 0):.1f}%")
+            print(f"Cache hits: {stats.get('cache_stats', {}).get('hits', 0)}")
+            print(f"Cache misses: {stats.get('cache_stats', {}).get('misses', 0)}")
+
+        except Exception as e:
+            print(f"[INFO] Cache statistics unavailable: {str(e)}")
+
+        print("\n[Offline Mode Demo Complete]")
+        print("All responses are now cached for offline use.")
+        print("Try disconnecting from the internet and running queries again!")
+
+    except Exception as e:
+        error_msg = str(e)
+        print(f"\n[ERROR] Offline mode failed: {error_msg[:100]}...")
+        if "API" in error_msg or "connection" in error_msg.lower():
+            print("[INFO] Please check your internet connection and try again.")
+        else:
+            print("[INFO] If this persists, please check the system logs.")
+
+    finally:
+        # Clean shutdown
+        await ai_bus.enable_offline_mode(False)
+
+
 async def run_learning_loop_mode():
     """Run Learning Loop Mode - Single optimization cycle for system improvement"""
     # Complete logging suppression for clean CLI output
@@ -638,12 +727,13 @@ def run_interactive_menu(debug: bool = True, max_iterations: int = 10, max_round
         3. Swarm Mode (Multi-agent) - Async team coordination
         4. Pantheon Mode - Full 9-agent orchestration with validation & learning
         5. Learning Loop - Single optimization cycle for system improvement
+        6. Offline Mode - Cached responses for offline operation
         9. Quit
 
-        (Note: Modes 6,7,8 are not yet implemented)
+        (Note: Modes 7,8 are not yet implemented)
 """)
 
-    choice = input("        Choose mode (1, 2, 3, 4, 5, or 9): ").strip()
+    choice = input("        Choose mode (1, 2, 3, 4, 5, 6, or 9): ").strip()
 
     if choice == "1":
         print("\n[Starting Single Agent Mode...]")
@@ -660,12 +750,15 @@ def run_interactive_menu(debug: bool = True, max_iterations: int = 10, max_round
     elif choice == "5":
         print("\n[Starting Learning Loop Mode...]")
         asyncio.run(run_learning_loop_mode())
+    elif choice == "6":
+        print("\n[Starting Offline Mode...]")
+        asyncio.run(run_offline_mode())
     elif choice == "9":
         print("\n        Goodbye! :)\n")
         input("        Press Enter to exit...")
         sys.exit(0)
     else:
-        print(f"\n        Mode {choice} is not yet implemented. Please choose 1-5, or 9.\n")
+        print(f"\n        Mode {choice} is not yet implemented. Please choose 1-6, or 9.\n")
 
     return choice
 

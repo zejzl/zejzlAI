@@ -378,6 +378,79 @@ async def get_recent_activity(limit: int = 10):
             ]
         }
 
+@app.get("/api/offline/status")
+async def get_offline_status():
+    """Get offline mode status and connectivity information"""
+    try:
+        connectivity = await dashboard.bus.check_connectivity()
+        cache_stats = await dashboard.bus.get_cache_stats()
+
+        return {
+            "success": True,
+            "data": {
+                "offline_mode_enabled": dashboard.bus.offline_mode,
+                "connectivity_status": dashboard.bus.connectivity_status,
+                "is_online": connectivity,
+                "cache_stats": cache_stats,
+                "monitoring_active": dashboard.bus.connectivity_checker is not None and not dashboard.bus.connectivity_checker.done()
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Offline status endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/offline/toggle")
+async def toggle_offline_mode(request: Request):
+    """Enable or disable offline mode"""
+    try:
+        data = await request.json()
+        enabled = data.get("enabled", False)
+
+        await dashboard.bus.enable_offline_mode(enabled)
+
+        return {
+            "success": True,
+            "message": f"Offline mode {'enabled' if enabled else 'disabled'}",
+            "offline_mode": dashboard.bus.offline_mode
+        }
+
+    except Exception as e:
+        logger.error(f"Toggle offline mode endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/cache/stats")
+async def get_cache_statistics():
+    """Get detailed cache statistics"""
+    try:
+        stats = await dashboard.bus.get_cache_stats()
+        return {"success": True, "data": stats}
+
+    except Exception as e:
+        logger.error(f"Cache stats endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.delete("/api/cache/clear")
+async def clear_cache():
+    """Clear all cached responses"""
+    try:
+        success = await dashboard.bus.offline_cache.clear()
+
+        if success:
+            # Also clear any in-memory caches
+            dashboard.bus.conversation_cache.clear()
+
+            return {
+                "success": True,
+                "message": "Cache cleared successfully"
+            }
+        else:
+            return {"success": False, "error": "Failed to clear cache"}
+
+    except Exception as e:
+        logger.error(f"Clear cache endpoint error: {e}")
+        return {"success": False, "error": str(e)}
+
 @app.get("/api/health/detailed")
 async def detailed_health_check():
     """Detailed health check with system information"""

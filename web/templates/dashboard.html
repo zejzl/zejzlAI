@@ -34,6 +34,15 @@
                      <div class="w-3 h-3 rounded-full bg-gray-500" id="ws-status-dot"></div>
                      <span id="ws-status-text" class="text-gray-400">Connecting...</span>
                  </div>
+
+                 <!-- Offline Mode Toggle -->
+                 <div class="flex items-center space-x-2">
+                     <span class="text-sm text-gray-400">Offline:</span>
+                     <button id="offline-toggle" class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                         <span id="offline-toggle-dot" class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"></span>
+                     </button>
+                     <span id="offline-status" class="text-sm text-gray-400">OFF</span>
+                 </div>
                  <button id="theme-toggle" class="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors">
                      <i data-lucide="moon" class="w-5 h-5"></i>
                  </button>
@@ -128,20 +137,53 @@
             </div>
 
             <!-- Recent Activity -->
-            <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-                <h3 class="text-lg font-semibold mb-4 flex items-center">
-                    <i data-lucide="clock" class="w-5 h-5 mr-2"></i>Recent Activity
-                </h3>
-                <div id="recent-activity" class="space-y-3">
-                    <div class="animate-pulse flex space-x-4">
-                        <div class="rounded-full bg-gray-700 h-8 w-8"></div>
-                        <div class="flex-1 space-y-2">
-                            <div class="h-4 bg-gray-700 rounded w-3/4"></div>
-                            <div class="h-4 bg-gray-700 rounded w-1/2"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+             <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                 <h3 class="text-lg font-semibold mb-4 flex items-center">
+                     <i data-lucide="clock" class="w-5 h-5 mr-2"></i>Recent Activity
+                 </h3>
+                 <div id="recent-activity" class="space-y-3">
+                     <div class="animate-pulse flex space-x-4">
+                         <div class="rounded-full bg-gray-700 h-8 w-8"></div>
+                         <div class="flex-1 space-y-2">
+                             <div class="h-4 bg-gray-700 rounded w-3/4"></div>
+                             <div class="h-4 bg-gray-700 rounded w-1/2"></div>
+                         </div>
+                     </div>
+                 </div>
+             </div>
+
+             <!-- Cache Status -->
+             <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                 <h3 class="text-lg font-semibold mb-4 flex items-center">
+                     <i data-lucide="database" class="w-5 h-5 mr-2"></i>Cache Status
+                 </h3>
+                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                     <div class="text-center">
+                         <p class="text-sm text-gray-400">Cached Responses</p>
+                         <p class="text-2xl font-bold text-blue-400" id="cache-entries">-</p>
+                     </div>
+                     <div class="text-center">
+                         <p class="text-sm text-gray-400">Cache Size</p>
+                         <p class="text-2xl font-bold text-green-400" id="cache-size">-</p>
+                     </div>
+                     <div class="text-center">
+                         <p class="text-sm text-gray-400">Usage</p>
+                         <p class="text-2xl font-bold text-yellow-400" id="cache-usage">-</p>
+                     </div>
+                     <div class="text-center">
+                         <p class="text-sm text-gray-400">Connectivity</p>
+                         <p class="text-xs font-medium px-2 py-1 rounded" id="connectivity-indicator">UNKNOWN</p>
+                     </div>
+                 </div>
+                 <div class="mt-4 flex space-x-2">
+                     <button id="clear-cache-btn" class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm transition-colors">
+                         Clear Cache
+                     </button>
+                     <button id="refresh-cache-btn" class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm transition-colors">
+                         Refresh Stats
+                     </button>
+                 </div>
+             </div>
         </div>
 
         <!-- Analytics Tab -->

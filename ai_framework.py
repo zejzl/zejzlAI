@@ -49,6 +49,7 @@ from rate_limiter import get_rate_limiter
 from telemetry import get_telemetry
 from src.magic import FairyMagic
 from src.security import EnterpriseSecurity
+from offline_cache import OfflineCache
 from src.performance import record_metric
 from src.logging_debug import logger, debug_monitor, log_execution, log_ai_interaction, setup_logging
 
@@ -1262,6 +1263,111 @@ class AsyncMessageBus:
         self.persistence = HybridPersistence()
         self.config = None
         self.magic = FairyMagic(persistence=self.persistence)  # Self-healing magic system
+
+        # Offline mode support
+        self.offline_mode = False
+        self.offline_cache = OfflineCache()
+        self.connectivity_checker = None
+        self.connectivity_status = "unknown"  # "online", "offline", "unknown"
+
+    async def enable_offline_mode(self, enabled: bool = True):
+        """Enable or disable offline mode"""
+        self.offline_mode = enabled
+        if enabled:
+            logger.info("Offline mode enabled - responses will be served from cache when available")
+            # Start connectivity monitoring
+            await self.start_connectivity_monitoring()
+        else:
+            logger.info("Offline mode disabled - all requests will go to live providers")
+            await self.stop_connectivity_monitoring()
+
+    async def check_connectivity(self) -> bool:
+        """Check internet connectivity by testing a simple HTTP request"""
+        try:
+            timeout = aiohttp.ClientTimeout(total=5)  # 5 second timeout
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get('https://httpbin.org/status/200') as response:
+                    self.connectivity_status = "online" if response.status == 200 else "offline"
+                    return response.status == 200
+        except Exception:
+            self.connectivity_status = "offline"
+            return False
+
+    async def start_connectivity_monitoring(self):
+        """Start monitoring internet connectivity"""
+        if self.connectivity_checker and not self.connectivity_checker.done():
+            return  # Already running
+
+        async def monitor():
+            while self.offline_mode:
+                is_online = await self.check_connectivity()
+                logger.debug(f"Connectivity check: {'online' if is_online else 'offline'}")
+
+                # Broadcast connectivity status via WebSocket if available
+                if hasattr(self, 'websocket_manager') and self.websocket_manager:
+                    await self.websocket_manager.broadcast(
+                        'system',
+                        f"Connectivity: {'online' if is_online else 'offline'}",
+                        'info' if is_online else 'warning'
+                    )
+
+                await asyncio.sleep(30)  # Check every 30 seconds
+
+        self.connectivity_checker = asyncio.create_task(monitor())
+
+    async def stop_connectivity_monitoring(self):
+        """Stop connectivity monitoring"""
+        if self.connectivity_checker and not self.connectivity_checker.done():
+            self.connectivity_checker.cancel()
+            try:
+                await self.connectivity_checker
+            except asyncio.CancelledError:
+                pass
+
+    def generate_cache_key(self, content: str, provider_name: str,
+                          conversation_id: str = None, **kwargs) -> str:
+        """Generate a cache key for the given request parameters"""
+        return self.offline_cache.generate_cache_key(
+            "message",
+            content=content,
+            provider=provider_name,
+            conversation_id=conversation_id or "default",
+            **kwargs
+        )
+
+    async def get_cached_response(self, cache_key: str) -> Optional[str]:
+        """Get cached response if available"""
+        if not self.offline_mode:
+            return None
+
+        cached = await self.offline_cache.get(cache_key)
+        if cached:
+            logger.debug("Serving response from cache", cache_key=cache_key[:8])
+            return cached
+
+        return None
+
+    async def cache_response(self, cache_key: str, response: str,
+                           provider_name: str, metadata: Dict[str, Any] = None):
+        """Cache a response for future use"""
+        if not self.offline_mode:
+            return
+
+        # Add metadata for filtering
+        cache_metadata = {
+            "provider": provider_name,
+            "cached_at": datetime.now().isoformat(),
+            "response_length": len(response),
+            **(metadata or {})
+        }
+
+        # Cache with 24 hour TTL
+        await self.offline_cache.put(cache_key, response, cache_metadata, ttl_seconds=86400)
+        logger.debug("Response cached", cache_key=cache_key[:8], provider=provider_name)
+
+    async def get_cache_stats(self) -> Dict[str, Any]:
+        """Get offline cache statistics"""
+        return await self.offline_cache.get_stats()
     
     async def load_config(self) -> Dict:
         """Load configuration from persistence layer"""
@@ -1296,11 +1402,34 @@ class AsyncMessageBus:
         provider_name = provider_name or self.config.get("default_provider", "chatgpt")
         provider_name = provider_name.lower()
 
+        # Check for cached response in offline mode
+        if self.offline_mode:
+            cache_key = self.generate_cache_key(content, provider_name, conversation_id,
+                                               consensus=consensus, stream=stream)
+            cached_response = await self.get_cached_response(cache_key)
+
+            if cached_response:
+                # Apply fairy shield protection for cached responses too
+                if self.magic.is_shielded:
+                    logger.debug("Fairy shield active - validating cached response")
+
+                record_metric("cache_hit", 1, {"provider": provider_name})
+                return f"[OFFLINE CACHE] {cached_response}"
+
         # Handle consensus mode
         if consensus:
             logger.info("Using consensus mode", provider=provider_name, consensus_providers=consensus_providers)
-            return await self._send_consensus_message(content, provider_name, conversation_id,
-                                                     consensus_providers, stream)
+            response = await self._send_consensus_message(content, provider_name, conversation_id,
+                                                         consensus_providers, stream)
+
+            # Cache consensus responses
+            if self.offline_mode:
+                cache_key = self.generate_cache_key(content, provider_name, conversation_id,
+                                                   consensus=consensus, stream=stream)
+                await self.cache_response(cache_key, response, provider_name,
+                                        {"mode": "consensus", "providers": consensus_providers})
+
+            return response
 
         if provider_name not in self.providers:
             logger.error(f"Provider '{provider_name}' not registered. Available providers: {list(self.providers.keys())}")
@@ -1403,6 +1532,14 @@ class AsyncMessageBus:
                     record_metric("requests_total", 1, {"provider": provider_name, "status": "success"})
 
                     logger.info(f"Response from {provider_name} in {response_time:.2f}s")
+
+                    # Cache the response for offline mode
+                    if self.offline_mode:
+                        cache_key = self.generate_cache_key(content, provider_name, conversation_id,
+                                                           consensus=consensus, stream=stream)
+                        await self.cache_response(cache_key, response, provider_name,
+                                                {"response_time": response_time, "token_usage": token_usage.total_tokens if token_usage else 0})
+
                     return response
 
                 except Exception as e:

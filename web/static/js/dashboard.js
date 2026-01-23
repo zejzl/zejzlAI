@@ -107,6 +107,20 @@ class DashboardManager {
         document.getElementById('export-btn')?.addEventListener('click', () => {
             this.exportData();
         });
+
+        // Offline mode toggle
+        document.getElementById('offline-toggle')?.addEventListener('click', () => {
+            this.toggleOfflineMode();
+        });
+
+        // Cache management
+        document.getElementById('clear-cache-btn')?.addEventListener('click', () => {
+            this.clearCache();
+        });
+
+        document.getElementById('refresh-cache-btn')?.addEventListener('click', () => {
+            this.refreshCacheStats();
+        });
     }
 
     switchTab(tabName) {
@@ -120,7 +134,8 @@ class DashboardManager {
             await Promise.all([
                 this.loadOverviewData(),
                 this.loadAnalyticsData(),
-                this.loadRecentActivity()
+                this.loadRecentActivity(),
+                this.loadOfflineStatus()
             ]);
         } catch (error) {
             console.error('Failed to load initial data:', error);
@@ -1595,6 +1610,156 @@ class DashboardManager {
         } catch (error) {
             console.error('Chat error:', error);
             this.ui.showNotification('Error', 'Failed to send chat message', 'error');
+        }
+    }
+
+    // Offline Mode Methods
+    async toggleOfflineMode() {
+        try {
+            const toggle = document.getElementById('offline-toggle');
+            const dot = document.getElementById('offline-toggle-dot');
+            const status = document.getElementById('offline-status');
+
+            if (!toggle || !dot || !status) return;
+
+            const isCurrentlyEnabled = toggle.classList.contains('bg-green-600');
+            const newState = !isCurrentlyEnabled;
+
+            this.ui.showLoading('#offline-toggle', 'Updating offline mode...');
+
+            const response = await this.api.post('/offline/toggle', { enabled: newState });
+
+            if (response.success) {
+                this.updateOfflineToggleUI(newState);
+                this.ui.showNotification(
+                    'Offline Mode',
+                    `Offline mode ${newState ? 'enabled' : 'disabled'}`,
+                    'success'
+                );
+
+                // Refresh data to show cache status
+                await this.loadInitialData();
+            } else {
+                this.ui.showNotification('Error', response.error || 'Failed to toggle offline mode', 'error');
+            }
+
+        } catch (error) {
+            console.error('Offline mode toggle error:', error);
+            this.ui.showNotification('Error', 'Failed to toggle offline mode', 'error');
+        } finally {
+            this.ui.hideLoading('#offline-toggle');
+        }
+    }
+
+    updateOfflineToggleUI(enabled) {
+        const toggle = document.getElementById('offline-toggle');
+        const dot = document.getElementById('offline-toggle-dot');
+        const status = document.getElementById('offline-status');
+
+        if (!toggle || !dot || !status) return;
+
+        if (enabled) {
+            toggle.classList.remove('bg-gray-600');
+            toggle.classList.add('bg-green-600');
+            dot.classList.remove('translate-x-1');
+            dot.classList.add('translate-x-6');
+            status.textContent = 'ON';
+            status.className = 'text-sm text-green-400';
+        } else {
+            toggle.classList.remove('bg-green-600');
+            toggle.classList.add('bg-gray-600');
+            dot.classList.remove('translate-x-6');
+            dot.classList.add('translate-x-1');
+            status.textContent = 'OFF';
+            status.className = 'text-sm text-gray-400';
+        }
+    }
+
+    async loadOfflineStatus() {
+        try {
+            const response = await this.api.get('/offline/status');
+            if (response.success) {
+                const data = response.data;
+                this.updateOfflineToggleUI(data.offline_mode_enabled);
+
+                // Update cache stats if available
+                if (data.cache_stats) {
+                    this.updateCacheStats(data.cache_stats);
+                }
+
+                // Update connectivity status
+                this.updateConnectivityStatus(data.connectivity_status, data.is_online);
+            }
+        } catch (error) {
+            console.error('Failed to load offline status:', error);
+        }
+    }
+
+    updateCacheStats(stats) {
+        // Update cache statistics in the UI if elements exist
+        const elements = {
+            'cache-entries': stats.total_entries,
+            'cache-size': `${stats.total_size_mb?.toFixed(1) || 0} MB`,
+            'cache-usage': `${stats.usage_percent?.toFixed(1) || 0}%`,
+            'cache-hits': stats.cache_stats?.hits || 0,
+            'cache-misses': stats.cache_stats?.misses || 0
+        };
+
+        Object.entries(elements).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = value;
+            }
+        });
+    }
+
+    updateConnectivityStatus(status, isOnline) {
+        const indicator = document.getElementById('connectivity-indicator');
+        if (indicator) {
+            indicator.className = `px-2 py-1 rounded text-xs font-medium ${
+                isOnline ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+            }`;
+            indicator.textContent = isOnline ? 'ONLINE' : 'OFFLINE';
+        }
+    }
+
+    async clearCache() {
+        if (!confirm('Are you sure you want to clear all cached responses? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            this.ui.showLoading('#clear-cache-btn', 'Clearing cache...');
+            const response = await fetch('/api/cache/clear', { method: 'DELETE' });
+
+            if (response.ok) {
+                this.ui.showNotification('Success', 'Cache cleared successfully', 'success');
+                await this.loadOfflineStatus(); // Refresh stats
+                await this.loadInitialData(); // Refresh all data
+            } else {
+                const error = await response.json();
+                this.ui.showNotification('Error', error.error || 'Failed to clear cache', 'error');
+            }
+
+        } catch (error) {
+            console.error('Clear cache error:', error);
+            this.ui.showNotification('Error', 'Failed to clear cache', 'error');
+        } finally {
+            this.ui.hideLoading('#clear-cache-btn');
+        }
+    }
+
+    async refreshCacheStats() {
+        try {
+            this.ui.showLoading('#refresh-cache-btn', 'Refreshing stats...');
+            await this.loadOfflineStatus();
+            this.ui.showNotification('Success', 'Cache statistics refreshed', 'success');
+
+        } catch (error) {
+            console.error('Refresh cache stats error:', error);
+            this.ui.showNotification('Error', 'Failed to refresh cache statistics', 'error');
+        } finally {
+            this.ui.hideLoading('#refresh-cache-btn');
         }
     }
 
