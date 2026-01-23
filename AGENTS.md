@@ -445,6 +445,7 @@ ZEJZL.NET uses **TOON (Token-Oriented Object Notation)** for agent communication
 - **Database info**: `python sqlite_load_state.py --info --db /path/to/db.sqlite`
 - **Selective operations**: `--config`, `--magic`, `--learning`, `--all`
 - **Custom database path**: `--db PATH` (default: ~/.ai_framework.db)
+- **Full state support**: Configuration, magic system, and learning patterns
 
 ### Framework CLI (ai_framework.py)
 - **Chat**: `python ai_framework.py chat provider "message"`
@@ -473,6 +474,33 @@ ZEJZL.NET uses **TOON (Token-Oriented Object Notation)** for agent communication
   - Task 5: Security & Authorization layer
   - Task 6: Integration testing with real servers
   - Task 7: Web dashboard MCP integration
+
+## Enhanced Web Dashboard
+
+The web dashboard provides real-time monitoring and control of the ZEJZL.NET system through a modern, modular web interface with advanced features.
+
+### Architecture
+- **Modular JavaScript**: 5 specialized modules (api.js, websocket.js, ui.js, charts.js, dashboard.js)
+- **Real-time WebSocket**: Live status indicators and broadcast messaging
+- **Responsive Design**: Optimized for desktop and mobile with dark/light themes
+
+### Features
+- **Real-time Monitoring**: Live system health, agent status, and performance metrics
+- **Interactive Charts**: Usage analytics, cost tracking, and performance visualization
+- **Multi-modal AI**: File upload and processing for images, videos, audio, documents
+- **Enhanced Chat**: AI conversations with multi-modal attachments and rich formatting
+- **Magic System Integration**: Direct control of Fairy Magic (shield, boost, heal)
+- **Recent Activity Feed**: Live system activity with smart formatting
+- **Security Dashboard**: Real-time threat monitoring and validation
+- **MCP Support**: Model Context Protocol tool execution and management
+
+### Recent Enhancements
+- **Modular Refactoring**: Complete JavaScript architecture overhaul
+- **WebSocket Integration**: Real-time status indicators and broadcast messaging
+- **Multi-modal UI**: Enhanced file upload with drag-and-drop support
+- **Rich Chat Formatting**: Markdown and emoji support for AI responses
+- **Magic Command Formatting**: Beautiful formatting for shield/boost/heal commands
+- **Real-time Activity Feed**: Live system activity monitoring
 
   Repository Status
 

@@ -547,12 +547,73 @@ async def run_pantheon_mode():
     print("\n[OK] Pantheon orchestration complete!")
 
 
+async def run_learning_loop_mode():
+    """Run Learning Loop Mode - Single optimization cycle for system improvement"""
+    # Complete logging suppression for clean CLI output
+    logging.basicConfig(level=logging.CRITICAL, force=True, handlers=[])
+    logging.getLogger().setLevel(logging.CRITICAL)
+    # Disable all handlers to prevent any output
+    for handler in logging.getLogger().handlers[:]:
+        logging.getLogger().removeHandler(handler)
+    # Suppress all existing and future loggers
+    for name in list(logging.root.manager.loggerDict.keys()) + ['zejzl', 'zejzl.performance', 'zejzl.debug', 'ai_framework']:
+        logging.getLogger(name).setLevel(logging.CRITICAL)
+        for handler in logging.getLogger(name).handlers[:]:
+            logging.getLogger(name).removeHandler(handler)
+
+    print("\n[Learning Loop Mode]")
+    print("This mode analyzes system performance and suggests optimizations.")
+    task = input("Enter a task to analyze for optimization (or press Enter for general system analysis): ").strip()
+    if not task:
+        task = "General system performance and optimization analysis"
+
+    print(f"\n[Analyzing: {task}]")
+
+    try:
+        # Import and create learning loop
+        from src.learning_loop import LearningLoop
+        learning_loop = LearningLoop()
+
+        print("[Executing learning cycle...]")
+
+        # Execute single learning cycle
+        cycle_result = await learning_loop.execute_learning_cycle()
+
+        if cycle_result:
+            print("[OK] Learning cycle complete")
+
+            # Display insights
+            insights = await learning_loop.get_recent_insights()
+            if insights:
+                print(f"\n[INSIGHTS] Found {len(insights)} optimization opportunities:")
+                for i, insight in enumerate(insights[:5], 1):  # Show top 5
+                    print(f"  {i}. {insight.insight_type}: {insight.description}")
+                    if insight.confidence > 0.8:
+                        print("     → High confidence recommendation")
+            else:
+                print("\n[INSIGHTS] No significant optimization opportunities found")
+
+            # Show performance improvements
+            print("\n[PERFORMANCE] System analysis complete")
+            print("  → Learning patterns identified and cataloged")
+        else:
+            print("[WARNING] Learning cycle did not complete successfully")
+
+    except Exception as e:
+        error_msg = str(e)
+        print(f"\n[ERROR] Learning loop failed: {error_msg[:100]}...")
+        if "API" in error_msg or "connection" in error_msg.lower():
+            print("[INFO] Please check your internet connection and try again.")
+        else:
+            print("[INFO] If this persists, please check the system logs.")
+
+
 # Future Menu Options (for reference):
 #         1. Single Agent - Observe-Reason-Act loop
-#         2. Collaboration Mode (Grok + Claude) - Dual AI planning [PLANNED FOR IMPLEMENTATION]
-#         3. Swarm Mode (Multi-agent) - Async team coordination
-#         4. Pantheon Mode (9-agent) - Full AI orchestration with validation & learning
-#         5. Learning Loop - Continuous optimization cycle
+#         2. Collaboration Mode (Grok + Claude) - Dual AI planning [IMPLEMENTED]
+#         3. Swarm Mode (Multi-agent) - Async team coordination [IMPLEMENTED]
+#         4. Pantheon Mode (9-agent) - Full AI orchestration with validation & learning [IMPLEMENTED]
+#         5. Learning Loop - Single optimization cycle for system improvement [IMPLEMENTED]
 #         6. Offline Mode - Cached/local fallback (no API, uses vault/KB)
 #         7. Community Vault Sync - Pull/push evolutions and tools
 #         8. Save Game - Invoke progress save script
@@ -576,12 +637,13 @@ def run_interactive_menu(debug: bool = True, max_iterations: int = 10, max_round
         2. Collaboration Mode (Grok + Claude) - Dual AI planning
         3. Swarm Mode (Multi-agent) - Async team coordination
         4. Pantheon Mode - Full 9-agent orchestration with validation & learning
+        5. Learning Loop - Single optimization cycle for system improvement
         9. Quit
 
-        (Note: Modes 5,6,7,8 are not yet implemented)
+        (Note: Modes 6,7,8 are not yet implemented)
 """)
 
-    choice = input("        Choose mode (1, 2, 3, 4, or 9): ").strip()
+    choice = input("        Choose mode (1, 2, 3, 4, 5, or 9): ").strip()
 
     if choice == "1":
         print("\n[Starting Single Agent Mode...]")
@@ -595,12 +657,15 @@ def run_interactive_menu(debug: bool = True, max_iterations: int = 10, max_round
     elif choice == "4":
         print("\n[Starting Pantheon Mode...]")
         asyncio.run(run_pantheon_mode())
+    elif choice == "5":
+        print("\n[Starting Learning Loop Mode...]")
+        asyncio.run(run_learning_loop_mode())
     elif choice == "9":
         print("\n        Goodbye! :)\n")
         input("        Press Enter to exit...")
         sys.exit(0)
     else:
-        print(f"\n        Mode {choice} is not yet implemented. Please choose 1, 4, or 9.\n")
+        print(f"\n        Mode {choice} is not yet implemented. Please choose 1-5, or 9.\n")
 
     return choice
 

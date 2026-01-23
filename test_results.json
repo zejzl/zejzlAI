@@ -1,0 +1,38 @@
+[
+  {
+    "test": "Basic Initialization",
+    "status": "FAIL",
+    "message": "",
+    "timestamp": 1768757236.0486736
+  },
+  {
+    "test": "TOON Integration",
+    "status": "PASS",
+    "message": "43.8% token savings",
+    "timestamp": 1768757236.0489087
+  },
+  {
+    "test": "Persistence Layers",
+    "status": "PASS",
+    "message": "Persistence layer initialized correctly",
+    "timestamp": 1768757236.0489166
+  },
+  {
+    "test": "Error Handling",
+    "status": "PASS",
+    "message": "Invalid providers handled correctly",
+    "timestamp": 1768757236.054258
+  },
+  {
+    "test": "Agent Modes",
+    "status": "PASS",
+    "message": "All agent mode functions available and callable",
+    "timestamp": 1768757236.055109
+  },
+  {
+    "test": "State Management",
+    "status": "FAIL",
+    "message": "'str' object has no attribute 'get'",
+    "timestamp": 1768757240.1454008
+  }
+]

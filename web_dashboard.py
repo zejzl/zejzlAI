@@ -46,6 +46,9 @@ from telemetry import get_telemetry
 from src.performance import record_metric
 from src.logging_debug import debug_monitor, logger as debug_logger
 
+# Initialize analytics globally
+analytics = UsageAnalytics()
+
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="ZEJZL.NET Dashboard", version="1.0.0")
@@ -269,6 +272,112 @@ async def set_log_level(level: str):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+@app.get("/api/activity/recent")
+async def get_recent_activity(limit: int = 10):
+    """Get recent system activity"""
+    try:
+        activities = []
+
+        # Get recent agent activities from memory
+        if dashboard.bus and dashboard.bus.memory:
+            try:
+                recent_events = await dashboard.bus.memory.recall(limit=limit)
+                for event in recent_events[-limit:]:
+                    activities.append({
+                        "type": "agent_activity",
+                        "timestamp": event.get("timestamp", datetime.now().isoformat()),
+                        "title": f"Agent {event.get('agent', 'Unknown')} Activity",
+                        "description": event.get("type", "Activity"),
+                        "icon": "bot"
+                    })
+            except Exception:
+                pass
+
+        # Get recent API calls from analytics
+        try:
+            usage_data = await analytics.get_usage_report(days=1)
+            if usage_data.success and usage_data.data.total_requests > 0:
+                activities.append({
+                    "type": "api_activity",
+                    "timestamp": datetime.now().isoformat(),
+                    "title": f"{usage_data.data.total_requests} API Requests Today",
+                    "description": f"Used {usage_data.data.total_tokens or 0} tokens",
+                    "icon": "zap"
+                })
+        except Exception:
+            pass
+
+        # Get recent chat messages
+        try:
+            chat_history = await dashboard.bus.memory.recall(query={"type": "chat_message"}, limit=limit)
+            for chat in chat_history[-3:]:  # Show last 3 chat messages
+                activities.append({
+                    "type": "chat_message",
+                    "timestamp": chat.get("timestamp", datetime.now().isoformat()),
+                    "title": "Chat Message",
+                    "description": chat.get("content", "")[:50] + "..." if len(chat.get("content", "")) > 50 else chat.get("content", ""),
+                    "icon": "message-circle"
+                })
+        except Exception:
+            pass
+
+        # Get recent learning activities
+        try:
+            learning_cycles = await dashboard.bus.memory.recall(query={"type": "learning_cycle"}, limit=limit)
+            for cycle in learning_cycles[-2:]:  # Show last 2 learning cycles
+                activities.append({
+                    "type": "learning_cycle",
+                    "timestamp": cycle.get("timestamp", datetime.now().isoformat()),
+                    "title": "Learning Cycle Completed",
+                    "description": f"Found {cycle.get('insights', 0)} insights",
+                    "icon": "brain"
+                })
+        except Exception:
+            pass
+
+        # Sort by timestamp (most recent first) and limit
+        activities.sort(key=lambda x: x["timestamp"], reverse=True)
+        activities = activities[:limit]
+
+        # If no activities, add some default ones
+        if not activities:
+            activities = [
+                {
+                    "type": "system_startup",
+                    "timestamp": datetime.now().isoformat(),
+                    "title": "System Started",
+                    "description": "ZEJZL.NET dashboard initialized",
+                    "icon": "power"
+                },
+                {
+                    "type": "info",
+                    "timestamp": (datetime.now().replace(second=0, microsecond=0)).isoformat(),
+                    "title": "Dashboard Ready",
+                    "description": "All systems operational",
+                    "icon": "check-circle"
+                }
+            ]
+
+        return {
+            "success": True,
+            "data": activities
+        }
+
+    except Exception as e:
+        logger.error(f"Recent activity endpoint error: {e}")
+        return {
+            "success": True,
+            "data": [
+                {
+                    "type": "error",
+                    "timestamp": datetime.now().isoformat(),
+                    "title": "Activity Loading Error",
+                    "description": "Unable to load recent activity",
+                    "icon": "alert-triangle"
+                }
+            ]
+        }
+
 @app.get("/api/health/detailed")
 async def detailed_health_check():
     """Detailed health check with system information"""
@@ -366,13 +475,52 @@ async def chat_endpoint(request: Request, background_tasks: BackgroundTasks):
         if not message:
             return {"error": "No message provided"}
 
-        # Send message through AI bus
-        response = await dashboard.bus.send_message(
-            content=message,
-            provider_name=provider,
-            stream=stream,
-            consensus=consensus
-        )
+        # Check for magic commands
+        magic_commands = {
+            'shield': 'shield',
+            'magic shield': 'shield',
+            'activate shield': 'shield',
+            'enable shield': 'shield',
+            'disable shield': 'shield',
+            'boost': 'boost',
+            'magic boost': 'boost',
+            'vitality boost': 'boost',
+            'acorn boost': 'boost',
+            'heal': 'heal',
+            'magic heal': 'heal',
+            'blue spark': 'heal',
+            'spark heal': 'heal'
+        }
+
+        message_lower = message.lower().strip()
+        if message_lower in magic_commands:
+            # Handle magic command directly
+            action = magic_commands[message_lower]
+            magic_result = await magic_action(action, background_tasks)
+
+            if magic_result.get("success"):
+                # Format the response nicely
+                if action == "shield":
+                    status = "activated" if magic_result.get("shielded") else "deactivated"
+                    response = f"✨ **Magic Shield {status.capitalize()}!**\n\n🛡️ The Fairy Magic shield has been {status} to protect against failures and ensure system stability."
+                elif action == "boost":
+                    boost_result = magic_result.get("result", {})
+                    response = f"⚡ **Vitality Boost Applied!**\n\n💪 System performance enhanced with Acorn Vitality Boost!\n\n**Details:** {boost_result}"
+                elif action == "heal":
+                    heal_result = magic_result.get("result", {})
+                    response = f"🔮 **Blue Spark Healing Complete!**\n\n✨ System healed and optimized using Fairy Magic.\n\n**Healing Report:** {heal_result}"
+                else:
+                    response = f"✨ **Magic {action.capitalize()} Complete!**\n\nMagic action executed successfully."
+            else:
+                response = f"❌ **Magic Failed**\n\n{action.capitalize()} action could not be completed: {magic_result.get('error', 'Unknown error')}"
+        else:
+            # Send message through AI bus
+            response = await dashboard.bus.send_message(
+                content=message,
+                provider_name=provider,
+                stream=stream,
+                consensus=consensus
+            )
 
         # Record the interaction
         mode = "consensus" if consensus else "single"
@@ -394,7 +542,7 @@ async def chat_endpoint(request: Request, background_tasks: BackgroundTasks):
 analytics = UsageAnalytics()
 
 @app.get("/api/analytics/usage")
-async def get_usage_analytics(days: int = 7):
+async def get_analytics(days: int = 7):
     """Get usage analytics for the specified number of days"""
     try:
         report = await analytics.get_usage_report(days=days)

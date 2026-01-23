@@ -298,10 +298,10 @@ class RedisPersistence(PersistenceLayer):
         return {
             "providers": {
                 "chatgpt": {"api_key": os.environ.get("OPENAI_API_KEY", ""), "model": "gpt-3.5-turbo"},
-                "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-3-opus-20240229"},
-                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-2.5-flash"},
+                "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-sonnet-4-5-20250929"},
+                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-2.5-flash-lite"},
                 "zai": {"api_key": os.environ.get("ZAI_API_KEY", ""), "model": "zai-1"},
-                "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-1"},
+                "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-4-1-fast-reasoning"},
                 "deepseek": {"api_key": os.environ.get("DEEPSEEK_API_KEY", ""), "model": "deepseek-coder"},
                 "qwen": {"api_key": os.environ.get("QWEN_API_KEY", ""), "model": "qwen-turbo"}
             },
@@ -570,10 +570,10 @@ class SQLitePersistence(PersistenceLayer):
         return {
             "providers": {
                 "chatgpt": {"api_key": os.environ.get("OPENAI_API_KEY", ""), "model": "gpt-3.5-turbo"},
-                "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-3-opus-20240229"},
-                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-2.5-flash"},
+                "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-sonnet-4-5-20250929"},
+                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-2.5-flash-lite"},
                 "zai": {"api_key": os.environ.get("ZAI_API_KEY", ""), "model": "zai-1"},
-                "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-1"},
+                "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-4-1-fast-reasoning"},
                 "deepseek": {"api_key": os.environ.get("DEEPSEEK_API_KEY", ""), "model": "deepseek-coder"},
                 "qwen": {"api_key": os.environ.get("QWEN_API_KEY", ""), "model": "qwen-turbo"}
             },
@@ -1014,7 +1014,7 @@ class ClaudeProvider(AIProvider):
     
     @property
     def default_model(self) -> str:
-        return "claude-3-opus-20240229"
+        return "claude-sonnet-4-5-20250929"
     
     async def initialize(self):
         self.session = aiohttp.ClientSession(
@@ -1075,7 +1075,7 @@ class GeminiProvider(AIProvider):
     
     @property
     def default_model(self) -> str:
-        return "gemini-2.5-flash"
+        return "gemini-2.5-flash-lite"
     
     async def initialize(self):
         self.session = aiohttp.ClientSession()
@@ -1166,7 +1166,7 @@ class GrokProvider(AIProvider):
     
     @property
     def default_model(self) -> str:
-        return "grok-1"
+        return "grok-4-1-fast-reasoning"
     
     async def initialize(self):
         self.session = aiohttp.ClientSession(
@@ -1303,7 +1303,7 @@ class AsyncMessageBus:
                                                      consensus_providers, stream)
 
         if provider_name not in self.providers:
-            logger.error("Provider not registered", provider=provider_name, available=list(self.providers.keys()))
+            logger.error(f"Provider '{provider_name}' not registered. Available providers: {list(self.providers.keys())}")
             raise ValueError(f"Provider {provider_name} not registered")
 
         # Performance monitoring: request start

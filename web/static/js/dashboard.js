@@ -1,36 +1,82 @@
 // ZEJZL.NET Dashboard JavaScript
 
+/**
+ * Main Dashboard Manager - ZEJZL.NET Dashboard
+ * Orchestrates all dashboard functionality using modular architecture
+ */
+
 class DashboardManager {
     constructor() {
         this.currentTab = 'overview';
-        this.charts = {};
-        this.websocket = null;
         this.isLoading = false;
+        this.refreshInterval = null;
+        this.autoRefreshEnabled = true;
+
+        // Module references (will be set after initialization)
+        this.api = null;
+        this.ws = null;
+        this.ui = null;
+        this.charts = null;
 
         this.init();
     }
 
-    init() {
+    async init() {
+        // Wait for modules to be available
+        await this.waitForModules();
+
+        // Setup module references
+        this.api = window.apiManager;
+        this.ws = window.wsManager;
+        this.ui = window.uiManager;
+        this.charts = window.chartsManager;
+
+        // Setup module integrations
+        this.setupModuleIntegrations();
+
+        // Initialize dashboard
         this.setupEventListeners();
         this.loadInitialData();
-        this.setupWebSocket();
+        this.startAutoRefresh();
         this.updateTimestamp();
         setInterval(() => this.updateTimestamp(), 1000);
+
+        console.log('Dashboard initialized with modular architecture');
+    }
+
+    async waitForModules() {
+        const requiredModules = ['apiManager', 'wsManager', 'uiManager', 'chartsManager'];
+        const maxWait = 5000; // 5 seconds
+        const startTime = Date.now();
+
+        while (Date.now() - startTime < maxWait) {
+            const loadedModules = requiredModules.filter(module => window[module]);
+            if (loadedModules.length === requiredModules.length) {
+                return;
+            }
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        console.warn('Some modules failed to load:', requiredModules.filter(module => !window[module]));
+    }
+
+    setupModuleIntegrations() {
+        // WebSocket event handlers
+        this.ws.on('system_status', (data) => this.handleSystemStatus(data));
+        this.ws.on('agent_update', (data) => this.handleAgentUpdate(data));
+        this.ws.on('metrics_update', (data) => this.handleMetricsUpdate(data));
+        this.ws.on('chat_message', (data) => this.handleChatMessage(data));
+        this.ws.on('multimodal_update', (data) => this.handleMultimodalUpdate(data));
+        this.ws.on('learning_update', (data) => this.handleLearningUpdate(data));
+        this.ws.on('security_alert', (data) => this.handleSecurityAlert(data));
+
+        // UI event handlers
+        this.ui.on('tabChanged', (data) => this.handleTabChange(data));
+        this.ui.on('dataRefresh', () => this.refreshAllData());
+        this.ui.on('globalSearch', (data) => this.handleGlobalSearch(data));
     }
 
     setupEventListeners() {
-        // Tab navigation
-        document.querySelectorAll('.nav-tab').forEach(tab => {
-            tab.addEventListener('click', (e) => {
-                this.switchTab(e.target.closest('.nav-tab').dataset.tab);
-            });
-        });
-
-        // Theme toggle
-        document.getElementById('theme-toggle')?.addEventListener('click', () => {
-            this.toggleTheme();
-        });
-
         // File upload
         this.setupFileUpload();
 
@@ -41,67 +87,296 @@ class DashboardManager {
         document.getElementById('analyze-btn')?.addEventListener('click', () => {
             this.analyzeFile();
         });
+
+        // Learning cycle trigger
+        document.getElementById('learning-cycle-btn')?.addEventListener('click', () => {
+            this.triggerLearningCycle();
+        });
+
+        // MCP tool execution
+        document.getElementById('mcp-execute-btn')?.addEventListener('click', () => {
+            this.executeMCPTool();
+        });
+
+        // Security scan
+        document.getElementById('security-scan-btn')?.addEventListener('click', () => {
+            this.runSecurityScan();
+        });
+
+        // Export data
+        document.getElementById('export-btn')?.addEventListener('click', () => {
+            this.exportData();
+        });
     }
 
     switchTab(tabName) {
-        // Hide all tabs
-        document.querySelectorAll('.tab-content').forEach(tab => {
-            tab.classList.add('hidden');
-        });
-
-        // Remove active class from all tabs
-        document.querySelectorAll('.nav-tab').forEach(tab => {
-            tab.classList.remove('active', 'bg-blue-600', 'text-white');
-            tab.classList.add('bg-gray-700', 'hover:bg-gray-600');
-        });
-
-        // Show selected tab
-        document.getElementById(`${tabName}-tab`).classList.remove('hidden');
-
-        // Set active tab
-        document.querySelector(`[data-tab="${tabName}"]`).classList.add('active', 'bg-blue-600', 'text-white');
-        document.querySelector(`[data-tab="${tabName}"]`).classList.remove('bg-gray-700', 'hover:bg-gray-600');
-
-        this.currentTab = tabName;
-
-        // Load tab-specific data
-        this.loadTabData(tabName);
+        // Use UI module for tab switching
+        this.ui.switchTab(tabName);
     }
 
     async loadInitialData() {
-        await Promise.all([
-            this.loadOverviewData(),
-            this.loadAnalyticsData()
-        ]);
+        try {
+            this.ui.showLoading('#overview-tab', 'Loading dashboard data...');
+            await Promise.all([
+                this.loadOverviewData(),
+                this.loadAnalyticsData(),
+                this.loadRecentActivity()
+            ]);
+        } catch (error) {
+            console.error('Failed to load initial data:', error);
+            this.ui.showNotification('Error', 'Failed to load dashboard data', 'error');
+        } finally {
+            this.ui.hideLoading('#overview-tab');
+        }
     }
 
     async loadTabData(tabName) {
-        switch(tabName) {
-            case 'analytics':
-                await this.loadAnalyticsData();
-                break;
-            case 'multimodal':
-                await this.loadMultimodalData();
-                break;
-            case 'monitoring':
-                await this.loadMonitoringData();
-                break;
+        try {
+            const tabElement = `#${tabName}-tab`;
+            this.ui.showLoading(tabElement, `Loading ${tabName} data...`);
+
+            switch(tabName) {
+                case 'analytics':
+                    await this.loadAnalyticsData();
+                    break;
+                case 'multimodal':
+                    await this.loadMultimodalData();
+                    break;
+                case 'monitoring':
+                    await this.loadMonitoringData();
+                    break;
+                case 'security':
+                    await this.loadSecurityData();
+                    break;
+                case 'mcp':
+                    await this.loadMCPData();
+                    break;
+            }
+        } catch (error) {
+            console.error(`Failed to load ${tabName} data:`, error);
+            this.ui.showNotification('Error', `Failed to load ${tabName} data`, 'error');
+        } finally {
+            this.ui.hideLoading(`#${tabName}-tab`);
         }
     }
 
     async loadOverviewData() {
         try {
-            const response = await fetch('/api/analytics/usage?days=7');
-            const data = await response.json();
+            const data = await this.api.getUsageAnalytics(7);
 
             if (data.success) {
-                document.getElementById('total-requests').textContent = data.data.total_requests || 0;
-                document.getElementById('total-tokens').textContent = (data.data.total_tokens || 0).toLocaleString();
-                document.getElementById('total-cost').textContent = `$${data.data.total_cost_usd?.toFixed(4) || '0.0000'}`;
-                document.getElementById('success-rate').textContent = `${(data.data.success_rate * 100)?.toFixed(1) || 0}%`;
+                // Animate value changes
+                this.ui.animateValue('#total-requests', 0, data.data.total_requests || 0, 1000, this.ui.formatNumber);
+                this.ui.animateValue('#total-tokens', 0, data.data.total_tokens || 0, 1000, (v) => this.ui.formatNumber(v));
+                this.ui.animateValue('#total-cost', 0, data.data.total_cost_usd || 0, 1000, (v) => `$${v.toFixed(4)}`);
+                this.ui.animateValue('#success-rate', 0, (data.data.success_rate || 0) * 100, 1000, (v) => `${v.toFixed(1)}%`);
             }
         } catch (error) {
             console.error('Failed to load overview data:', error);
+        }
+    }
+
+    async loadRecentActivity() {
+        try {
+            const response = await this.api.get('/activity/recent', { limit: 8 });
+            if (response.success) {
+                this.updateRecentActivity(response.data);
+            } else {
+                this.showDefaultActivity();
+            }
+        } catch (error) {
+            console.error('Failed to load recent activity:', error);
+            this.showDefaultActivity();
+        }
+    }
+
+    updateRecentActivity(activities) {
+        const container = document.getElementById('recent-activity');
+        if (!container) return;
+
+        if (!activities || activities.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-gray-400 py-8">
+                    <i data-lucide="clock" class="w-12 h-12 mx-auto mb-4 opacity-50"></i>
+                    <p>No recent activity</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = activities.map(activity => {
+            const timeAgo = this.getTimeAgo(activity.timestamp);
+            const iconClass = this.getActivityIcon(activity.icon);
+
+            return `
+                <div class="flex items-start space-x-3 p-3 rounded-lg bg-gray-700/50 hover:bg-gray-700/70 transition-colors">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
+                            <i data-lucide="${activity.icon}" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between">
+                            <p class="text-sm font-medium text-white truncate">
+                                ${activity.title}
+                            </p>
+                            <p class="text-xs text-gray-400 ml-2">
+                                ${timeAgo}
+                            </p>
+                        </div>
+                        <p class="text-xs text-gray-300 mt-1">
+                            ${activity.description}
+                        </p>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Re-initialize Lucide icons for the new content
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+    }
+
+    showDefaultActivity() {
+        const container = document.getElementById('recent-activity');
+        if (container) {
+            container.innerHTML = `
+                <div class="text-center text-gray-400 py-8">
+                    <i data-lucide="activity" class="w-12 h-12 mx-auto mb-4 opacity-50"></i>
+                    <p class="text-sm">Dashboard initialized</p>
+                    <p class="text-xs text-gray-500 mt-1">Ready for activity</p>
+                </div>
+            `;
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        }
+    }
+
+    getTimeAgo(timestamp) {
+        const now = new Date();
+        const activityTime = new Date(timestamp);
+        const diffMs = now - activityTime;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) return 'just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        return `${diffDays}d ago`;
+    }
+
+    getActivityIcon(iconType) {
+        const iconMap = {
+            'bot': 'bot',
+            'zap': 'zap',
+            'message-circle': 'message-circle',
+            'brain': 'brain',
+            'power': 'power',
+            'check-circle': 'check-circle',
+            'alert-triangle': 'alert-triangle',
+            'user': 'user',
+            'cpu': 'cpu',
+            'database': 'database'
+        };
+        return iconMap[iconType] || 'activity';
+    }
+
+    async loadAnalyticsData() {
+        try {
+            const [usageData, performanceData, tokenData, costData] = await Promise.all([
+                this.api.getUsageAnalytics(30),
+                this.api.getPerformanceMetrics(),
+                this.api.getTokenUsage(),
+                this.api.getCostAnalytics()
+            ]);
+
+            // Create charts using Charts module
+            if (usageData.success) {
+                this.charts.createUsageChart('usage-chart', usageData.data.daily_usage || []);
+            }
+
+            if (costData.success) {
+                this.charts.createCostChart('cost-chart', costData.data.daily_costs || []);
+            }
+
+            if (performanceData.success) {
+                this.charts.createAgentPerformanceChart('performance-chart', performanceData.data.agent_metrics || {});
+            }
+
+            if (tokenData.success) {
+                this.charts.createProviderDistributionChart('provider-chart', tokenData.data.provider_usage || {});
+            }
+        } catch (error) {
+            console.error('Failed to load analytics data:', error);
+        }
+    }
+
+    async loadMultimodalData() {
+        try {
+            const history = await this.api.getMultimodalHistory(20);
+            if (history.success) {
+                this.updateMultimodalHistory(history.data);
+            }
+        } catch (error) {
+            console.error('Failed to load multimodal data:', error);
+        }
+    }
+
+    async loadMonitoringData() {
+        try {
+            const [healthData, metricsData, debugData] = await Promise.all([
+                this.api.getDetailedHealth(),
+                this.api.getMetrics(),
+                this.api.getPerformanceData()
+            ]);
+
+            if (healthData.success) {
+                this.updateSystemHealth(healthData.data);
+                this.charts.createSystemHealthChart('health-chart', healthData.data.system);
+            }
+
+            if (metricsData.success) {
+                this.updateMetricsDisplay(metricsData.data);
+            }
+
+            if (debugData.success) {
+                this.updateDebugInfo(debugData.data);
+            }
+        } catch (error) {
+            console.error('Failed to load monitoring data:', error);
+        }
+    }
+
+    async loadSecurityData() {
+        try {
+            const status = await this.api.getSecurityStatus();
+            if (status.success) {
+                this.updateSecurityStatus(status.data);
+            }
+        } catch (error) {
+            console.error('Failed to load security data:', error);
+        }
+    }
+
+    async loadMCPData() {
+        try {
+            const [servers, tools] = await Promise.all([
+                this.api.getMCPServers(),
+                this.api.getMCPTools()
+            ]);
+
+            if (servers.success) {
+                this.updateMCPServers(servers.data);
+            }
+
+            if (tools.success) {
+                this.updateMCPTools(tools.data);
+            }
+        } catch (error) {
+            console.error('Failed to load MCP data:', error);
         }
     }
 
@@ -618,7 +893,7 @@ class DashboardManager {
                 <i data-lucide="${avatarIcon}" class="w-4 h-4"></i>
             </div>
             <div class="bg-gray-700 rounded-lg p-3 max-w-xs lg:max-w-md">
-                <p class="text-sm ${isError ? 'text-red-400' : 'text-white'}">${content}</p>
+                <div class="text-sm ${isError ? 'text-red-400' : 'text-white'} message-content">${this.formatMessageContent(content)}</div>
                 <p class="text-xs text-gray-400 mt-1">${new Date().toLocaleTimeString()}</p>
             </div>
         `;
@@ -782,11 +1057,554 @@ class DashboardManager {
         }
     }
 
-    updateTimestamp() {
-        const timestampElement = document.getElementById('timestamp');
-        if (timestampElement) {
-            timestampElement.textContent = new Date().toLocaleString();
+    // Event handlers for real-time updates
+    handleSystemStatus(data) {
+        this.updateSystemHealth(data);
+    }
+
+    handleAgentUpdate(data) {
+        // Update agent status displays
+        this.ui.showNotification('Agent Update', `${data.agent}: ${data.status}`, 'info');
+        this.loadOverviewData(); // Refresh overview stats
+        this.loadRecentActivity(); // Refresh recent activity
+    }
+
+    handleMetricsUpdate(data) {
+        this.updateMetricsDisplay(data);
+    }
+
+    handleChatMessage(data) {
+        this.addChatMessage(data);
+        this.loadRecentActivity(); // Refresh recent activity with new chat
+    }
+
+    handleMultimodalUpdate(data) {
+        this.updateMultimodalHistory([data]);
+        this.loadRecentActivity(); // Refresh recent activity with new multimodal processing
+    }
+
+    handleLearningUpdate(data) {
+        this.ui.showNotification('Learning Update', data.message, data.level || 'info');
+        if (data.insights) {
+            this.displayLearningInsights(data.insights);
         }
+        this.loadRecentActivity(); // Refresh recent activity with learning updates
+    }
+
+    handleSecurityAlert(data) {
+        this.ui.showNotification('Security Alert', data.message, 'warning');
+        this.loadSecurityData(); // Refresh security status
+    }
+
+    handleTabChange(data) {
+        this.currentTab = data.tabName;
+        // Tab-specific logic can be added here
+    }
+
+    handleGlobalSearch(data) {
+        // Implement global search across current tab
+        this.ui.handleGlobalSearch(data.query);
+    }
+
+    // User interaction methods
+    async triggerLearningCycle() {
+        try {
+            this.ui.showLoading('#learning-cycle-btn', 'Running learning cycle...');
+            const result = await this.api.triggerLearningCycle();
+
+            if (result.success) {
+                this.ui.showNotification('Success', 'Learning cycle completed', 'success');
+                this.displayLearningInsights(result.data.insights || []);
+            } else {
+                this.ui.showNotification('Error', result.error || 'Learning cycle failed', 'error');
+            }
+        } catch (error) {
+            console.error('Learning cycle error:', error);
+            this.ui.showNotification('Error', 'Failed to trigger learning cycle', 'error');
+        } finally {
+            this.ui.hideLoading('#learning-cycle-btn');
+        }
+    }
+
+    async executeMCPTool() {
+        const serverId = document.getElementById('mcp-server-select')?.value;
+        const toolName = document.getElementById('mcp-tool-select')?.value;
+        const paramsInput = document.getElementById('mcp-params')?.value;
+
+        if (!serverId || !toolName) {
+            this.ui.showNotification('Error', 'Please select server and tool', 'error');
+            return;
+        }
+
+        try {
+            let params = {};
+            if (paramsInput) {
+                params = JSON.parse(paramsInput);
+            }
+
+            this.ui.showLoading('#mcp-execute-btn', 'Executing MCP tool...');
+            const result = await this.api.callMCPTool(serverId, toolName, params);
+
+            if (result.success) {
+                this.ui.showModal('mcp-result', `
+                    <h3 class="text-lg font-bold mb-4">MCP Tool Result</h3>
+                    <pre class="bg-gray-100 p-4 rounded text-sm overflow-auto">${JSON.stringify(result.data, null, 2)}</pre>
+                `);
+            } else {
+                this.ui.showNotification('Error', result.error || 'MCP tool execution failed', 'error');
+            }
+        } catch (error) {
+            console.error('MCP tool execution error:', error);
+            this.ui.showNotification('Error', 'Failed to execute MCP tool', 'error');
+        } finally {
+            this.ui.hideLoading('#mcp-execute-btn');
+        }
+    }
+
+    async runSecurityScan() {
+        try {
+            this.ui.showLoading('#security-scan-btn', 'Running security scan...');
+            const result = await this.api.runSecurityScan();
+
+            if (result.success) {
+                this.ui.showNotification('Success', 'Security scan completed', 'success');
+                this.loadSecurityData(); // Refresh security status
+            } else {
+                this.ui.showNotification('Error', result.error || 'Security scan failed', 'error');
+            }
+        } catch (error) {
+            console.error('Security scan error:', error);
+            this.ui.showNotification('Error', 'Failed to run security scan', 'error');
+        } finally {
+            this.ui.hideLoading('#security-scan-btn');
+        }
+    }
+
+    exportData() {
+        const exportModal = `
+            <h3 class="text-lg font-bold mb-4">Export Dashboard Data</h3>
+            <div class="space-y-3">
+                <label class="flex items-center">
+                    <input type="checkbox" id="export-analytics" class="mr-2">
+                    Analytics Data
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" id="export-metrics" class="mr-2">
+                    System Metrics
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" id="export-logs" class="mr-2">
+                    Debug Logs
+                </label>
+            </div>
+            <div class="mt-6 flex justify-end space-x-2">
+                <button class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500" onclick="uiManager.closeModal('export-modal')">Cancel</button>
+                <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500" onclick="dashboardManager.doExport()">Export</button>
+            </div>
+        `;
+        this.ui.showModal('export-modal', exportModal);
+    }
+
+    async doExport() {
+        const options = {
+            analytics: document.getElementById('export-analytics')?.checked,
+            metrics: document.getElementById('export-metrics')?.checked,
+            logs: document.getElementById('export-logs')?.checked
+        };
+
+        this.ui.closeModal('export-modal');
+
+        try {
+            const exportData = {};
+
+            if (options.analytics) {
+                exportData.analytics = await this.api.getUsageAnalytics(30);
+            }
+
+            if (options.metrics) {
+                exportData.metrics = await this.api.getMetrics();
+            }
+
+            if (options.logs) {
+                exportData.logs = await this.api.getRecentLogs(100);
+            }
+
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `zejzl-dashboard-export-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            this.ui.showNotification('Success', 'Data exported successfully', 'success');
+        } catch (error) {
+            console.error('Export error:', error);
+            this.ui.showNotification('Error', 'Failed to export data', 'error');
+        }
+    }
+
+    refreshAllData() {
+        this.loadInitialData();
+        this.loadTabData(this.currentTab);
+        // Recent activity is already included in loadInitialData
+    }
+
+    startAutoRefresh() {
+        if (this.autoRefreshEnabled) {
+            this.refreshInterval = setInterval(() => {
+                this.refreshAllData();
+            }, 30000); // Refresh every 30 seconds
+
+            // Also refresh recent activity more frequently
+            this.activityRefreshInterval = setInterval(() => {
+                this.loadRecentActivity();
+            }, 10000); // Refresh every 10 seconds
+        }
+    }
+
+    stopAutoRefresh() {
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+            this.refreshInterval = null;
+        }
+        if (this.activityRefreshInterval) {
+            clearInterval(this.activityRefreshInterval);
+            this.activityRefreshInterval = null;
+        }
+    }
+
+    // UI Update Methods
+    updateSystemHealth(data) {
+        const statusElement = document.getElementById('system-status');
+        if (statusElement) {
+            const status = data.status || 'unknown';
+            statusElement.className = `px-2 py-1 rounded text-xs font-medium ${
+                status === 'healthy' ? 'bg-green-100 text-green-800' :
+                status === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-red-100 text-red-800'
+            }`;
+            statusElement.textContent = status.toUpperCase();
+        }
+    }
+
+    updateMetricsDisplay(data) {
+        // Update metrics in monitoring tab
+        Object.entries(data).forEach(([key, value]) => {
+            const element = document.getElementById(`metric-${key}`);
+            if (element) {
+                element.textContent = typeof value === 'number' ? this.ui.formatNumber(value) : value;
+            }
+        });
+    }
+
+    updateDebugInfo(data) {
+        const logContainer = document.getElementById('debug-logs');
+        if (logContainer && data.logs) {
+            logContainer.innerHTML = data.logs.map(log =>
+                `<div class="text-xs font-mono bg-gray-100 p-2 rounded mb-1">${log}</div>`
+            ).join('');
+        }
+    }
+
+    updateSecurityStatus(data) {
+        const statusElement = document.getElementById('security-status');
+        if (statusElement) {
+            const status = data.status || 'unknown';
+            statusElement.className = `px-2 py-1 rounded text-xs font-medium ${
+                status === 'secure' ? 'bg-green-100 text-green-800' :
+                status === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-red-100 text-red-800'
+            }`;
+            statusElement.textContent = status.toUpperCase();
+        }
+    }
+
+    updateMCPServers(data) {
+        const container = document.getElementById('mcp-servers');
+        if (container) {
+            container.innerHTML = data.servers?.map(server =>
+                `<div class="bg-gray-50 p-3 rounded">
+                    <h4 class="font-medium">${server.name}</h4>
+                    <p class="text-sm text-gray-600">${server.description}</p>
+                    <span class="text-xs ${server.connected ? 'text-green-600' : 'text-red-600'}">
+                        ${server.connected ? 'Connected' : 'Disconnected'}
+                    </span>
+                </div>`
+            ).join('') || '<p class="text-gray-500">No MCP servers available</p>';
+        }
+    }
+
+    updateMCPTools(data) {
+        const container = document.getElementById('mcp-tools');
+        if (container) {
+            container.innerHTML = data.tools?.map(tool =>
+                `<div class="bg-gray-50 p-3 rounded">
+                    <h4 class="font-medium">${tool.name}</h4>
+                    <p class="text-sm text-gray-600">${tool.description}</p>
+                </div>`
+            ).join('') || '<p class="text-gray-500">No MCP tools available</p>';
+        }
+    }
+
+    updateMultimodalHistory(history) {
+        const container = document.getElementById('multimodal-history');
+        if (container) {
+            container.innerHTML = history.map(item =>
+                `<div class="bg-gray-50 p-3 rounded mb-2">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="font-medium">${item.modality}</span>
+                            <span class="text-sm text-gray-500 ml-2">${new Date(item.timestamp).toLocaleString()}</span>
+                        </div>
+                        <span class="text-xs ${item.status === 'processed' ? 'text-green-600' : 'text-yellow-600'}">
+                            ${item.status}
+                        </span>
+                    </div>
+                    ${item.result ? `<p class="text-sm mt-1">${item.result}</p>` : ''}
+                </div>`
+            ).join('');
+        }
+    }
+
+    addChatMessage(message) {
+        const container = document.getElementById('chat-messages');
+        if (container) {
+            const messageElement = document.createElement('div');
+            messageElement.className = `p-3 rounded mb-2 ${message.sender === 'user' ? 'bg-blue-100 ml-12' : 'bg-gray-100 mr-12'}`;
+            messageElement.innerHTML = `
+                <div class="flex justify-between items-start mb-1">
+                    <span class="font-medium text-sm">${message.sender}</span>
+                    <span class="text-xs text-gray-500">${new Date(message.timestamp).toLocaleString()}</span>
+                </div>
+                <div class="text-sm message-content">${this.formatMessageContent(message.content)}</div>
+            `;
+            container.appendChild(messageElement);
+            container.scrollTop = container.scrollHeight;
+        }
+    }
+
+    formatMessageContent(content) {
+        if (!content) return '';
+
+        // Handle markdown-like formatting
+        let formatted = content
+            // Bold text **text**
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            // Italic text *text*
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            // Newlines to <br>
+            .replace(/\n/g, '<br>')
+            // Headers
+            .replace(/^### (.*$)/gm, '<h3 class="text-lg font-bold mt-2 mb-1">$1</h3>')
+            .replace(/^## (.*$)/gm, '<h2 class="text-xl font-bold mt-3 mb-2">$1</h2>')
+            .replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold mt-4 mb-3">$1</h1>')
+            // Bullet points
+            .replace(/^- (.*$)/gm, '<li class="ml-4">• $1</li>')
+            // Links [text](url)
+            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-blue-600 hover:underline">$1</a>')
+            // Code blocks ```code```
+            .replace(/```([\s\S]*?)```/g, '<pre class="bg-gray-200 p-2 rounded mt-1 mb-1 overflow-x-auto"><code>$1</code></pre>')
+            // Inline code `code`
+            .replace(/`([^`]+)`/g, '<code class="bg-gray-200 px-1 rounded">$1</code>');
+
+        // Handle common emojis (basic ones)
+        const emojiMap = {
+            '✨': '✨',
+            '🛡️': '🛡️',
+            '💪': '💪',
+            '⚡': '⚡',
+            '🔮': '🔮',
+            '❌': '❌',
+            '✅': '✅',
+            '🔥': '🔥',
+            '🌟': '🌟',
+            '💡': '💡',
+            '🚀': '🚀',
+            '🎉': '🎉',
+            '⚠️': '⚠️',
+            'ℹ️': 'ℹ️',
+            '🔔': '🔔',
+            '🔧': '🔧'
+        };
+
+        // Replace emoji codes with actual emojis
+        Object.keys(emojiMap).forEach(code => {
+            formatted = formatted.replace(new RegExp(code, 'g'), emojiMap[code]);
+        });
+
+        return formatted;
+    }
+
+    displayLearningInsights(insights) {
+        const container = document.getElementById('learning-insights');
+        if (container) {
+            container.innerHTML = insights.map(insight =>
+                `<div class="bg-blue-50 border-l-4 border-blue-400 p-3 mb-2">
+                    <div class="flex items-start">
+                        <div class="flex-1">
+                            <h4 class="font-medium text-blue-800">${insight.type}</h4>
+                            <p class="text-sm text-blue-700">${insight.description}</p>
+                        </div>
+                        ${insight.confidence > 0.8 ?
+                            '<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">High Confidence</span>' :
+                            '<span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Medium Confidence</span>'
+                        }
+                    </div>
+                </div>`
+            ).join('');
+        }
+    }
+
+    // File Upload and Chat Functionality
+    setupFileUpload() {
+        const fileInput = document.getElementById('file-input');
+        const dropZone = document.getElementById('file-drop-zone');
+
+        if (fileInput && dropZone) {
+            // Drag and drop
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, this.preventDefaults, false);
+            });
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.add('bg-blue-50', 'border-blue-300'), false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.remove('bg-blue-50', 'border-blue-300'), false);
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                const files = e.dataTransfer.files;
+                this.handleFiles(files);
+            });
+
+            // File input change
+            fileInput.addEventListener('change', (e) => {
+                this.handleFiles(e.target.files);
+            });
+        }
+    }
+
+    preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    handleFiles(files) {
+        [...files].forEach(file => {
+            this.uploadFile(file);
+        });
+    }
+
+    async uploadFile(file) {
+        try {
+            this.ui.showLoading('#file-drop-zone', 'Uploading file...');
+            const result = await this.api.uploadFile(file);
+
+            if (result.success) {
+                this.ui.showNotification('Success', 'File uploaded successfully', 'success');
+                this.loadMultimodalData(); // Refresh multimodal history
+            } else {
+                this.ui.showNotification('Error', result.error || 'File upload failed', 'error');
+            }
+        } catch (error) {
+            console.error('File upload error:', error);
+            this.ui.showNotification('Error', 'Failed to upload file', 'error');
+        } finally {
+            this.ui.hideLoading('#file-drop-zone');
+        }
+    }
+
+    async analyzeFile() {
+        const file = document.getElementById('file-input')?.files[0];
+        if (!file) {
+            this.ui.showNotification('Error', 'Please select a file first', 'error');
+            return;
+        }
+
+        try {
+            this.ui.showLoading('#analyze-btn', 'Analyzing file...');
+            const result = await this.api.processMultimodalContent(file, 'auto');
+
+            if (result.success) {
+                this.ui.showModal('analysis-result', `
+                    <h3 class="text-lg font-bold mb-4">File Analysis Result</h3>
+                    <pre class="bg-gray-100 p-4 rounded text-sm overflow-auto">${JSON.stringify(result.data, null, 2)}</pre>
+                `);
+            } else {
+                this.ui.showNotification('Error', result.error || 'Analysis failed', 'error');
+            }
+        } catch (error) {
+            console.error('Analysis error:', error);
+            this.ui.showNotification('Error', 'Failed to analyze file', 'error');
+        } finally {
+            this.ui.hideLoading('#analyze-btn');
+        }
+    }
+
+    setupChat() {
+        const chatInput = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('send-chat-btn');
+
+        if (chatInput && sendBtn) {
+            const sendMessage = () => {
+                const message = chatInput.value.trim();
+                if (message) {
+                    this.sendChatMessage(message);
+                    chatInput.value = '';
+                }
+            };
+
+            sendBtn.addEventListener('click', sendMessage);
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+        }
+    }
+
+    async sendChatMessage(message) {
+        try {
+            const provider = document.getElementById('chat-provider-select')?.value || 'grok';
+
+            // Add user message to chat
+            this.addChatMessage({
+                sender: 'user',
+                content: message,
+                timestamp: new Date().toISOString()
+            });
+
+            // Send to API
+            const result = await this.api.sendChatMessage(message, provider);
+
+            if (result.success) {
+                this.addChatMessage({
+                    sender: 'assistant',
+                    content: result.data.response,
+                    timestamp: new Date().toISOString()
+                });
+            } else {
+                this.ui.showNotification('Error', result.error || 'Failed to send message', 'error');
+            }
+        } catch (error) {
+            console.error('Chat error:', error);
+            this.ui.showNotification('Error', 'Failed to send chat message', 'error');
+        }
+    }
+
+    updateTimestamp() {
+        const now = new Date();
+        const timestamp = document.getElementById('current-timestamp');
+        if (timestamp) {
+            timestamp.textContent = now.toLocaleString();
+        }
+    }
     }
 
     toggleTheme() {

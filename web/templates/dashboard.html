@@ -24,21 +24,28 @@
                     <p class="text-sm text-gray-400">AI Orchestration Control Center</p>
                 </div>
             </div>
-            <div class="flex items-center space-x-4">
-                <div class="flex items-center space-x-2">
-                    <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                    <span class="text-sm text-green-400">System Online</span>
-                </div>
-                <button id="theme-toggle" class="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors">
-                    <i data-lucide="moon" class="w-5 h-5"></i>
-                </button>
-            </div>
+             <div class="flex items-center space-x-4">
+                 <div class="flex items-center space-x-2">
+                     <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                     <span class="text-sm text-green-400">System Online</span>
+                 </div>
+                 <!-- WebSocket Status Indicator -->
+                 <div class="flex items-center space-x-2 text-sm">
+                     <div class="w-3 h-3 rounded-full bg-gray-500" id="ws-status-dot"></div>
+                     <span id="ws-status-text" class="text-gray-400">Connecting...</span>
+                 </div>
+                 <button id="theme-toggle" class="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors">
+                     <i data-lucide="moon" class="w-5 h-5"></i>
+                 </button>
+                 <div class="text-sm text-gray-400" id="current-timestamp">--:--:--</div>
+             </div>
         </div>
     </header>
 
     <!-- Navigation -->
     <nav class="bg-gray-800 px-6 py-2 border-b border-gray-700">
-        <div class="flex space-x-6">
+        <div class="flex items-center justify-between">
+            <div class="flex space-x-6">
             <button class="nav-tab active px-4 py-2 rounded-lg bg-blue-600 text-white" data-tab="overview">
                 <i data-lucide="home" class="w-4 h-4 inline mr-2"></i>Overview
             </button>
@@ -60,6 +67,15 @@
             <button class="nav-tab px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors" data-tab="mcp">
                 <i data-lucide="server" class="w-4 h-4 inline mr-2"></i>MCP
             </button>
+            </div>
+
+            <!-- Global Search -->
+            <div class="flex items-center space-x-2">
+                <div class="relative">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" id="global-search" placeholder="Search dashboard..." class="pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+            </div>
         </div>
     </nav>
 
@@ -163,12 +179,13 @@
                     </h3>
 
                     <div class="space-y-4">
-                        <div class="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center hover:border-blue-500 transition-colors">
-                            <input type="file" id="file-input" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.txt,.md" class="hidden">
-                            <label for="file-input" class="cursor-pointer">
-                                <i data-lucide="file" class="w-12 h-12 mx-auto mb-4 text-gray-400"></i>
+                        <div id="file-drop-zone" class="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center hover:border-blue-500 transition-colors cursor-pointer">
+                            <input type="file" id="file-input" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.txt,.md,.mp3,.wav,.mp4,.avi,.mov" class="hidden">
+                            <label for="file-input" class="cursor-pointer block h-full">
+                                <i data-lucide="upload-cloud" class="w-12 h-12 mx-auto mb-4 text-gray-400"></i>
                                 <p class="text-gray-400 mb-2">Click to upload or drag and drop</p>
-                                <p class="text-sm text-gray-500">PDF, Images, Documents (max 10MB)</p>
+                                <p class="text-sm text-gray-500">Images, Videos, Audio, Documents, PDFs (max 50MB)</p>
+                                <p class="text-xs text-gray-600 mt-1">Supports multi-modal AI processing</p>
                             </label>
                         </div>
 
@@ -227,16 +244,26 @@
                 </div>
             </div>
 
-            <!-- Analysis Results -->
-            <div id="analysis-results" class="mt-6 bg-gray-800 rounded-lg p-6 border border-gray-700 hidden">
-                <h3 class="text-lg font-semibold mb-4 flex items-center">
-                    <i data-lucide="file-text" class="w-5 h-5 mr-2"></i>Analysis Results
-                </h3>
-                <div id="results-content" class="prose prose-invert max-w-none">
-                    <!-- Results will be populated here -->
-                </div>
-            </div>
-        </div>
+             <!-- Analysis Results -->
+             <div id="analysis-results" class="mt-6 bg-gray-800 rounded-lg p-6 border border-gray-700 hidden">
+                 <h3 class="text-lg font-semibold mb-4 flex items-center">
+                     <i data-lucide="file-text" class="w-5 h-5 mr-2"></i>Analysis Results
+                 </h3>
+                 <div id="results-content" class="prose prose-invert max-w-none">
+                     <!-- Results will be populated here -->
+                 </div>
+             </div>
+
+             <!-- Processing History -->
+             <div class="mt-6">
+                 <h3 class="text-lg font-semibold mb-4 flex items-center">
+                     <i data-lucide="history" class="w-5 h-5 mr-2"></i>Processing History
+                 </h3>
+                 <div id="multimodal-history" class="bg-gray-800 rounded-lg p-4 border border-gray-700 max-h-96 overflow-y-auto">
+                     <p class="text-gray-400 text-center py-8">No processing history yet</p>
+                 </div>
+             </div>
+         </div>
 
         <!-- Chat Tab -->
         <div id="chat-tab" class="tab-content hidden">
@@ -263,10 +290,30 @@
 
                     <!-- Input -->
                     <div class="p-4 border-t border-gray-700">
+                        <!-- File Attachment Preview -->
+                        <div id="chat-attachment-preview" class="hidden mb-3 p-3 bg-gray-700 rounded-lg">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <i data-lucide="paperclip" class="w-4 h-4 text-blue-400"></i>
+                                    <div>
+                                        <p class="text-sm font-medium" id="attachment-name"></p>
+                                        <p class="text-xs text-gray-400" id="attachment-size"></p>
+                                    </div>
+                                </div>
+                                <button id="remove-attachment" class="text-red-400 hover:text-red-300">
+                                    <i data-lucide="x" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+
                         <div class="flex space-x-2">
-                            <input type="text" id="chat-input" placeholder="Type your message..."
+                            <input type="file" id="chat-file-input" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.md" class="hidden">
+                            <button id="attach-file-btn" class="bg-gray-700 hover:bg-gray-600 p-2 rounded-lg transition-colors" title="Attach file">
+                                <i data-lucide="paperclip" class="w-4 h-4"></i>
+                            </button>
+                            <input type="text" id="chat-input" placeholder="Type your message or attach a file..."
                                 class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <button id="send-btn" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors">
+                            <button id="send-chat-btn" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors">
                                 <i data-lucide="send" class="w-4 h-4"></i>
                             </button>
                         </div>
@@ -575,6 +622,10 @@
     </footer>
 
     <!-- Scripts -->
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/websocket.js"></script>
+    <script src="/static/js/ui.js"></script>
+    <script src="/static/js/charts.js"></script>
     <script src="/static/js/dashboard.js"></script>
     <script>
         // Initialize Lucide icons

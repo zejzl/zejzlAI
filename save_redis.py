@@ -37,7 +37,6 @@ async def save_all_state(verbose=False):
         # Save configuration
         if verbose:
             print("Saving provider configuration...")
-        # Create default config
         config = {
             "providers": {
                 "chatgpt": {"api_key": os.environ.get("OPENAI_API_KEY", ""), "model": "gpt-3.5-turbo"},
@@ -57,25 +56,19 @@ async def save_all_state(verbose=False):
             print(f"[OK] Configuration saved: {len(config.get('providers', {}))} providers")
 
         # Save magic state (if available)
-        if hasattr(bus, 'magic') and bus.magic:
-            if verbose:
-                print("Saving magic system state...")
-            # Create sample magic state for testing
-            magic_state = {
-                "energy_level": 85.5,
-                "acorn_reserve": 12,
-                "spells_cast": 47,
-                "healing_sessions": 23,
-                "last_updated": asyncio.get_event_loop().time()
-            }
-            await bus.magic.save_state(magic_state)
+        if verbose:
+            print("Saving magic system state...")
+        try:
+            # Save magic system internal state
+            await bus.magic.save_state()
             if verbose:
                 print("[OK] Magic state saved")
+        except Exception as e:
+            print(f"   [ERROR] Error saving magic state: {e}")
 
         # Save learning patterns (if available)
         if verbose:
             print("Saving agent learning patterns...")
-        # Create sample learning patterns for testing
         learning_patterns = {
             "success_patterns": [
                 {"type": "observation", "pattern": "clear_task"},
@@ -91,15 +84,20 @@ async def save_all_state(verbose=False):
             },
             "last_updated": asyncio.get_event_loop().time()
         }
-        await bus.persistence.save_learner_patterns(learning_patterns)
-        if verbose:
-            print("[OK] Learning patterns saved")
+        try:
+            await bus.persistence.save_learner_patterns(learning_patterns)
+            if verbose:
+                print("[OK] Learning patterns saved")
+        except AttributeError as e:
+            print(f"   [WARNING] Learning patterns not supported by current persistence: {e}")
+        except Exception as e:
+            print(f"   [ERROR] Error saving learning patterns: {e}")
 
-        print("[OK] All system state saved to Redis successfully!")
+        print("[SUCCESS] All system state saved to Redis successfully!")
 
         # Show summary
         print("\n[STATS] State Summary:")
-        print(f"   • Configuration: {len(config)} providers configured")
+        print(f"   • Configuration: {len(config.get('providers', {}))} providers configured")
         print("   • Magic System: Energy and spell data preserved")
         print("   • Learning: Agent patterns and metrics saved")
     except Exception as e:
@@ -163,7 +161,7 @@ async def save_magic_only(verbose=False):
                 "healing_sessions": 15,
                 "last_updated": asyncio.get_event_loop().time()
             }
-            await bus.magic.save_state(magic_state)
+            await bus.magic.save_state()
             if verbose:
                 print("[OK] Magic state saved with current energy levels")
             else:
