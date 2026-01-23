@@ -47,6 +47,12 @@ class ReasonerAgent:
     - Adaptive planning with AI and rule-based approaches
     - Plan validation and optimization
     """
+
+    def __init__(self):
+        self.name = "Reasoner"
+
+    async def reason(self, observation: Dict[str, Any], provider: Optional[str] = None) -> Dict[str, Any]:
+        """
         Use AI to reason on an observation and produce a comprehensive plan.
         """
         logger.debug(f"[{self.name}] Reasoning on observation: {observation}")

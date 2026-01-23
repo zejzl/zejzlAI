@@ -53,6 +53,12 @@ class ActorAgent:
     - Timeline estimation and milestone setting
     - Quality assurance and success criteria definition
     """
+
+    def __init__(self):
+        self.name = "Actor"
+
+    async def act(self, plan: Dict[str, Any], provider: Optional[str] = None) -> Dict[str, Any]:
+        """
         Use AI to determine how to execute subtasks and provide execution guidance.
         """
         logger.debug(f"[{self.name}] Acting on plan: {plan}")
