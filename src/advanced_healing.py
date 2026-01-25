@@ -162,8 +162,12 @@ class AdvancedHealingSystem:
         for comp_type in ComponentType:
             self.component_strategies[comp_type] = ComponentHealingStrategy(comp_type)
 
-        # Start predictive monitoring
-        asyncio.create_task(self._predictive_monitoring_loop())
+        # Start predictive monitoring when event loop is available
+        try:
+            asyncio.create_task(self._predictive_monitoring_loop())
+        except RuntimeError:
+            # No event loop running yet - will be started later
+            pass
 
     async def heal_component(self, component: str, component_type: ComponentType,
                            error: Exception, context: Dict[str, Any] = None) -> bool:

@@ -50,6 +50,7 @@ class ReasonerAgent:
 
     def __init__(self):
         self.name = "Reasoner"
+        self.personality = None
 
     async def reason(self, observation: Dict[str, Any], provider: Optional[str] = None) -> Dict[str, Any]:
         """

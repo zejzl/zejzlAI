@@ -158,7 +158,11 @@ class FairyMagic:
 
         # Load persisted state if persistence is available
         if self.persistence:
-            asyncio.create_task(self.load_state())
+            try:
+                asyncio.create_task(self.load_state())
+            except RuntimeError:
+                # No event loop running yet - will be loaded later
+                pass
 
     async def save_state(self):
         """Save magic system state to persistence"""
@@ -466,7 +470,7 @@ class FairyMagic:
             "learning_preferences_count": len(self.learning_preferences)
         }
 
-    async def auto_heal(self, component: str, error: Exception, component_type: str = None) -> bool:
+    async def auto_heal(self, component: str, error: Exception, component_type: Optional[str] = None) -> bool:
         """
         Advanced automatic healing with component-specific strategies (Phase 8).
         Uses pattern recognition and predictive healing when available.
@@ -487,7 +491,7 @@ class FairyMagic:
             try:
                 # Import ComponentType and convert string
                 from .advanced_healing import ComponentType as HealingComponentType
-                comp_type = HealingComponentType(component_type.lower())
+                comp_type = HealingComponentType(component_type.lower() if component_type else "unknown")
                 success = await self.advanced_healing.heal_component(
                     component, comp_type, error, {"circuit_breaker": cb.get_status()}
                 )

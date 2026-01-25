@@ -56,6 +56,7 @@ class ActorAgent:
 
     def __init__(self):
         self.name = "Actor"
+        self.personality = None
 
     async def act(self, plan: Dict[str, Any], provider: Optional[str] = None) -> Dict[str, Any]:
         """
