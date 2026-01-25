@@ -757,6 +757,108 @@ async def run_learning_loop_mode():
             print("[INFO] If this persists, please check the system logs.")
 
 
+async def run_oram_mode():
+    """Run ORAM Mode - Observer-Reasoner-Actor + Memory iterative processing"""
+    # Complete logging suppression for clean CLI output
+    logging.basicConfig(level=logging.CRITICAL, force=True, handlers=[])
+    logging.getLogger().setLevel(logging.CRITICAL)
+    # Disable all handlers to prevent any output
+    for handler in logging.getLogger().handlers[:]:
+        logging.getLogger().removeHandler(handler)
+    # Suppress all existing and future loggers
+    for name in list(logging.root.manager.loggerDict.keys()) + ['zejzl', 'zejzl.performance', 'zejzl.debug', 'ai_framework']:
+        logging.getLogger(name).setLevel(logging.CRITICAL)
+        for handler in logging.getLogger(name).handlers[:]:
+            logging.getLogger(name).removeHandler(handler)
+
+    print("\n[ORAM Mode]")
+    print("Lightweight 4-agent loop for structured iterative tasks")
+    print("Iterates: Observer → Reasoner → Actor + Memory until convergence")
+    
+    task = input("Enter a task for ORAM processing: ").strip()
+    if not task:
+        print("[WARNING] No task provided. Exiting ORAM mode.")
+        return
+
+    print(f"\n[Processing: {task}]")
+
+    try:
+        # Import ORAM system
+        from src.oram import ORAMSystem, ORAMIterationType, ORAMConfig
+        
+        # Get iteration type from user
+        print("\n[ORAM Iteration Types:]")
+        print("1. Basic - Standard iteration (5 iterations)")
+        print("2. Deep Analysis - Thorough investigation (7 iterations)")
+        print("3. Creative - Innovation focused (6 iterations)")
+        print("4. Problem Solving - Solution oriented (8 iterations)")
+        print("5. Optimization - Performance focused (5 iterations)")
+        
+        type_choice = input("Choose iteration type (1-5, default 1): ").strip() or "1"
+        
+        type_mapping = {
+            "1": ORAMIterationType.BASIC,
+            "2": ORAMIterationType.DEEP_ANALYSIS,
+            "3": ORAMIterationType.CREATIVE,
+            "4": ORAMIterationType.PROBLEM_SOLVING,
+            "5": ORAMIterationType.OPTIMIZATION
+        }
+        
+        iteration_type = type_mapping.get(type_choice, ORAMIterationType.BASIC)
+        
+        # Configure ORAM system
+        config = ORAMConfig()
+        max_iter = input("Max iterations (default 5): ").strip()
+        if max_iter.isdigit():
+            config.max_iterations = int(max_iter)
+        
+        print(f"\n[Starting ORAM: {iteration_type.value}, max {config.max_iterations} iterations]")
+        
+        # Create ORAM system
+        oram = ORAMSystem(config)
+        
+        # Execute ORAM loop
+        print("[Executing ORAM iterations...]")
+        iterations = await oram.execute_oram_loop(task, iteration_type)
+        
+        if iterations:
+            print(f"\n[OK] ORAM complete: {len(iterations)} iterations executed")
+            
+            # Show results summary
+            best_iteration = max(iterations, key=lambda x: x.quality_score)
+            total_insights = sum(len(iter.insights) for iter in iterations)
+            
+            print(f"\n[SUMMARY]")
+            print(f"  Iterations: {len(iterations)}")
+            print(f"  Best Quality: {best_iteration.quality_score:.3f}")
+            print(f"  Total Insights: {total_insights}")
+            print(f"  Convergence: {best_iteration.quality_score >= config.convergence_threshold}")
+            
+            # Show top insights
+            all_insights = oram.get_insights()
+            if all_insights:
+                print(f"\n[INSIGHTS] Top 5 insights:")
+                for i, insight in enumerate(all_insights[:5], 1):
+                    print(f"  {i}. {insight}")
+            
+            # Show iteration details
+            print(f"\n[ITERATION DETAILS]")
+            for i, iteration in enumerate(iterations, 1):
+                print(f"  {i}. Quality: {iteration.quality_score:.3f}, Insights: {len(iteration.insights)}")
+        else:
+            print("[WARNING] No iterations completed")
+            
+    except ImportError:
+        print("[ERROR] ORAM system not available. Please check src/oram.py")
+    except Exception as e:
+        error_msg = str(e)
+        print(f"\n[ERROR] ORAM failed: {error_msg[:100]}...")
+        if "API" in error_msg or "connection" in error_msg.lower():
+            print("[INFO] Please check your internet connection and try again.")
+        else:
+            print("[INFO] If this persists, please check the system logs.")
+
+
 # Future Menu Options (for reference):
 #         1. Single Agent - Observe-Reason-Act loop
 #         2. Collaboration Mode (Grok + Claude) - Dual AI planning [IMPLEMENTED]
@@ -765,7 +867,7 @@ async def run_learning_loop_mode():
 #         5. Learning Loop - Single optimization cycle for system improvement [IMPLEMENTED]
 #         6. Offline Mode - Cached/local fallback (no API, uses vault/KB)
 #         7. Community Vault Sync - Pull/push evolutions and tools
-#         8. Save Game - Invoke progress save script
+#         8. ORAM Mode - Observer-Reasoner-Actor + Memory iterative processing [IMPLEMENTED]
 #         9. Quit
 
 def run_interactive_menu(debug: bool = True, max_iterations: int = 10, max_rounds: int = 5, skip_boot: bool = False):
@@ -788,13 +890,12 @@ def run_interactive_menu(debug: bool = True, max_iterations: int = 10, max_round
         4. Pantheon Mode - Full 9-agent orchestration with validation & learning
         5. Learning Loop - Single optimization cycle for system improvement
         6. Offline Mode - Cached responses for offline operation
-        7. Community Vault - Browse and share tools, configs, and evolutions
+7. Community Vault - Browse and share tools, configs, and evolutions
+        8. ORAM Mode - Observer-Reasoner-Actor + Memory iterative processing
         9. Quit
+    """)
 
-        (Note: Mode 8 is not yet implemented)
-""")
-
-    choice = input("        Choose mode (1, 2, 3, 4, 5, 6, 7, or 9): ").strip()
+    choice = input("        Choose mode (1, 2, 3, 4, 5, 6, 7, 8, or 9): ").strip()
 
     if choice == "1":
         print("\n[Starting Single Agent Mode...]")
@@ -817,12 +918,15 @@ def run_interactive_menu(debug: bool = True, max_iterations: int = 10, max_round
     elif choice == "7":
         print("\n[Starting Community Vault Mode...]")
         asyncio.run(run_vault_mode())
+    elif choice == "8":
+        print("\n[Starting ORAM Mode...]")
+        asyncio.run(run_oram_mode())
     elif choice == "9":
         print("\n        Goodbye! :)\n")
         input("        Press Enter to exit...")
         sys.exit(0)
     else:
-        print(f"\n        Mode {choice} is not yet implemented. Please choose 1-7, or 9.\n")
+        print(f"\n        Mode {choice} is not yet implemented. Please choose 1-8, or 9.\n")
 
     return choice
 

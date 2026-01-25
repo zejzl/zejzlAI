@@ -623,6 +623,48 @@ ZEJZL.NET includes comprehensive offline mode capabilities that enable AI intera
 - **Agent Success Rate**: 100% for basic operations after fixes
 - **System Health**: 50/100 baseline with active optimization loops
 
+## ORAM System - Observer-Reasoner-Actor + Memory
+
+### Overview
+ZEJZL.NET now includes **ORAM (Observer-Reasoner-Actor + Memory)** - a clean, non-intrusive iterative processing system that works alongside the existing Pantheon framework.
+
+### Features
+- **Clean Integration**: Works with existing Pantheon agents without interference
+- **Adaptive Iterations**: 5 iteration types (Basic, Deep Analysis, Creative, Problem Solving, Optimization)
+- **Convergence Detection**: Automatic stopping when quality thresholds are reached
+- **Memory Consolidation**: Learns from each iteration and builds on previous insights
+- **Quality Scoring**: Real-time evaluation of iteration effectiveness
+- **Insight Extraction**: Automatically identifies key learnings and patterns
+
+### Implementation
+- **Location**: `src/oram.py` - Complete ORAM system implementation
+- **CLI Integration**: Mode 8 in main.py with interactive iteration type selection
+- **Test Suite**: `test_oram.py` with comprehensive functionality validation
+- **Agent Compatibility**: Uses existing Observer, Reasoner, Actor, and Memory agents
+
+### Usage
+```python
+# Direct ORAM usage
+from src.oram import ORAMSystem, ORAMIterationType
+
+oram = ORAMSystem()
+iterations = await oram.execute_oram_loop(
+    "Analyze benefits of iterative processing",
+    ORAMIterationType.DEEP_ANALYSIS
+)
+
+# Convenience function
+from src.oram import execute_oram
+iterations = await execute_oram(task, ORAMIterationType.CREATIVE, max_iterations=5)
+```
+
+### CLI Access
+Run `python main.py` and choose **Mode 8** for interactive ORAM processing with:
+- Iteration type selection
+- Custom iteration limits
+- Real-time progress tracking
+- Detailed result summaries
+
 This document should be updated as the codebase evolves. Last updated: 2026-01-25</content>
 <parameter name="filePath">C:\Users\Administrator\Desktop\ZejzlAI\zejzl_net\AGENTS.md
 
