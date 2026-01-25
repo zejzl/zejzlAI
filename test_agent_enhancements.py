@@ -19,7 +19,7 @@ from src.agents.actor import ActorAgent
 
 async def test_executor_agent():
     """Test the enhanced Executor Agent with real execution capabilities."""
-    print("🧪 Testing Enhanced Executor Agent...")
+    print("[TEST] Testing Enhanced Executor Agent...")
 
     executor = ExecutorAgent()
 
@@ -34,7 +34,7 @@ async def test_executor_agent():
     result = await executor._execute_data_step(data_step, 30)
     assert result["status"] == "success"
     assert result["result"]["test"] == "value"
-    print("✅ Data processing execution works")
+    print("[OK] Data processing execution works")
 
     # Test file operation execution (read operation)
     import tempfile
@@ -54,7 +54,7 @@ async def test_executor_agent():
         result = await executor._execute_file_step(file_step, 30)
         assert result["status"] == "success"
         assert "test content" in result["content"]
-        print("✅ File operation execution works")
+        print("[OK] File operation execution works")
     finally:
         os.unlink(temp_file)
 
@@ -69,14 +69,14 @@ async def test_executor_agent():
     assert result["status"] == "success"
     assert "final_answer" in result["output"]
     assert result["output"]["final_answer"] == 10
-    print("✅ Code execution works")
+    print("[OK] Code execution works")
 
-    print("✅ Executor Agent tests passed!")
+    print("[OK] Executor Agent tests passed!")
 
 
 async def test_reasoner_agent():
     """Test the enhanced Reasoner Agent with intelligent fallback planning."""
-    print("\n🧪 Testing Enhanced Reasoner Agent...")
+    print("\n[TEST] Testing Enhanced Reasoner Agent...")
 
     reasoner = ReasonerAgent()
 
@@ -84,7 +84,7 @@ async def test_reasoner_agent():
     assert reasoner._classify_task_type("research the latest AI developments") == "research/analysis"
     assert reasoner._classify_task_type("create a mobile app") == "creation/development"
     assert reasoner._classify_task_type("write a report") == "writing/documentation"
-    print("✅ Task type classification works")
+    print("[OK] Task type classification works")
 
     # Test fallback plan generation
     observation = {
@@ -99,14 +99,14 @@ async def test_reasoner_agent():
     assert len(plan["subtasks"]) >= 3
     assert "research" in plan["approach"].lower()
     assert plan["fallback_type"] == "intelligent_rule_based"
-    print("✅ Intelligent fallback planning works")
+    print("[OK] Intelligent fallback planning works")
 
-    print("✅ Reasoner Agent tests passed!")
+    print("[OK] Reasoner Agent tests passed!")
 
 
 async def test_actor_agent():
     """Test the enhanced Actor Agent with intelligent execution planning."""
-    print("\n🧪 Testing Enhanced Actor Agent...")
+    print("\n[TEST] Testing Enhanced Actor Agent...")
 
     actor = ActorAgent()
 
@@ -138,14 +138,14 @@ async def test_actor_agent():
     assert "test" in testing_plan["execution_plan"][0].lower()
     assert "testing" in str(testing_plan["tools_needed"])
 
-    print("✅ Execution plan generation works")
+    print("[OK] Execution plan generation works")
 
-    print("✅ Actor Agent tests passed!")
+    print("[OK] Actor Agent tests passed!")
 
 
 async def test_agent_integration():
     """Test the full agent integration pipeline."""
-    print("\n🧪 Testing Full Agent Integration Pipeline...")
+    print("\n[TEST] Testing Full Agent Integration Pipeline...")
 
     # Initialize agents
     reasoner = ReasonerAgent()
@@ -160,7 +160,7 @@ async def test_agent_integration():
     }
 
     # Test Reasoner → Actor → Executor pipeline
-    print("📋 Testing Reasoner → Actor → Executor pipeline...")
+    print("[PLAN] Testing Reasoner → Actor → Executor pipeline...")
 
     # Generate plan (using fallback for testing)
     plan = reasoner._generate_fallback_plan(observation, "Testing pipeline")
@@ -181,9 +181,9 @@ async def test_agent_integration():
     assert "result" in execution_result["output"]
     assert len(execution_result["output"]["result"]) == 10  # Should have 10 fibonacci numbers
 
-    print("✅ Full agent pipeline works")
+    print("[OK] Full agent pipeline works")
 
-    print("✅ Agent Integration tests passed!")
+    print("[OK] Agent Integration tests passed!")
 
 
 async def run_all_tests():
@@ -198,14 +198,14 @@ async def run_all_tests():
         await test_agent_integration()
 
         print("\n" + "=" * 60)
-        print("🎉 ALL AGENT ENHANCEMENT TESTS PASSED!")
-        print("\n📊 Test Summary:")
-        print("✅ Executor Agent: Real task execution capabilities")
-        print("✅ Reasoner Agent: Intelligent fallback planning")
-        print("✅ Actor Agent: Smart execution strategy generation")
-        print("✅ Agent Integration: Full pipeline functionality")
+        print("[SUCCESS] ALL AGENT ENHANCEMENT TESTS PASSED!")
+        print("\n[STATS] Test Summary:")
+        print("[OK] Executor Agent: Real task execution capabilities")
+        print("[OK] Reasoner Agent: Intelligent fallback planning")
+        print("[OK] Actor Agent: Smart execution strategy generation")
+        print("[OK] Agent Integration: Full pipeline functionality")
 
-        print("\n🚀 Agents are now production-ready with real logic!")
+        print("\n[START] Agents are now production-ready with real logic!")
         return 0
 
     except Exception as e:

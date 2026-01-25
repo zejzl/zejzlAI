@@ -585,17 +585,17 @@ async def chat_endpoint(request: Request, background_tasks: BackgroundTasks):
                 # Format the response nicely
                 if action == "shield":
                     status = "activated" if magic_result.get("shielded") else "deactivated"
-                    response = f"✨ **Magic Shield {status.capitalize()}!**\n\n🛡️ The Fairy Magic shield has been {status} to protect against failures and ensure system stability."
+                    response = f"[MAGIC] **Magic Shield {status.capitalize()}!**\n\n[SHIELD] The Fairy Magic shield has been {status} to protect against failures and ensure system stability."
                 elif action == "boost":
                     boost_result = magic_result.get("result", {})
-                    response = f"⚡ **Vitality Boost Applied!**\n\n💪 System performance enhanced with Acorn Vitality Boost!\n\n**Details:** {boost_result}"
+                    response = f"[BOOST] **Vitality Boost Applied!**\n\n[POWER] System performance enhanced with Acorn Vitality Boost!\n\n**Details:** {boost_result}"
                 elif action == "heal":
                     heal_result = magic_result.get("result", {})
-                    response = f"🔮 **Blue Spark Healing Complete!**\n\n✨ System healed and optimized using Fairy Magic.\n\n**Healing Report:** {heal_result}"
+                    response = f"[HEAL] **Blue Spark Healing Complete!**\n\n[SUCCESS] System healed and optimized using Fairy Magic.\n\n**Healing Report:** {heal_result}"
                 else:
-                    response = f"✨ **Magic {action.capitalize()} Complete!**\n\nMagic action executed successfully."
+                    response = f"[MAGIC] **Magic {action.capitalize()} Complete!**\n\nMagic action executed successfully."
             else:
-                response = f"❌ **Magic Failed**\n\n{action.capitalize()} action could not be completed: {magic_result.get('error', 'Unknown error')}"
+                response = f"[ERROR] **Magic Failed**\n\n{action.capitalize()} action could not be completed: {magic_result.get('error', 'Unknown error')}"
         else:
             # Send message through AI bus
             response = await dashboard.bus.send_message(

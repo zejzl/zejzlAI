@@ -2,7 +2,38 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-IMPORTANT NOTICE: Emojis are forbidden in this repo!
+## Coding Standards
+
+**CRITICAL: NO EMOJIS IN SOURCE CODE**
+
+Emoji characters are **strictly prohibited** in all source code files (.py, .sh, .js, .ts, etc.). This is a mandatory coding standard for this project.
+
+**Why:**
+- Terminal/console encoding issues on Windows and various Linux distributions
+- Python logging compatibility issues
+- Breaks when redirecting output to files or pipes
+- Not professional or maintainable code
+- Interferes with log parsing and monitoring tools
+- Screen reader and accessibility problems
+
+**Rules:**
+- ✅ Use text indicators: `[OK]`, `[ERROR]`, `[INFO]`, `[SUCCESS]`, `[WARNING]`, `[AI]`, `[AGENT]`, etc.
+- ❌ Never use emoji characters in source code: 🚀, ✅, ❌, 💡, 🔧, 🤖, 🧠, etc.
+- ✅ Emojis are allowed in documentation files (`.md` files only)
+- ✅ Review all code before committing to ensure compliance
+
+**Example:**
+```python
+# BAD - Will cause encoding issues
+logger.info("✅ Agent initialized successfully")
+print("🚀 Starting framework...")
+
+# GOOD - Professional and compatible
+logger.info("[SUCCESS] Agent initialized successfully")
+print("[START] Starting framework...")
+```
+
+All developers and AI agents must strictly follow this rule when modifying code.
 
 ## Project Overview
 

@@ -167,7 +167,7 @@ async def save_magic_only(verbose=False):
             else:
                 print("[OK] Magic state saved successfully!")
         else:
-            print("⚠️ Magic system not available")
+            print("[WARNING] Magic system not available")
             return False
     except Exception as e:
         print(f"[ERROR] Error saving magic state: {e}")

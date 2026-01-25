@@ -1,17 +1,17 @@
 #!/bin/bash
 # Quick start script for zejzl.net
 
-echo "🚀 zejzl.net Quick Start"
+echo "[START] zejzl.net Quick Start"
 echo "========================"
 
 # Check if Redis is running
 if ! redis-cli ping > /dev/null 2>&1; then
-    echo "❌ Redis is not running!"
+    echo "[ERROR] Redis is not running!"
     echo "Start Redis with: redis-server"
     exit 1
 fi
 
-echo "✓ Redis is running"
+echo "[OK] Redis is running"
 
 # Check if virtual environment exists
 if [ ! -d "venv" ]; then
@@ -29,13 +29,13 @@ if [ ! -f "venv/.installed" ]; then
     touch venv/.installed
 fi
 
-echo "✓ Dependencies installed"
+echo "[OK] Dependencies installed"
 
 # Check if .env exists
 if [ ! -f ".env" ]; then
-    echo "⚠️  No .env file found, copying from .env.example"
+    echo "[WARNING] No .env file found, copying from .env.example"
     cp .env.example .env
-    echo "📝 Please edit .env with your API keys"
+    echo "[NOTE] Please edit .env with your API keys"
 fi
 
 echo ""

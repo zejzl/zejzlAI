@@ -92,7 +92,7 @@ class PantheonAgent(ABC):
             task = asyncio.create_task(self._listen(channel, queue))
             self._tasks.append(task)
         
-        logger.info(f"✓ {self.config.name} started (listening: {', '.join(self.config.channels)})")
+        logger.info(f"[OK] {self.config.name} started (listening: {', '.join(self.config.channels)})")
     
     async def stop(self):
         """Stop the agent"""

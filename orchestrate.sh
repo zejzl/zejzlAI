@@ -27,7 +27,7 @@ show_header() {
 ║           ███████╗ ███████╗         ██║ ███████╗ ███████╗ ██║ ╚████║ ███████╗    ██║      ║
 ║           ╚══════╝ ╚══════╝         ╚═╝ ╚══════╝ ╚══════╝ ╚═╝  ╚═══╝ ╚══════╝    ╚═╝      ║
 ║                                                                              ║
-║                    🤖 MASTER AUTOMATION ORCHESTRATOR 🤖                      ║
+║                    [AI] MASTER AUTOMATION ORCHESTRATOR [AI]                      ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 EOF
@@ -48,10 +48,10 @@ run_cmd() {
     echo -e "${CYAN}Command: $cmd${NC}"
 
     if eval "$cmd"; then
-        echo -e "${GREEN}✓ $desc completed successfully${NC}"
+        echo -e "${GREEN}[OK] $desc completed successfully${NC}"
         return 0
     else
-        echo -e "${RED}✗ $desc failed${NC}"
+        echo -e "${RED}[ERROR] $desc failed${NC}"
         return 1
     fi
 }
@@ -75,9 +75,9 @@ show_tools() {
         local desc="${tool_info#*:}"
 
         if command_exists "$tool"; then
-            echo -e "${GREEN}✓${NC} $tool - $desc"
+            echo -e "${GREEN}[OK]${NC} $tool - $desc"
         else
-            echo -e "${RED}✗${NC} $tool - $desc"
+            echo -e "${RED}[ERROR]${NC} $tool - $desc"
         fi
     done
 
@@ -88,12 +88,12 @@ show_tools() {
 
 # Function for complete system setup
 system_setup() {
-    echo -e "${PURPLE}🚀 ZEJZL.NET System Setup${NC}"
+    echo -e "${PURPLE}[START] ZEJZL.NET System Setup${NC}"
     echo "==========================="
 
     # Check Python and dependencies
     run_cmd "python --version" "Checking Python installation"
-    run_cmd "python -c 'import asyncio; print(\"✓ AsyncIO available\")'" "Checking asyncio support"
+    run_cmd "python -c 'import asyncio; print(\"[OK] AsyncIO available\")'" "Checking asyncio support"
 
     # Install/update dependencies
     run_cmd "pip install -r requirements.txt" "Installing Python dependencies"
@@ -107,7 +107,7 @@ system_setup() {
     # Setup environment
     if [ ! -f ".env" ]; then
         run_cmd "cp .env.example .env" "Creating environment file"
-        echo -e "${YELLOW}⚠️  Please edit .env file with your API keys${NC}"
+        echo -e "${YELLOW}[WARNING] Please edit .env file with your API keys${NC}"
     fi
 
     # Initialize git if needed
@@ -117,12 +117,12 @@ system_setup() {
         run_cmd "git commit -m 'Initial ZEJZL.NET setup'" "Creating initial commit"
     fi
 
-    echo -e "${GREEN}✓ ZEJZL.NET system setup completed!${NC}"
+    echo -e "${GREEN}[SUCCESS] ZEJZL.NET system setup completed!${NC}"
 }
 
 # Function for development workflow
 dev_workflow() {
-    echo -e "${PURPLE}💻 ZEJZL.NET Development Workflow${NC}"
+    echo -e "${PURPLE}[DEV] ZEJZL.NET Development Workflow${NC}"
     echo "==================================="
 
     # Run tests
@@ -132,28 +132,28 @@ dev_workflow() {
     run_cmd "python -m pytest --cov=. --cov-report=term-missing" "Checking test coverage"
 
     # Run the main application test
-    run_cmd "python -c 'import asyncio; from ai_framework import AsyncMessageBus; bus = AsyncMessageBus(); asyncio.run(bus.start()); asyncio.run(bus.stop()); print(\"✓ AI Framework functional\")'" "Testing AI framework"
+    run_cmd "python -c 'import asyncio; from ai_framework import AsyncMessageBus; bus = AsyncMessageBus(); asyncio.run(bus.start()); asyncio.run(bus.stop()); print(\"[OK] AI Framework functional\")'" "Testing AI framework"
 
     # Git status and commit
     run_cmd "git status" "Checking git status"
     run_cmd "git add ." "Staging changes"
     run_cmd "git commit -m 'Development workflow update'" "Committing changes"
 
-    echo -e "${GREEN}✓ ZEJZL.NET development workflow completed!${NC}"
+    echo -e "${GREEN}[SUCCESS] ZEJZL.NET development workflow completed!${NC}"
 }
 
 # Function for deployment pipeline
 deployment_pipeline() {
     local env="${1:-staging}"
 
-    echo -e "${PURPLE}🚢 ZEJZL.NET Deployment Pipeline ($env)${NC}"
+    echo -e "${PURPLE}[DEPLOY] ZEJZL.NET Deployment Pipeline ($env)${NC}"
     echo "========================================"
 
     # Build Docker images
     run_cmd "docker-compose build" "Building Docker images"
 
     # Run security checks
-    run_cmd "python -c 'import sys; print(\"✓ Python security check passed\")'" "Running security checks"
+    run_cmd "python -c 'import sys; print(\"[OK] Python security check passed\")'" "Running security checks"
 
     # Deploy to environment
     if [ "$env" = "production" ]; then
@@ -171,7 +171,7 @@ deployment_pipeline() {
 
 # Function for maintenance tasks
 maintenance_tasks() {
-    echo -e "${PURPLE}🔧 ZEJZL.NET Maintenance Tasks${NC}"
+    echo -e "${PURPLE}[TOOL] ZEJZL.NET Maintenance Tasks${NC}"
     echo "================================="
 
     # Clean up Docker
@@ -192,12 +192,12 @@ maintenance_tasks() {
     # Log rotation
     run_cmd "python debug_cli.py clear-logs" "Rotating debug logs"
 
-    echo -e "${GREEN}✓ ZEJZL.NET maintenance tasks completed!${NC}"
+    echo -e "${GREEN}[SUCCESS] ZEJZL.NET maintenance tasks completed!${NC}"
 }
 
 # Function for ZEJZL.NET demo
 zejzl_demo() {
-    echo -e "${PURPLE}🤖 ZEJZL.NET AI Demo${NC}"
+    echo -e "${PURPLE}[AI] ZEJZL.NET AI Demo${NC}"
     echo "======================"
 
     # Start the web dashboard
@@ -216,15 +216,15 @@ zejzl_demo() {
     run_cmd "python debug_cli.py status" "Checking system status"
 
     echo ""
-    echo -e "${GREEN}🎉 ZEJZL.NET Demo Complete!${NC}"
-    echo -e "${BLUE}🌐 Web Dashboard: http://localhost:8000${NC}"
-    echo -e "${BLUE}🔍 Debug CLI: python debug_cli.py${NC}"
-    echo -e "${BLUE}📊 Monitoring: python debug_cli.py performance${NC}"
+    echo -e "${GREEN}[SUCCESS] ZEJZL.NET Demo Complete!${NC}"
+    echo -e "${BLUE}[WEB] Web Dashboard: http://localhost:8000${NC}"
+    echo -e "${BLUE}[SEARCH] Debug CLI: python debug_cli.py${NC}"
+    echo -e "${BLUE}[STATS] Monitoring: python debug_cli.py performance${NC}"
 }
 
 # Function for monitoring dashboard
 monitoring_dashboard() {
-    echo -e "${PURPLE}📊 ZEJZL.NET Monitoring Dashboard${NC}"
+    echo -e "${PURPLE}[STATS] ZEJZL.NET Monitoring Dashboard${NC}"
     echo "====================================="
 
     echo -e "${CYAN}System Status:${NC}"
@@ -249,7 +249,7 @@ monitoring_dashboard() {
 
 # Function for performance optimization
 performance_optimization() {
-    echo -e "${PURPLE}⚡ ZEJZL.NET Performance Optimization${NC}"
+    echo -e "${PURPLE}[PERF] ZEJZL.NET Performance Optimization${NC}"
     echo "========================================="
 
     # Run performance tests
@@ -262,14 +262,14 @@ performance_optimization() {
     run_cmd "docker system df" "Checking Docker resource usage"
 
     # Memory and cache cleanup
-    run_cmd "python -c 'import gc; gc.collect(); print(\"✓ Python garbage collection completed\")'" "Python memory cleanup"
+    run_cmd "python -c 'import gc; gc.collect(); print(\"[OK] Python garbage collection completed\")'" "Python memory cleanup"
 
-    echo -e "${GREEN}✓ ZEJZL.NET performance optimization completed!${NC}"
+    echo -e "${GREEN}[SUCCESS] ZEJZL.NET performance optimization completed!${NC}"
 }
 
 # Function for security audit
 security_audit() {
-    echo -e "${PURPLE}🔒 ZEJZL.NET Security Audit${NC}"
+    echo -e "${PURPLE}[SECURITY] ZEJZL.NET Security Audit${NC}"
     echo "=============================="
 
     # Check for security vulnerabilities in dependencies
@@ -279,7 +279,7 @@ security_audit() {
     if [ -f ".env" ]; then
         run_cmd "python -c 'import os; env_vars = [k for k in os.environ.keys() if \"KEY\" in k or \"SECRET\" in k]; print(f\"Found {len(env_vars)} sensitive environment variables\")'" "Checking environment security"
     else
-        echo -e "${YELLOW}⚠️  No .env file found${NC}"
+        echo -e "${YELLOW}[WARNING] No .env file found${NC}"
     fi
 
     # Check file permissions
@@ -290,12 +290,12 @@ security_audit() {
         run_cmd "docker scan zejzl_net-zejzl_net 2>/dev/null || echo 'Docker scan not available'" "Scanning Docker image security"
     fi
 
-    echo -e "${GREEN}✓ ZEJZL.NET security audit completed!${NC}"
+    echo -e "${GREEN}[SUCCESS] ZEJZL.NET security audit completed!${NC}"
 }
 
 # Function for documentation update
 docs_update() {
-    echo -e "${PURPLE}📚 ZEJZL.NET Documentation Update${NC}"
+    echo -e "${PURPLE}[DOCS] ZEJZL.NET Documentation Update${NC}"
     echo "====================================="
 
     # Check documentation
@@ -310,12 +310,12 @@ docs_update() {
     # Git documentation
     run_cmd "git log --oneline -5" "Checking recent commits"
 
-    echo -e "${GREEN}✓ ZEJZL.NET documentation check completed!${NC}"
+    echo -e "${GREEN}[SUCCESS] ZEJZL.NET documentation check completed!${NC}"
 }
 
 # Function for emergency recovery
 emergency_recovery() {
-    echo -e "${RED}🚨 ZEJZL.NET Emergency Recovery${NC}"
+    echo -e "${RED}[EMERGENCY] ZEJZL.NET Emergency Recovery${NC}"
     echo "==================================="
 
     echo -e "${YELLOW}This will stop all services and reset to clean state.${NC}"
@@ -329,7 +329,7 @@ emergency_recovery() {
         run_cmd "find . -name '*.pyc' -delete" "Removing Python cache files"
         run_cmd "find . -name '__pycache__' -type d -exec rm -rf {} +" "Removing cache directories"
 
-        echo -e "${GREEN}✓ Emergency recovery completed!${NC}"
+        echo -e "${GREEN}[OK] Emergency recovery completed!${NC}"
         echo -e "${BLUE}Run './orchestrate.sh setup' to reinitialize.${NC}"
     else
         echo "Recovery cancelled."
@@ -338,7 +338,7 @@ emergency_recovery() {
 
 # Function to show system health
 system_health() {
-    echo -e "${PURPLE}🏥 ZEJZL.NET System Health Check${NC}"
+    echo -e "${PURPLE}[HEALTH] ZEJZL.NET System Health Check${NC}"
     echo "==================================="
 
     echo -e "${CYAN}Core Services:${NC}"
@@ -368,19 +368,19 @@ system_health() {
 # Function for infinite panda adventure mode
 infinite_panda_adventure() {
     local adventure_quotes=(
-        "🐼 Panda says: 'Time for some bamboo automation!'"
-        "🐼 Panda whispers: 'Let the continuous improvement begin...'"
-        "🐼 Panda thinks: 'More automation = more nap time!'"
-        "🐼 Panda observes: 'Watching the code grow stronger...'"
-        "🐼 Panda meditates: 'Finding inner peace through perfect automation...'"
-        "🐼 Panda discovers: 'Another optimization opportunity!'"
-        "🐼 Panda celebrates: 'Automation level increased!'"
-        "🐼 Panda reflects: 'The codebase is becoming enlightened...'"
-        "🐼 Panda flows: 'Going with the automation current...'"
-        "🐼 Panda balances: 'Maintaining perfect system harmony...'"
+        "[PANDA] Panda says: 'Time for some bamboo automation!'"
+        "[PANDA] Panda whispers: 'Let the continuous improvement begin...'"
+        "[PANDA] Panda thinks: 'More automation = more nap time!'"
+        "[PANDA] Panda observes: 'Watching the code grow stronger...'"
+        "[PANDA] Panda meditates: 'Finding inner peace through perfect automation...'"
+        "[PANDA] Panda discovers: 'Another optimization opportunity!'"
+        "[PANDA] Panda celebrates: 'Automation level increased!'"
+        "[PANDA] Panda reflects: 'The codebase is becoming enlightened...'"
+        "[PANDA] Panda flows: 'Going with the automation current...'"
+        "[PANDA] Panda balances: 'Maintaining perfect system harmony...'"
     )
 
-    echo -e "${PURPLE}🐼🐼🐼 INFINITE PANDA ADVENTURE MODE 🐼🐼🐼${NC}"
+    echo -e "${PURPLE}[PANDA][PANDA][PANDA] INFINITE PANDA ADVENTURE MODE [PANDA][PANDA][PANDA]${NC}"
     echo -e "${CYAN}Welcome to the endless cycle of automation excellence!${NC}"
     echo -e "${YELLOW}Press Ctrl+C to return to the mortal realm...${NC}"
     echo ""
@@ -388,7 +388,7 @@ infinite_panda_adventure() {
     local cycle=1
     while true; do
         echo -e "${GREEN}╔══════════════════════════════════════════════╗${NC}"
-        echo -e "${GREEN}║           🐼 CYCLE $cycle - PANDA ADVENTURE 🐼           ║${NC}"
+        echo -e "${GREEN}║           [PANDA] CYCLE $cycle - PANDA ADVENTURE [PANDA]           ║${NC}"
         echo -e "${GREEN}╚══════════════════════════════════════════════╝${NC}"
 
         # Random adventure quote
@@ -397,66 +397,66 @@ infinite_panda_adventure() {
         echo ""
 
         # Phase 1: Health Check
-        echo -e "${BLUE}🌿 Phase 1: System Health Check${NC}"
+        echo -e "${BLUE}[HEALTH] Phase 1: System Health Check${NC}"
         if ! run_tool "monitor.sh" "check" >/dev/null 2>&1; then
-            echo -e "${RED}🐼 Panda detects health issues! Running full diagnostic...${NC}"
+            echo -e "${RED}[PANDA] Panda detects health issues! Running full diagnostic...${NC}"
             system_health
         else
-            echo -e "${GREEN}✓ System is healthy and thriving!${NC}"
+            echo -e "${GREEN}[OK] System is healthy and thriving!${NC}"
         fi
 
         # Phase 2: Code Quality
-        echo -e "${BLUE}🎨 Phase 2: Code Quality Enhancement${NC}"
+        echo -e "${BLUE}[CODE] Phase 2: Code Quality Enhancement${NC}"
         if ! run_tool "automate.sh" "quality" >/dev/null 2>&1; then
-            echo -e "${YELLOW}🐼 Panda finds code that needs polishing...${NC}"
+            echo -e "${YELLOW}[PANDA] Panda finds code that needs polishing...${NC}"
             run_tool "code-review.sh" "changes"
         else
-            echo -e "${GREEN}✓ Code quality is impeccable!${NC}"
+            echo -e "${GREEN}[OK] Code quality is impeccable!${NC}"
         fi
 
         # Phase 3: Performance Optimization
-        echo -e "${BLUE}⚡ Phase 3: Performance Optimization${NC}"
+        echo -e "${BLUE}[PERF] Phase 3: Performance Optimization${NC}"
         if [ $((cycle % 5)) -eq 0 ]; then  # Every 5 cycles
-            echo -e "${PURPLE}🐼 Panda performs deep performance meditation...${NC}"
+            echo -e "${PURPLE}[PANDA] Panda performs deep performance meditation...${NC}"
             run_tool "optimize-performance.sh" "test" >/dev/null 2>&1
-            echo -e "${GREEN}✓ Performance optimized!${NC}"
+            echo -e "${GREEN}[OK] Performance optimized!${NC}"
         else
-            echo -e "${GREEN}✓ Performance monitoring active${NC}"
+            echo -e "${GREEN}[OK] Performance monitoring active${NC}"
         fi
 
         # Phase 4: Security Patrol
-        echo -e "${BLUE}🔒 Phase 4: Security Patrol${NC}"
+        echo -e "${BLUE}[SECURITY] Phase 4: Security Patrol${NC}"
         if [ $((cycle % 3)) -eq 0 ]; then  # Every 3 cycles
-            echo -e "${PURPLE}🐼 Panda scans for security bamboo...${NC}"
+            echo -e "${PURPLE}[PANDA] Panda scans for security bamboo...${NC}"
             run_tool "manage-dependencies.sh" "check" >/dev/null 2>&1
-            echo -e "${GREEN}✓ Security bamboo secured!${NC}"
+            echo -e "${GREEN}[OK] Security bamboo secured!${NC}"
         else
-            echo -e "${GREEN}✓ Security systems active${NC}"
+            echo -e "${GREEN}[OK] Security systems active${NC}"
         fi
 
         # Phase 5: Maintenance Rituals
-        echo -e "${BLUE}🧹 Phase 5: Maintenance Rituals${NC}"
+        echo -e "${BLUE}[CLEAN] Phase 5: Maintenance Rituals${NC}"
         if [ $((cycle % 10)) -eq 0 ]; then  # Every 10 cycles
-            echo -e "${PURPLE}🐼 Panda performs grand maintenance ceremony...${NC}"
+            echo -e "${PURPLE}[PANDA] Panda performs grand maintenance ceremony...${NC}"
             run_tool "automate.sh" "cleanup" >/dev/null 2>&1
             run_tool "automate.sh" "backup" >/dev/null 2>&1
-            echo -e "${GREEN}✓ Grand maintenance completed!${NC}"
+            echo -e "${GREEN}[OK] Grand maintenance completed!${NC}"
         else
-            echo -e "${GREEN}✓ Routine maintenance performed${NC}"
+            echo -e "${GREEN}[OK] Routine maintenance performed${NC}"
         fi
 
         # Phase 6: Documentation Updates
-        echo -e "${BLUE}📚 Phase 6: Documentation Enlightenment${NC}"
+        echo -e "${BLUE}[DOCS] Phase 6: Documentation Enlightenment${NC}"
         if [ $((cycle % 7)) -eq 0 ]; then  # Every 7 cycles
-            echo -e "${PURPLE}🐼 Panda updates the sacred scrolls...${NC}"
+            echo -e "${PURPLE}[PANDA] Panda updates the sacred scrolls...${NC}"
             run_tool "generate-docs.sh" "readme" >/dev/null 2>&1
-            echo -e "${GREEN}✓ Documentation enlightened!${NC}"
+            echo -e "${GREEN}[OK] Documentation enlightened!${NC}"
         else
-            echo -e "${GREEN}✓ Documentation wisdom preserved${NC}"
+            echo -e "${GREEN}[OK] Documentation wisdom preserved${NC}"
         fi
 
         # Phase 7: Achievement Check
-        echo -e "${BLUE}🏆 Phase 7: Achievement Check${NC}"
+        echo -e "${BLUE}[GOAL] Phase 7: Achievement Check${NC}"
         local achievements=0
 
         # Check various metrics
@@ -465,28 +465,28 @@ infinite_panda_adventure() {
         if [ -d "reports" ] && [ "$(ls reports/ | wc -l)" -gt 5 ]; then ((achievements++)); fi
         if [ -f ".env" ]; then ((achievements++)); fi
 
-        echo -e "${GREEN}✓ Achievement Points: $achievements/4${NC}"
+        echo -e "${GREEN}[OK] Achievement Points: $achievements/4${NC}"
 
         # Special achievements
         if [ $cycle -eq 10 ]; then
-            echo -e "${PURPLE}🐼🎉 PANDA ACHIEVEMENT UNLOCKED: Decade of Automation! 🎉🐼${NC}"
+            echo -e "${PURPLE}[PANDA][SUCCESS] PANDA ACHIEVEMENT UNLOCKED: Decade of Automation! [SUCCESS][PANDA]${NC}"
         elif [ $cycle -eq 25 ]; then
-            echo -e "${PURPLE}🐼🎉 PANDA ACHIEVEMENT UNLOCKED: Quarter Century of Excellence! 🎉🐼${NC}"
+            echo -e "${PURPLE}[PANDA][SUCCESS] PANDA ACHIEVEMENT UNLOCKED: Quarter Century of Excellence! [SUCCESS][PANDA]${NC}"
         elif [ $((cycle % 50)) -eq 0 ]; then
-            echo -e "${PURPLE}🐼🎉 PANDA ACHIEVEMENT UNLOCKED: Golden Cycle Milestone! 🎉🐼${NC}"
+            echo -e "${PURPLE}[PANDA][SUCCESS] PANDA ACHIEVEMENT UNLOCKED: Golden Cycle Milestone! [SUCCESS][PANDA]${NC}"
         fi
 
         # Bunny evolution achievements
         if [ $cycle -eq 7 ]; then
-            echo -e "${PURPLE}🐰🎉 BUNNY ACHIEVEMENT UNLOCKED: Fluffy Code Weaver! 🎉🐰${NC}"
+            echo -e "${PURPLE}[BUNNY][SUCCESS] BUNNY ACHIEVEMENT UNLOCKED: Fluffy Code Weaver! [SUCCESS][BUNNY]${NC}"
         elif [ $cycle -eq 15 ]; then
-            echo -e "${PURPLE}🐰🎉 BUNNY ACHIEVEMENT UNLOCKED: Mystical Automation Bunny! 🎉🐰${NC}"
+            echo -e "${PURPLE}[BUNNY][SUCCESS] BUNNY ACHIEVEMENT UNLOCKED: Mystical Automation Bunny! [SUCCESS][BUNNY]${NC}"
         elif [ $((cycle % 25)) -eq 0 ] && [ $cycle -gt 0 ]; then
-            echo -e "${PURPLE}🐰🎉 BUNNY ACHIEVEMENT UNLOCKED: Legendary Bunny Sage! 🎉🐰${NC}"
+            echo -e "${PURPLE}[BUNNY][SUCCESS] BUNNY ACHIEVEMENT UNLOCKED: Legendary Bunny Sage! [SUCCESS][BUNNY]${NC}"
         fi
 
         # Cycle completion
-        echo -e "${CYAN}🐼 Cycle $cycle completed! Next bamboo feast in 5 minutes...${NC}"
+        echo -e "${CYAN}[PANDA] Cycle $cycle completed! Next bamboo feast in 5 minutes...${NC}"
         echo -e "${YELLOW}Ctrl+C to exit the panda realm${NC}"
         echo ""
 
@@ -500,26 +500,26 @@ infinite_panda_adventure() {
 show_menu() {
     echo -e "${WHITE}ZEJZL.NET Master Orchestration Commands:${NC}"
     echo "══════════════════════════════════════════"
-    echo "1) 🚀 Complete System Setup"
-    echo "2) 💻 Development Workflow"
-    echo "3) 🚢 Deploy to Staging"
-    echo "4) 🚢 Deploy to Production"
-    echo "5) 🔧 Maintenance Tasks"
-    echo "6) 📊 Monitoring Dashboard"
-    echo "7) ⚡ Performance Optimization"
-    echo "8) 🔒 Security Audit"
-    echo "9) 📚 Documentation Check"
-    echo "10) 🏥 System Health Check"
-    echo "11) 🚨 Emergency Recovery"
-    echo "12) 🔍 Debug Operations"
-    echo "13) 📋 Show Available Tools"
+    echo "1) [START] Complete System Setup"
+    echo "2) [DEV] Development Workflow"
+    echo "3) [DEPLOY] Deploy to Staging"
+    echo "4) [DEPLOY] Deploy to Production"
+    echo "5) [TOOL] Maintenance Tasks"
+    echo "6) [STATS] Monitoring Dashboard"
+    echo "7) [PERF] Performance Optimization"
+    echo "8) [SECURITY] Security Audit"
+    echo "9) [DOCS] Documentation Check"
+    echo "10) [HEALTH] System Health Check"
+    echo "11) [EMERGENCY] Emergency Recovery"
+    echo "12) [SEARCH] Debug Operations"
+    echo "13) [LIST] Show Available Tools"
     echo "0) Exit"
     echo ""
 }
 
 # Function for debug operations
 debug_operations() {
-    echo -e "${PURPLE}🔍 ZEJZL.NET Debug Operations${NC}"
+    echo -e "${PURPLE}[SEARCH] ZEJZL.NET Debug Operations${NC}"
     echo "==============================="
 
     echo -e "${CYAN}Available Debug Commands:${NC}"
@@ -568,7 +568,7 @@ interactive_mode() {
             11) emergency_recovery ;;
             12) debug_operations ;;
             13) show_tools ;;
-            0) echo -e "${GREEN}Goodbye! 👋${NC}"; exit 0 ;;
+            0) echo -e "${GREEN}Goodbye! [WAVE]${NC}"; exit 0 ;;
             *) echo -e "${RED}Invalid option. Please choose 0-13.${NC}" ;;
         esac
 

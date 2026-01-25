@@ -2,7 +2,20 @@
 
 This document provides essential information for agentic coding assistants working in the ZEJZL.NET repository. It includes build/test commands, code style guidelines, and development practices.
 
-IMPORTANT NOTICE: Emojis are forbidden in this repo!
+## ⚠️ CRITICAL CODING STANDARD
+
+**NO EMOJIS IN SOURCE CODE** - This is a **mandatory** rule for all agents working on this project.
+
+Emoji characters (🚀, ✅, ❌, 💡, 🔧, 🤖, 🧠, 📊, etc.) are **strictly prohibited** in all source code files (.py, .sh, .js, .ts, etc.) due to:
+- Terminal encoding issues on Windows/Linux
+- Python logging compatibility problems
+- Log parsing and monitoring tool compatibility
+- Professional coding standards
+- Accessibility requirements
+
+**Use text indicators instead:** `[OK]`, `[ERROR]`, `[INFO]`, `[SUCCESS]`, `[START]`, `[AI]`, `[AGENT]`, `[DATA]`, etc.
+
+Emojis are allowed in documentation (`.md` files) only. All agents must review code before committing to ensure compliance.
 
 ## Project Overview
 

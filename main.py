@@ -679,9 +679,9 @@ async def run_vault_mode():
         if featured:
             print("\n[Featured Items]")
             for item in featured:
-                print(f"  ⭐ {item.name} by {item.author}")
+                print(f"  [FEATURED] {item.name} by {item.author}")
                 print(f"     {item.description[:60]}{'...' if len(item.description) > 60 else ''}")
-                print(f"     ⭐ {item.rating:.1f} rating, {item.downloads} downloads")
+                print(f"     [RATING] {item.rating:.1f} rating, {item.downloads} downloads")
                 print()
 
         print("[Community Vault Demo Complete]")

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Docker entrypoint for ZEJZL.NET
 
-echo "🐳 ZEJZL.NET Docker Container Starting"
+echo "[DOCKER] ZEJZL.NET Docker Container Starting"
 echo "====================================="
 
 # Wait for Redis to be ready
@@ -25,7 +25,7 @@ while True:
     print('Redis not ready, waiting...')
     time.sleep(2)
 "
-echo "✓ Redis is ready"
+echo "[OK] Redis is ready"
 
 # Create data directories
 mkdir -p /app/data
@@ -35,7 +35,7 @@ mkdir -p /app/logs
 if [ ! -f ".env" ]; then
     echo "Creating .env from template..."
     cp .env.example .env
-    echo "⚠️  Please mount your .env file with API keys for full functionality"
+    echo "[WARNING] Please mount your .env file with API keys for full functionality"
 fi
 
 # Run health check
@@ -48,17 +48,17 @@ async def health_check():
     try:
         bus = AsyncMessageBus()
         await bus.start()
-        print('✓ AI Framework initialized successfully')
+        print('[OK] AI Framework initialized successfully')
         await bus.stop()
     except Exception as e:
-        print(f'❌ Health check failed: {e}')
+        print(f'[ERROR] Health check failed: {e}')
         exit(1)
 
 asyncio.run(health_check())
 "
 
 echo ""
-echo "🚀 Starting ZEJZL.NET..."
+echo "[START] Starting ZEJZL.NET..."
 echo "========================"
 echo ""
 
