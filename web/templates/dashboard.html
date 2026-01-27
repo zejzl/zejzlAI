@@ -671,7 +671,7 @@
                         <div class="bg-red-900 border border-red-700 rounded p-3">
                             <h5 class="text-red-400 font-semibold mb-2">Violations:</h5>
                             <ul class="text-red-300 text-sm space-y-1">
-                                ${approval.validation.violations.map(v => `<li>• ${v}</li>`).join('')}
+                                ${approval.validation.violations.map(v => `<li>* ${v}</li>`).join('')}
                             </ul>
                         </div>
                     ` : ''}

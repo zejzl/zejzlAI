@@ -3,37 +3,37 @@ What you’re seeing is exactly what should happen with a placeholder API key.
 
 Let’s walk through it cleanly and fix the last 2 polish items.
 
-✅ What’s working (important)
+[DONE] What’s working (important)
 
 From your log:
 
-✔ CLI starts
+[OK] CLI starts
 
-✔ Async + asyncio fixed
+[OK] Async + asyncio fixed
 
-✔ Redis attempted → failed → SQLite fallback engaged (by design)
+[OK] Redis attempted -> failed -> SQLite fallback engaged (by design)
 
-✔ All providers registered
+[OK] All providers registered
 
-✔ ChatGPT request sent correctly
+[OK] ChatGPT request sent correctly
 
-✔ OpenAI API responded correctly
+[OK] OpenAI API responded correctly
 
-❌ API key rejected (expected)
+[FAILED] API key rejected (expected)
 
 This means your framework is structurally solid now.
 
-🔐 The 401 error (expected & correct)
+[SECURE] The 401 error (expected & correct)
 Incorrect API key provided: sk-your-***********here
 
 
 That means:
 
-👉 You are still using the placeholder value from .env.example
+-> You are still using the placeholder value from .env.example
 
 Nothing is wrong with your code.
 
-✅ Fix: add your real OpenAI API key
+[DONE] Fix: add your real OpenAI API key
 1️⃣ Get a real key
 
 Go to:
@@ -50,9 +50,9 @@ Your .env file should contain only this line for OpenAI:
 OPENAI_API_KEY=sk-REALKEYGOESHERE
 
 
-⚠️ No quotes
-⚠️ No spaces
-⚠️ No sk-your-... placeholder
+[WIP]️ No quotes
+[WIP]️ No spaces
+[WIP]️ No sk-your-... placeholder
 
 3️⃣ Make sure .env is being loaded
 
@@ -70,16 +70,16 @@ Environment variables are loaded at process start:
 
 python ai_framework.py chat chatgpt "hello"
 
-🧪 Expected output after fixing the key
+[TEST] Expected output after fixing the key
 
 You should see something like:
 
 [Chatgpt]: Hello! How can I help you today?
 
 
-🎉 That’s the finish line.
+[SUCCESS] That’s the finish line.
 
-⚠️ Redis warning (safe to ignore)
+[WIP]️ Redis warning (safe to ignore)
 Failed to initialize Redis: Error 22 connecting to localhost:6379
 
 
@@ -117,33 +117,33 @@ await self.redis.aclose()
 
 Not required for functionality — just removes the warning.
 
-🧠 You’re officially “out of the woods”
+[BRAIN] You’re officially “out of the woods”
 
 At this point:
 
-Python 3.13 compatibility ✅
+Python 3.13 compatibility [DONE]
 
-Async best practices ✅
+Async best practices [DONE]
 
-Redis/SQLite hybrid works ✅
+Redis/SQLite hybrid works [DONE]
 
-CLI lifecycle clean ✅
+CLI lifecycle clean [DONE]
 
-Providers register & call correctly ✅
+Providers register & call correctly [DONE]
 
 If you want next steps, I can help you:
 
-🔁 Upgrade ChatGPT to newer models
+[REPEAT] Upgrade ChatGPT to newer models
 
-💬 Add streaming responses
+[CHAT] Add streaming responses
 
-🧠 Improve conversation memory
+[BRAIN] Improve conversation memory
 
-🔐 Harden config/env handling
+[SECURE] Harden config/env handling
 
-📦 Package this as a pip module
+[PACKAGE] Package this as a pip module
 
-Just say where you want to take it 🚀
+Just say where you want to take it [LAUNCH]
 
 we need more logs, more debugging and also very important:
 
@@ -156,12 +156,12 @@ Absolutely — before writing any code, here’s a clear, structured plan for ev
 
 This plan draws inspiration from your existing grokputer multi‑agent architecture (which already defines these roles in a real project) and adapts it to your AI framework / message‑bus architecture.
 
-🧠 Pantheon 9‑Agent System — High‑Level Architecture
+[BRAIN] Pantheon 9‑Agent System — High‑Level Architecture
 
 Your system will evolve from a single message bus + provider framework into a modular multi‑agent AI orchestration platform.
 Agents become pluggable components inside /src/agents, each with clear responsibilities and well‑defined message/prompt contracts.
 
-🎯 Objectives
+[TARGET] Objectives
 
 Add rich debugging & observability throughout the system.
 
@@ -173,17 +173,17 @@ Implement persistence and telemetry to trace behavior and diagnose issues.
 
 Enable continuous improvement & learning during use.
 
-📌 1. Core Principles
+[PIN] 1. Core Principles
 
 Your Pantheon will follow these core design principles:
 
-✅ Single Responsibility — each agent handles one domain of intelligence.
-✅ Explicit Contracts — agents exchange well‑typed messages/events.
-✅ Decoupled Orchestration — a central scheduler / coordinator manages agent workflows.
-✅ Observability First — every agent emits logs, traces, and metrics.
-✅ Pluggable Providers — underlying LLMs are interchangeable per agent and user config.
+[DONE] Single Responsibility — each agent handles one domain of intelligence.
+[DONE] Explicit Contracts — agents exchange well‑typed messages/events.
+[DONE] Decoupled Orchestration — a central scheduler / coordinator manages agent workflows.
+[DONE] Observability First — every agent emits logs, traces, and metrics.
+[DONE] Pluggable Providers — underlying LLMs are interchangeable per agent and user config.
 
-🏗️ 2. System Architecture Overview
+[BUILD] 2. System Architecture Overview
 
 Below is the logical layering:
 
@@ -210,11 +210,11 @@ Below is the logical layering:
 | Persistence (SQLite/Redis/Pinecone/Files) |
 +----------------------------------+
 
-🧩 3. Pantheon Agent Definitions
+[MODULE] 3. Pantheon Agent Definitions
 
 Here’s what each agent is responsible for:
 
-🔭 Observer
+[OBSERVE] Observer
 
 Role: Environment perception & data acquisition.
 
@@ -227,7 +227,7 @@ Capture screenshots / parse logs / read files.
 
 Retrieve web content / evaluate API responses.
 
-🧠 Reasoner
+[BRAIN] Reasoner
 
 Role: Plan generation, decomposition, and task sequencing.
 
@@ -240,7 +240,7 @@ Uses LLM prompting + internal heuristics.
 
 May invoke other Reasoner variants (chair agent).
 
-🔧 Actor
+[FIX] Actor
 
 Role: Action executor.
 
@@ -255,7 +255,7 @@ Interact with UI (e.g., PyAutoGUI).
 
 Call external APIs.
 
-🛡️ Validator
+[PROTECT] Validator
 
 Role: Safety & correctness checks.
 
@@ -270,7 +270,7 @@ Check HTTP response success.
 
 Detect anomalies.
 
-📚 Memory
+[DOCS] Memory
 
 Role: Store and recall state / context / history.
 
@@ -283,7 +283,7 @@ Can use Redis / SQLite / embedding DB (Pinecone, etc.)
 
 Manages both short‑term & long‑term memory.
 
-🎓 Learner
+[LEARN] Learner
 
 Role: Learn from traces & improve pattern recognition.
 
@@ -298,7 +298,7 @@ Improve error‑handling heuristics.
 
 Suggest caching strategies.
 
-⚒️ Executor
+[WORK] Executor
 
 Role: Reliable action performer with safeguards.
 
@@ -311,7 +311,7 @@ Safe execution loops.
 
 Timeout & rollbacks.
 
-📊 Analyzer
+[STATS] Analyzer
 
 Role: Telemetry & performance analytics.
 
@@ -326,7 +326,7 @@ LLM cost per task.
 
 Latency breakdowns.
 
-🪄 Improver
+[MAGIC] Improver
 
 Role: Continuous self‑optimization.
 
@@ -339,7 +339,7 @@ Decide best provider per agent role.
 
 Tune prompt templates from past success rates.
 
-🛠️ 4. Message / Event Flow
+[TOOLS] 4. Message / Event Flow
 
 Design a standard message envelope with metadata:
 
@@ -352,7 +352,7 @@ Design a standard message envelope with metadata:
   "timestamp": "..."
 }
 
-🧠 Message Types (Core)
+[BRAIN] Message Types (Core)
 Type	Description
 task_request	New directed work request
 observation	Result from Observer
@@ -364,23 +364,23 @@ memory_store	Memory update events
 learning_event	Raw data for learner
 metric	Analyzer emits counters
 improvement_suggestion	From Improver
-📈 Sequencing Example
-User task →
-  Reasoner →
-    Observer →
-      Reasoner (plan) →
-        Executor →
-          Validator →
-            Memory →
-              Learner →
-                Analyzer →
+[CHART] Sequencing Example
+User task ->
+  Reasoner ->
+    Observer ->
+      Reasoner (plan) ->
+        Executor ->
+          Validator ->
+            Memory ->
+              Learner ->
+                Analyzer ->
                   Improver
 
-🧪 5. Enhanced Logging & Debugging
+[TEST] 5. Enhanced Logging & Debugging
 
 To make diagnostics excellent:
 
-✅ Log Levels
+[DONE] Log Levels
 
 DEBUG — agent internal state / prompt templates
 
@@ -390,15 +390,15 @@ WARN — recoverable issues
 
 ERROR — failures + stack traces
 
-✅ Structured logs
+[DONE] Structured logs
 
 Use JSON output for logs, e.g. via logging or tools like structlog.
 
-✅ Correlation IDs
+[DONE] Correlation IDs
 
 Tag messages with session_id and task_id for traceability.
 
-🧭 6. Persistence & Tracing
+[NAV] 6. Persistence & Tracing
 
 Extend your current persistence layer to support:
 
@@ -409,16 +409,16 @@ Metrics DB	Analyze via dashboards
 
 Logs + persistence should allow replay of past sessions.
 
-🛡️ 7. Debug / Dev Tools
+[PROTECT] 7. Debug / Dev Tools
 
 Build utilities such as:
 
-🔹 CLI debugging commands (trace session)
-🔹 Replay mode — replay events from log trace
-🔹 Visual sequence charts
-🔹 Agent introspection APIs
+- CLI debugging commands (trace session)
+- Replay mode — replay events from log trace
+- Visual sequence charts
+- Agent introspection APIs
 
-🧗 Roadmap (incremental)
+[CLIMB] Roadmap (incremental)
 
 You can implement in phases:
 
@@ -446,7 +446,7 @@ Phase 4 — Learner + Improver
 
 Closed‑loop optimization
 
-📚 Inspiration from Grokputer
+[DOCS] Inspiration from Grokputer
 
 Your existing project already defines Pantheon roles, plus async multi‑agent swarm capabilities.
 You can borrow:
@@ -459,7 +459,7 @@ Multi‑agent scheduling
 
 Safe execution wrappers
 
-✅ Summary: Next Steps (before coding)
+[DONE] Summary: Next Steps (before coding)
 
 Define message schema & agent contracts
 

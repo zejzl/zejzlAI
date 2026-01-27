@@ -229,4 +229,51 @@ class BaseMCPServer(ABC):
             "jsonrpc": "2.0",
             "id": request_id,
             "result": {
-                "tools": [tool.to_dict()
+                "tools": [tool.to_dict() for tool in tools]
+            }
+        }
+
+    async def _handle_tools_call(self, request_id: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle tools/call request"""
+        name = params.get("name")
+        arguments = params.get("arguments", {})
+
+        logger.info(f"Calling tool: {name}")
+
+        if name not in self.tools:
+            return self._create_error_response(request_id, MCPErrorCode.TOOL_NOT_FOUND, f"Tool not found: {name}")
+
+        try:
+            tool = self.tools[name]
+            result = await tool.handler(arguments) if asyncio.iscoroutinefunction(tool.handler) else tool.handler(arguments)
+
+            return {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "result": result
+            }
+        except Exception as e:
+            logger.error(f"Error executing tool {name}: {e}")
+            return self._create_error_response(request_id, MCPErrorCode.INTERNAL_ERROR, str(e))
+
+    async def _handle_ping(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle ping tool"""
+        return {"status": "ok", "message": "pong"}
+
+    def _create_error_response(self, request_id: Any, code: int, message: str) -> Dict[str, Any]:
+        """Create a JSON-RPC error response"""
+        return {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "error": {
+                "code": code,
+                "message": message
+            }
+        }
+
+    def run(self):
+        """Run the server using asyncio"""
+        try:
+            asyncio.run(self.start_stdio_server())
+        except KeyboardInterrupt:
+            pass

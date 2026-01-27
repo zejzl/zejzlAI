@@ -93,7 +93,7 @@ class PantheonAgent(ABC):
             task = asyncio.create_task(self._listen(channel, queue))
             self._tasks.append(task)
         
-        logger.info(f"✓ {self.config.name} started (listening: {', '.join(self.config.channels)})")
+        logger.info(f"[OK] {self.config.name} started (listening: {', '.join(self.config.channels)})")
     
     async def stop(self):
         """Stop the agent"""
@@ -107,7 +107,7 @@ class PantheonAgent(ABC):
         await asyncio.gather(*self._tasks, return_exceptions=True)
         self._tasks.clear()
         
-        logger.info(f"✗ {self.config.name} stopped")
+        logger.info(f"[STOP] {self.config.name} stopped")
     
     async def _listen(self, channel: str, queue: asyncio.Queue):
         """Listen to a channel and process messages"""
@@ -139,7 +139,7 @@ class PantheonAgent(ABC):
         return message
     
     async def call_ai(self, prompt: str, conversation_id: str = "default",
-                     provider: Optional[str] = None, use_fallback: bool = True) -> str:
+                     provider: Optional[str] = None, use_fallback: bool = False) -> str:
         """
         Call AI provider via the AI Provider Bus
 

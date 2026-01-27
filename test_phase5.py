@@ -37,12 +37,12 @@ try:
             start_time=asyncio.get_event_loop().time()
         )
 
-        print(f"✓ Learning cycle created: {cycle.cycle_id}")
+        print(f"[OK] Learning cycle created: {cycle.cycle_id}")
         print(f"  Phase: {cycle.phase.value}")
 
         # Test phase progression
         cycle.complete_phase({"metric": "test"})
-        print(f"✓ Phase progressed to: {cycle.phase.value}")
+        print(f"[OK] Phase progressed to: {cycle.phase.value}")
 
         return True
 
@@ -73,7 +73,7 @@ try:
         }
 
         result = await applicator.evaluate_suggestion(suggestion)
-        print(f"✓ Suggestion evaluated: feasibility={result['feasibility']:.2f}")
+        print(f"[OK] Suggestion evaluated: feasibility={result['feasibility']:.2f}")
 
         return True
 
@@ -102,7 +102,7 @@ try:
         ]
 
         consensus = await manager.reach_consensus(opinions)
-        print(f"✓ Consensus reached: {consensus.decision}")
+        print(f"[OK] Consensus reached: {consensus.decision}")
         print(f"  Confidence: {consensus.confidence:.2f}")
         print(f"  Participating agents: {len(consensus.participating_agents)}")
 
@@ -135,11 +135,11 @@ try:
         result = profiler.end_profiling("test_agent", "test_operation")
 
         if result:
-            print(f"✓ Profiling completed: {result['duration_ms']:.2f}ms")
+            print(f"[OK] Profiling completed: {result['duration_ms']:.2f}ms")
 
         # Get metrics
         metrics = await profiler.get_agent_metrics("test_agent")
-        print(f"✓ Agent metrics retrieved: {metrics['total_operations']} operations")
+        print(f"[OK] Agent metrics retrieved: {metrics['total_operations']} operations")
 
         return True
 
@@ -167,7 +167,7 @@ try:
             agent_id="test_agent"
         )
 
-        print(f"✓ Action validated: allowed={result['allowed']}")
+        print(f"[OK] Action validated: allowed={result['allowed']}")
         print(f"  Risk level: {result['risk_level']}")
 
         return True
@@ -198,7 +198,7 @@ try:
             priority=MessagePriority.NORMAL
         )
 
-        print(f"✓ Protocol message created: {message.message_id}")
+        print(f"[OK] Protocol message created: {message.message_id}")
         print(f"  Priority: {message.priority.value}")
 
         return True

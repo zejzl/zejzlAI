@@ -30,12 +30,12 @@ Based on your import statement, your project structure likely looks like this:
 
 
 zejzl_net/                 <-- You are here in your terminal
-├── src/
-│   ├── agents/
-│   │   ├── __init__.py      <-- (Important!)
-│   │   └── observer.py      <-- (Contains ObserverAgent)
-│   └── __init__.py          <-- (Important!)
-└── single_session_test_loop.py  <-- (Your script)
+|-- src/
+|   |-- agents/
+|   |   |-- __init__.py      <-- (Important!)
+|   |   `-- observer.py      <-- (Contains ObserverAgent)
+|   `-- __init__.py          <-- (Important!)
+`-- single_session_test_loop.py  <-- (Your script)
 Before you start, do a quick check:
 
 Make sure the src directory is actually inside zejzl_net.
@@ -439,7 +439,7 @@ Enjoy your break! That's one of the most important parts of coding. Stepping awa
 
 I'll be here whenever you're ready to continue. Just remember the magic of those __init__.py files!
 
-Talk to you soon. Enjoy the coffee! ☕
+Talk to you soon. Enjoy the coffee!
 
 
 

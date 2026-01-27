@@ -4,7 +4,7 @@
 
 set -e  # Exit on any error
 
-echo "🚀 Grokputer Redis Alpine MCP Auto-Setup"
+echo "[LAUNCH] Grokputer Redis Alpine MCP Auto-Setup"
 echo "========================================"
 
 # Colors for output
@@ -223,11 +223,11 @@ verify_setup() {
 # Show usage info
 show_info() {
     echo ""
-    print_success "Setup complete! 🎉"
+    print_success "Setup complete! [SUCCESS]"
     echo ""
     echo "Services running:"
-    echo "  • MCP Server: http://localhost:8000"
-    echo "  • Redis: localhost:6379"
+    echo "  * MCP Server: http://localhost:8000"
+    echo "  * Redis: localhost:6379"
     echo ""
     echo "Container name: grokputer-mcp"
     echo ""

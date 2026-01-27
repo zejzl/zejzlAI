@@ -1,6 +1,6 @@
 # Grokputer Redis Alpine MCP Setup
 
-## 🚀 Automated Setup
+## [LAUNCH] Automated Setup
 
 **Windows:**
 ```cmd
@@ -13,7 +13,7 @@ chmod +x setup-mcp-alpine.sh
 ./setup-mcp-alpine.sh
 ```
 
-## 📋 What It Does
+## [LIST] What It Does
 
 1. **Prerequisites Check** - Verifies Docker & Python installation
 2. **Environment Setup** - Creates `.env` from `.env.example`
@@ -22,7 +22,7 @@ chmod +x setup-mcp-alpine.sh
 5. **Redis Import** - Restores 138+ keys from `vault/redis_backup.json`
 6. **Verification** - Confirms all services are running
 
-## 🔑 Required Setup
+## [KEY] Required Setup
 
 **Edit `.env` with your API keys:**
 ```bash
@@ -32,13 +32,13 @@ ANTHROPIC_API_KEY=sk-ant-your_claude_key
 GEMINI_API_KEY=your_gemini_key
 ```
 
-## 🎯 Services
+## [TARGET] Services
 
 - **MCP Server**: http://localhost:8000
 - **Redis**: localhost:6379
 - **Container**: `grokputer-mcp`
 
-## 🛠️ Management Commands
+## [TOOLS] Management Commands
 
 ```bash
 # Stop container
@@ -57,7 +57,7 @@ docker exec -it grokputer-mcp sh
 docker rm grokputer-mcp
 ```
 
-## 📊 Redis Data
+## [STATS] Redis Data
 
 **Imported keys include:**
 - Episode data (100+ cognitive task results)
@@ -65,7 +65,7 @@ docker rm grokputer-mcp
 - Performance summaries (`consolidated:*`)
 - Agent episode collections
 
-## 🔍 Verification
+## [SEARCH] Verification
 
 After setup, verify with:
 ```bash

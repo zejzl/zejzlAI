@@ -38,32 +38,32 @@ class DebugCLI:
 
     async def show_status(self):
         """Show system status"""
-        print("🔍 ZEJZL.NET System Status")
+        print("[SEARCH] ZEJZL.NET System Status")
         print("=" * 40)
 
         if self.bus:
-            print(f"✅ Message Bus: Connected")
-            print(f"📊 Providers: {len(self.bus.providers)} registered")
+            print(f"[DONE] Message Bus: Connected")
+            print(f"[STATS] Providers: {len(self.bus.providers)} registered")
             for name, provider in self.bus.providers.items():
-                status = "✅ Active" if hasattr(provider, 'session') and provider.session else "❌ Inactive"
-                print(f"   • {name}: {status}")
+                status = "[DONE] Active" if hasattr(provider, 'session') and provider.session else "[FAILED] Inactive"
+                print(f"   * {name}: {status}")
         else:
-            print("❌ Message Bus: Not connected")
+            print("[FAILED] Message Bus: Not connected")
 
         if hasattr(self.bus, 'magic') and self.bus.magic:
             magic = self.bus.magic
-            print(f"🔮 Magic System: Energy {magic.energy_level}/{magic.max_energy}")
-            print(f"   • Circuit Breakers: {len(magic.circuit_breakers)}")
-            print(f"   • Healing History: {len(magic.healing_history)} records")
+            print(f"[MAGIC] Magic System: Energy {magic.energy_level}/{magic.max_energy}")
+            print(f"   * Circuit Breakers: {len(magic.circuit_breakers)}")
+            print(f"   * Healing History: {len(magic.healing_history)} records")
         else:
-            print("❌ Magic System: Not available")
+            print("[FAILED] Magic System: Not available")
 
-        print(f"📈 Active Requests: {len(debug_monitor.active_requests)}")
-        print(f"⚡ Performance Entries: {len(debug_monitor.performance_history)}")
+        print(f"[CHART] Active Requests: {len(debug_monitor.active_requests)}")
+        print(f"[FAST] Performance Entries: {len(debug_monitor.performance_history)}")
 
     async def show_logs(self, lines=20, level=None):
         """Show recent logs"""
-        print(f"📝 Recent Debug Logs (last {lines} entries)")
+        print(f"[DOCS] Recent Debug Logs (last {lines} entries)")
         print("=" * 50)
 
         log_dir = Path.home() / ".zejzl" / "logs"
@@ -95,13 +95,13 @@ class DebugCLI:
                             # Plain text log
                             print(f"{i:2d}. {line.strip()}")
             except Exception as e:
-                print(f"❌ Error reading logs: {e}")
+                print(f"[FAILED] Error reading logs: {e}")
         else:
-            print(f"❌ Log file not found: {target_file}")
+            print(f"[FAILED] Log file not found: {target_file}")
 
     async def show_performance(self):
         """Show performance metrics"""
-        print("⚡ Performance Metrics")
+        print("[FAST] Performance Metrics")
         print("=" * 30)
 
         if not debug_monitor.performance_history:
@@ -141,7 +141,7 @@ class DebugCLI:
 
     async def create_snapshot(self):
         """Create and display system snapshot"""
-        print("📊 Creating System Snapshot...")
+        print("[STATS] Creating System Snapshot...")
         print("=" * 35)
 
         snapshot = await debug_monitor.create_snapshot(self.bus)
@@ -149,7 +149,7 @@ class DebugCLI:
         print(f"Timestamp: {snapshot.timestamp}")
         print()
 
-        print("🔧 System Info:")
+        print("[FIX] System Info:")
         sys_info = snapshot.system_info
         print(f"   Platform: {sys_info.get('platform', 'Unknown')}")
         print(f"   Python: {sys_info.get('python_version', 'Unknown')}")
@@ -159,14 +159,14 @@ class DebugCLI:
             print(".1f")
         print()
 
-        print("🤖 Agent States:")
+        print("[ROBOT] Agent States:")
         for name, state in snapshot.agent_states.items():
             status = state.get('status', 'unknown')
             model = state.get('model', 'unknown')
-            print(f"   • {name}: {status} ({model})")
+            print(f"   * {name}: {status} ({model})")
         print()
 
-        print("🔮 Magic State:")
+        print("[MAGIC] Magic State:")
         magic = snapshot.magic_state
         if magic:
             print(f"   Energy: {magic.get('energy_level', 0)}/{magic.get('max_energy', 100)}")
@@ -176,18 +176,18 @@ class DebugCLI:
             print("   No magic system data available")
         print()
 
-        print("📈 Performance:")
+        print("[CHART] Performance:")
         perf = snapshot.performance_metrics
         print(f"   Total Requests: {perf.get('total_requests', 0)}")
         print(".3f")
         print(".1f")
         print()
 
-        print("✅ Snapshot created and logged")
+        print("[DONE] Snapshot created and logged")
 
     async def clear_logs(self):
         """Clear debug logs"""
-        print("🧹 Clearing Debug Logs...")
+        print("[CLEAN] Clearing Debug Logs...")
         log_dir = Path.home() / ".zejzl" / "logs"
 
         cleared = []
@@ -198,12 +198,12 @@ class DebugCLI:
                     file_path.write_text("")
                     cleared.append(log_file)
                 except Exception as e:
-                    print(f"❌ Failed to clear {log_file}: {e}")
+                    print(f"[FAILED] Failed to clear {log_file}: {e}")
 
         if cleared:
-            print(f"✅ Cleared logs: {', '.join(cleared)}")
+            print(f"[DONE] Cleared logs: {', '.join(cleared)}")
         else:
-            print("ℹ️  No logs found to clear")
+            print("[INFO]  No logs found to clear")
 
     async def set_log_level(self, level: str):
         """Set logging level"""
@@ -212,9 +212,9 @@ class DebugCLI:
             numeric_level = getattr(logging, level.upper(), logging.INFO)
             logging.getLogger().setLevel(numeric_level)
             logger.info(f"Log level set to {level}")
-            print(f"✅ Log level set to {level}")
+            print(f"[DONE] Log level set to {level}")
         except Exception as e:
-            print(f"❌ Failed to set log level: {e}")
+            print(f"[FAILED] Failed to set log level: {e}")
 
 async def main():
     """Main CLI entry point"""
@@ -251,7 +251,7 @@ async def main():
         if args.log_level:
             await cli.set_log_level(args.log_level)
         else:
-            print("❌ Please specify --log-level")
+            print("[FAILED] Please specify --log-level")
 
 if __name__ == "__main__":
     asyncio.run(main())

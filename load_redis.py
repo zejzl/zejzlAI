@@ -86,11 +86,11 @@ async def load_all_state(json_output=False, verbose=False):
                     format_json_output(config, "Provider Configuration")
                 else:
                     print("\n[CONFIG] Provider Configuration:")
-                    print(f"   • Total providers: {len(config.get('providers', {}))}")
+                    print(f"   * Total providers: {len(config.get('providers', {}))}")
                     for provider_name, provider_config in config.get('providers', {}).items():
                         api_key_status = "[OK] Configured" if provider_config.get('api_key') else "[NOT SET] Not configured"
                         model = provider_config.get('model', 'default')
-                        print(f"   • {provider_name}: {model} - {api_key_status}")
+                        print(f"   * {provider_name}: {model} - {api_key_status}")
             else:
                 print("   [WARNING] No configuration found")
         except Exception as e:
@@ -115,10 +115,10 @@ async def load_all_state(json_output=False, verbose=False):
                     acorns = magic_state.get('acorn_reserve', 'Unknown')
                     spells = magic_state.get('spells_cast', 'Unknown')
                     healings = magic_state.get('healing_sessions', 'Unknown')
-                    print(f"   • Energy Level: {energy}%")
-                    print(f"   • Acorn Reserve: {acorns}")
-                    print(f"   • Spells Cast: {spells}")
-                    print(f"   • Healing Sessions: {healings}")
+                    print(f"   * Energy Level: {energy}%")
+                    print(f"   * Acorn Reserve: {acorns}")
+                    print(f"   * Spells Cast: {spells}")
+                    print(f"   * Healing Sessions: {healings}")
             else:
                 print("   [WARNING] No magic state found")
         except Exception as e:
@@ -140,11 +140,11 @@ async def load_all_state(json_output=False, verbose=False):
                     suggestions = learning_patterns.get('optimization_suggestions', [])
                     stats = learning_patterns.get('performance_stats', {})
 
-                    print(f"   • Success Patterns: {len(success_patterns)}")
-                    print(f"   • Failure Patterns: {len(failure_patterns)}")
-                    print(f"   • Optimization Suggestions: {len(suggestions)}")
-                    print(f"   • Total Patterns Analyzed: {stats.get('total_patterns', 'Unknown')}")
-                    print(f"   • Success Rate: {stats.get('success_rate', 'Unknown')}")
+                    print(f"   * Success Patterns: {len(success_patterns)}")
+                    print(f"   * Failure Patterns: {len(failure_patterns)}")
+                    print(f"   * Optimization Suggestions: {len(suggestions)}")
+                    print(f"   * Total Patterns Analyzed: {stats.get('total_patterns', 'Unknown')}")
+                    print(f"   * Success Rate: {stats.get('success_rate', 'Unknown')}")
             else:
                 print("   [WARNING] No learning patterns found")
         except Exception as e:
@@ -179,11 +179,11 @@ async def load_config_only(json_output=False, verbose=False):
                 format_json_output(config, "Provider Configuration")
             else:
                 print("[SUCCESS] Configuration loaded successfully!")
-                print(f"   • Default provider: {config.get('default_provider', 'Unknown')}")
-                print(f"   • Total providers: {len(config.get('providers', {}))}")
+                print(f"   * Default provider: {config.get('default_provider', 'Unknown')}")
+                print(f"   * Total providers: {len(config.get('providers', {}))}")
                 for provider_name, provider_config in config.get('providers', {}).items():
                     status = "[OK] Configured" if provider_config.get('api_key') else "[NOT SET] Not configured"
-                    print(f"   • {provider_name}: {status}")
+                    print(f"   * {provider_name}: {status}")
         else:
             print("[WARNING] No configuration found")
             return False

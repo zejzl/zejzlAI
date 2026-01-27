@@ -59,7 +59,7 @@ if not await rate_limiter.acquire(provider_name, timeout=30.0):
 
 **Features**:
 - Automatic retry on transient failures
-- Exponential backoff (1s → 2s → 4s)
+- Exponential backoff (1s -> 2s -> 4s)
 - Smart error detection (timeout, 50x, connection issues)
 - Max 3 retries per request
 - Non-retryable error detection (auth, validation)
@@ -288,11 +288,11 @@ Phase 3 Enhancements Summary:
 ## What's New
 
 ### Before Phase 3
-- No rate limiting → Could exhaust API quotas
-- No retry logic → Failed on transient errors
-- SQLite conversations grew forever → Database bloat
-- No performance metrics → No visibility
-- Limited examples → Hard to test
+- No rate limiting -> Could exhaust API quotas
+- No retry logic -> Failed on transient errors
+- SQLite conversations grew forever -> Database bloat
+- No performance metrics -> No visibility
+- Limited examples -> Hard to test
 
 ### After Phase 3
 - [OK] Multi-tier rate limiting prevents abuse

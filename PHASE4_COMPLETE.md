@@ -611,7 +611,7 @@ self.failure_patterns.extend(patterns["failure_paths"][-3:])  # Keep last 3
 ### Circuit Breaker
 - **Overhead**: <0.1ms per call
 - **Recovery**: Automatic after timeout
-- **State Transitions**: CLOSED → OPEN → HALF_OPEN → CLOSED
+- **State Transitions**: CLOSED -> OPEN -> HALF_OPEN -> CLOSED
 
 ---
 

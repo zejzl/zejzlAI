@@ -99,9 +99,9 @@ async def save_all_state(verbose=False):
 
         # Show summary
         print("\n[STATS] State Summary:")
-        print(f"   • Configuration: {len(config)} providers configured")
-        print("   • Magic System: Energy and spell data preserved")
-        print("   • Learning: Agent patterns and metrics saved")
+        print(f"   * Configuration: {len(config)} providers configured")
+        print("   * Magic System: Energy and spell data preserved")
+        print("   * Learning: Agent patterns and metrics saved")
     except Exception as e:
         print(f"[ERROR] Error saving state: {e}")
         return False
@@ -169,7 +169,7 @@ async def save_magic_only(verbose=False):
             else:
                 print("[OK] Magic state saved successfully!")
         else:
-            print("⚠️ Magic system not available")
+            print("[WIP]️ Magic system not available")
             return False
     except Exception as e:
         print(f"[ERROR] Error saving magic state: {e}")

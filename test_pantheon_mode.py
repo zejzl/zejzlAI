@@ -103,7 +103,7 @@ async def test_pantheon_mode(prompt: str):
         return True
 
     except Exception as e:
-        print(f"\n❌ Error during pantheon execution: {e}")
+        print(f"\n[FAILED] Error during pantheon execution: {e}")
         import traceback
         traceback.print_exc()
         return False

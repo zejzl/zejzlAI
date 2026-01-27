@@ -62,9 +62,9 @@ class AsyncMessageBus:
             self.redis = aioredis.from_url(self.redis_url, decode_responses=False)
             await self.redis.ping()
             self.running = True
-            logger.info(f"✓ Message bus initialized (Redis: {self.redis_url})")
+            logger.info(f"[OK] Message bus initialized (Redis: {self.redis_url})")
         except Exception as e:
-            logger.error(f"✗ Failed to initialize Redis: {e}")
+            logger.error(f"[STOP] Failed to initialize Redis: {e}")
             raise
     
     async def publish(self, channel: str, message: Message):

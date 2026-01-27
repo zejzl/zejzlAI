@@ -872,7 +872,7 @@ function updateMCPServers(servers) {
                     <i data-lucide="server" class="w-5 h-5 text-gray-400"></i>
                     <div>
                         <div class="font-medium">${name}</div>
-                        <div class="text-sm text-gray-400">${server.config?.transport || 'Unknown'} • ${server.status?.tools?.length || 0} tools</div>
+                        <div class="text-sm text-gray-400">${server.config?.transport || 'Unknown'} * ${server.status?.tools?.length || 0} tools</div>
                     </div>
                 </div>
                 <div class="flex items-center space-x-2">

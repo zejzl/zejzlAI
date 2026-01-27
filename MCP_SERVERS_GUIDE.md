@@ -12,25 +12,25 @@ ZEJZL.NET includes 4 production-ready MCP (Model Context Protocol) servers provi
 ## Server Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    MCP Client (Agent)                       │
-└─────────────────┬───────────────────────────────────────────┘
-                  │ JSON-RPC 2.0 over stdio
-┌─────────────────▼───────────────────────────────────────────┐
-│                    MCP Server (Tool Provider)               │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │   BaseMCPServer (Abstract Base Class)               │  │
-│  │   - Protocol handling (JSON-RPC 2.0)                │  │
-│  │   - Tool registration                               │  │
-│  │   - Request routing                                 │  │
-│  └──────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │   Specific Server Implementation                    │  │
-│  │   - Tool handlers                                   │  │
-│  │   - Business logic                                  │  │
-│  │   - External API integration                        │  │
-│  └──────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
++-------------------------------------------------------------+
+|                    MCP Client (Agent)                       |
++-----------------+-------------------------------------------+
+                  | JSON-RPC 2.0 over stdio
++-----------------v-------------------------------------------+
+|                    MCP Server (Tool Provider)               |
+|  +------------------------------------------------------+  |
+|  |   BaseMCPServer (Abstract Base Class)               |  |
+|  |   - Protocol handling (JSON-RPC 2.0)                |  |
+|  |   - Tool registration                               |  |
+|  |   - Request routing                                 |  |
+|  +------------------------------------------------------+  |
+|  +------------------------------------------------------+  |
+|  |   Specific Server Implementation                    |  |
+|  |   - Tool handlers                                   |  |
+|  |   - Business logic                                  |  |
+|  |   - External API integration                        |  |
+|  +------------------------------------------------------+  |
++-------------------------------------------------------------+
 ```
 
 ## 1. Filesystem Server

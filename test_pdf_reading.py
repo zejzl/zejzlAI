@@ -13,46 +13,46 @@ if str(project_root) not in sys.path:
 
 try:
     from src.multimodal_ai import MultiModalContent, ModalityType
-    print("✓ Multi-modal AI imports successful")
+    print("[OK] Multi-modal AI imports successful")
 except ImportError as e:
-    print(f"✗ Import failed: {e}")
+    print(f"[STOP] Import failed: {e}")
     sys.exit(1)
 
 def test_pdf_functionality():
     """Test PDF processing functionality"""
-    print("\n🧪 Testing PDF Functionality...")
+    print("\n[TEST] Testing PDF Functionality...")
 
     # Test PDF text extraction method
     try:
         # Create a simple test - check if the method exists
         if hasattr(MultiModalContent, '_extract_pdf_text'):
-            print("✓ PDF text extraction method available")
+            print("[OK] PDF text extraction method available")
         else:
-            print("✗ PDF text extraction method missing")
+            print("[STOP] PDF text extraction method missing")
             return False
 
         if hasattr(MultiModalContent, '_get_pdf_page_count'):
-            print("✓ PDF page count method available")
+            print("[OK] PDF page count method available")
         else:
-            print("✗ PDF page count method missing")
+            print("[STOP] PDF page count method missing")
             return False
 
         if hasattr(MultiModalContent, 'from_pdf_file'):
-            print("✓ PDF file loading method available")
+            print("[OK] PDF file loading method available")
         else:
-            print("✗ PDF file loading method missing")
+            print("[STOP] PDF file loading method missing")
             return False
 
     except Exception as e:
-        print(f"✗ PDF functionality test failed: {e}")
+        print(f"[STOP] PDF functionality test failed: {e}")
         return False
 
-    print("✓ All PDF methods are available")
+    print("[OK] All PDF methods are available")
     return True
 
 def test_multimodal_structure():
     """Test multi-modal content structure"""
-    print("\n📄 Testing Multi-Modal Structure...")
+    print("\n[FILE] Testing Multi-Modal Structure...")
 
     try:
         # Test document modality
@@ -62,18 +62,18 @@ def test_multimodal_structure():
             metadata={"format": "pdf", "pages": 5}
         )
 
-        print(f"✓ Created document content: {len(content.content)} chars")
-        print(f"✓ Modality: {content.modality.value}")
-        print(f"✓ Metadata: {content.metadata}")
+        print(f"[OK] Created document content: {len(content.content)} chars")
+        print(f"[OK] Modality: {content.modality.value}")
+        print(f"[OK] Metadata: {content.metadata}")
 
         return True
 
     except Exception as e:
-        print(f"✗ Multi-modal structure test failed: {e}")
+        print(f"[STOP] Multi-modal structure test failed: {e}")
         return False
 
 def main():
-    print("📖 ZEJZL.NET PDF Reading Capability Test")
+    print("[READ] ZEJZL.NET PDF Reading Capability Test")
     print("=" * 50)
 
     success = True
@@ -88,7 +88,7 @@ def main():
 
     print("\n" + "=" * 50)
     if success:
-        print("🎉 PDF Reading Capabilities: IMPLEMENTED")
+        print("[SUCCESS] PDF Reading Capabilities: IMPLEMENTED")
         print("\nAvailable features:")
         print("- PDF text extraction (via pdfplumber/PyPDF2)")
         print("- PDF page counting")
@@ -99,7 +99,7 @@ def main():
         print("pdf_content = MultiModalContent.from_pdf_file('document.pdf')")
         print("analysis = await multimodal_processor.process_image_analysis(pdf_content, 'Summarize this PDF')")
     else:
-        print("❌ PDF Reading Capabilities: NOT FULLY IMPLEMENTED")
+        print("[FAILED] PDF Reading Capabilities: NOT FULLY IMPLEMENTED")
         print("Some features may be missing or not working correctly.")
 
     return success

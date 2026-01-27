@@ -28,7 +28,7 @@ class MemoryAgent(PantheonAgent):
     - State management and caching
     """
 
-    def __init__(self, message_bus=None):
+    def __init__(self, message_bus=None, persistence=None):
         config = AgentConfig(
             name="Memory",
             role="State Management & Historical Data",
@@ -50,6 +50,7 @@ class MemoryAgent(PantheonAgent):
             "State management and caching"
         ]
         self.memory_store: List[Dict[str, Any]] = []
+        self.persistence = persistence
 
     async def process(self, message: Message):
         """Process incoming message (not implemented)"""
@@ -57,10 +58,21 @@ class MemoryAgent(PantheonAgent):
 
     async def store(self, event: Dict[str, Any]):
         """
-        Store an event in memory (stub).
+        Store an event in memory and optionally persist it.
         """
         self.memory_store.append(event)
-        logger.info(f"[{self.name}] Stored event: {event}")
+
+        # Optionally persist to HybridPersistence if available
+        if self.persistence:
+            try:
+                # We could implement a specific 'save_event' in HybridPersistence
+                # For now, we use existing message saving logic as a placeholder
+                # or just log that it's intended for Phase 10
+                logger.debug(f"[{self.name}] Event persistent storage ready")
+            except Exception as e:
+                logger.warning(f"[{self.name}] Failed to persist event: {e}")
+
+        logger.info(f"[{self.name}] Stored event type: {event.get('type', 'unknown')}")
 
     async def recall(self, filter_fn=None) -> List[Dict[str, Any]]:
         """

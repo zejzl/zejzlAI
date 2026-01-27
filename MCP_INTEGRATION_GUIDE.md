@@ -13,27 +13,27 @@ The MCP (Model Context Protocol) integration provides ZEJZL.NET agents with exte
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    ZEJZL.NET Pantheon                       │
-│  (Observer, Reasoner, Actor, Validator, Executor, etc.)    │
-└─────────────────┬───────────────────────────────────────────┘
-                  │ Uses MCP Interface
-┌─────────────────▼───────────────────────────────────────────┐
-│           MCPAgentInterface (src/mcp_agent_integration.py)  │
-│  - call_tool()  - read_resource()  - discover_tools()      │
-│  - Context Management  - Caching  - Usage Tracking         │
-└─────────────────┬───────────────────────────────────────────┘
-                  │ Manages
-┌─────────────────▼───────────────────────────────────────────┐
-│           MCPServerRegistry (src/mcp_registry.py)           │
-│  - Multi-server management  - Health monitoring            │
-│  - Auto-reconnection  - Access control                     │
-└─────────────────┬───────────────────────────────────────────┘
-                  │ Connects to
-┌─────────────────▼───────────────────────────────────────────┐
-│              MCP Servers (External Tools)                   │
-│  filesystem │ github │ web-search │ database │ kubernetes  │
-└─────────────────────────────────────────────────────────────┘
++-------------------------------------------------------------+
+|                    ZEJZL.NET Pantheon                       |
+|  (Observer, Reasoner, Actor, Validator, Executor, etc.)    |
++-----------------+-------------------------------------------+
+                  | Uses MCP Interface
++-----------------v-------------------------------------------+
+|           MCPAgentInterface (src/mcp_agent_integration.py)  |
+|  - call_tool()  - read_resource()  - discover_tools()      |
+|  - Context Management  - Caching  - Usage Tracking         |
++-----------------+-------------------------------------------+
+                  | Manages
++-----------------v-------------------------------------------+
+|           MCPServerRegistry (src/mcp_registry.py)           |
+|  - Multi-server management  - Health monitoring            |
+|  - Auto-reconnection  - Access control                     |
++-----------------+-------------------------------------------+
+                  | Connects to
++-----------------v-------------------------------------------+
+|              MCP Servers (External Tools)                   |
+|  filesystem | github | web-search | database | kubernetes  |
++-------------------------------------------------------------+
 ```
 
 ## Quick Start

@@ -65,13 +65,13 @@ received = await queue.get()
 ### Different Communication Patterns
 
 1. **AI Provider Bus** (Request/Response)
-   - Synchronous: Send request → Wait → Get response
+   - Synchronous: Send request -> Wait -> Get response
    - One-to-one communication
    - Stateful (conversation history)
    - Provider-specific logic
 
 2. **Inter-Agent Bus** (Pub/Sub)
-   - Asynchronous: Publish → Multiple subscribers receive
+   - Asynchronous: Publish -> Multiple subscribers receive
    - One-to-many or many-to-many communication
    - Stateless message passing
    - Generic, protocol-agnostic
@@ -93,11 +93,11 @@ received = await queue.get()
 The Pantheon system uses the **Inter-Agent Bus** for coordination:
 
 ```
-User Input → Observer → Reasoner → Actor → Validator → Executor
-                ↓          ↓         ↓         ↓          ↓
+User Input -> Observer -> Reasoner -> Actor -> Validator -> Executor
+                v          v         v         v          v
               Memory Agent (shared state)
-                ↓          ↓         ↓
-            Analyzer → Learner → Improver
+                v          v         v
+            Analyzer -> Learner -> Improver
 ```
 
 Each agent can:
@@ -124,7 +124,7 @@ The `base.py` file defines the `PantheonAgent` base class that:
 
 ## Current Implementation Status
 
-### ✓ Complete
+### [OK] Complete
 - AI Provider Bus with 7 providers
 - SQLite fallback persistence
 - CLI interface (chat, interactive, list, status)
@@ -143,7 +143,7 @@ The `base.py` file defines the `PantheonAgent` base class that:
 - MCP Protocol integration with 24 tools
 - Cost tracking and token usage analytics
 
-### ⚠ In Progress
+### [WIP] In Progress
 - MCP Security Layer (Authorization, rate limiting)
 - Distributed agent deployment
 - Community vault for shared patterns
@@ -155,27 +155,27 @@ The `base.py` file defines the `PantheonAgent` base class that:
 ### Example 1: User Chat with AI Provider
 
 ```
-User → CLI → AI Provider Bus → ChatGPT API → Response → SQLite → User
+User -> CLI -> AI Provider Bus -> ChatGPT API -> Response -> SQLite -> User
 ```
 
 ### Example 2: Pantheon Task Execution
 
 ```
-User Task → Observer (pub) → reasoner_channel
-                ↓
-            Reasoner (sub) → AI Provider Bus → Grok API
-                ↓
-            Reasoner (pub) → actor_channel
-                ↓
-            Actor (sub) → ... → Validation → Execution
+User Task -> Observer (pub) -> reasoner_channel
+                v
+            Reasoner (sub) -> AI Provider Bus -> Grok API
+                v
+            Reasoner (pub) -> actor_channel
+                v
+            Actor (sub) -> ... -> Validation -> Execution
 ```
 
 ### Example 3: Memory-Backed Learning
 
 ```
-All Agents → Memory.store() → Analyzer → Learner → Improver
-                ↓
-          Shared State → Future Agent Decisions
+All Agents -> Memory.store() -> Analyzer -> Learner -> Improver
+                v
+          Shared State -> Future Agent Decisions
 ```
 
 ---
@@ -184,22 +184,22 @@ All Agents → Memory.store() → Analyzer → Learner → Improver
 
 ```
 zejzl_net/
-├── ai_framework.py         # AI Provider Bus + CLI
-├── messagebus.py           # Inter-Agent Bus
-├── base.py                 # PantheonAgent base class
-├── main.py                 # Interactive Pantheon UI
-├── src/agents/             # 9 Agent implementations
-│   ├── observer.py
-│   ├── reasoner.py
-│   ├── actor.py
-│   ├── validator.py
-│   ├── memory.py
-│   ├── executor.py
-│   ├── analyzer.py
-│   ├── learner.py
-│   └── improver.py
-├── test_basic.py           # Unit tests
-└── requirements.txt        # Dependencies
++-- ai_framework.py         # AI Provider Bus + CLI
++-- messagebus.py           # Inter-Agent Bus
++-- base.py                 # PantheonAgent base class
++-- main.py                 # Interactive Pantheon UI
++-- src/agents/             # 9 Agent implementations
+|   +-- observer.py
+|   +-- reasoner.py
+|   +-- actor.py
+|   +-- validator.py
+|   +-- memory.py
+|   +-- executor.py
+|   +-- analyzer.py
+|   +-- learner.py
+|   +-- improver.py
++-- test_basic.py           # Unit tests
++-- requirements.txt        # Dependencies
 ```
 
 ---
@@ -225,7 +225,7 @@ zejzl_net/
 ## Design Philosophy
 
 **Modularity**: Each system can be used independently
-**Resilience**: Multiple fallback layers (Redis → SQLite, multiple providers)
+**Resilience**: Multiple fallback layers (Redis -> SQLite, multiple providers)
 **Flexibility**: Easy to add new providers or agents
 **Observability**: Comprehensive logging at every layer
 
