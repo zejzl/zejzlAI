@@ -74,34 +74,34 @@ def compare_messagebus():
     zejzl_bus = ZEJZL_NET / "messagebus.py"
     
     print("\n" + "="*70)
-    print("📬 MESSAGEBUS COMPARISON")
+    print("[MAIL] MESSAGEBUS COMPARISON")
     print("="*70)
     
     if grok_bus.exists():
         grok_lines = count_lines(grok_bus)
-        print(f"\n🦅 Grokputer MessageBus: {grok_lines} lines")
+        print(f"\n[GROKPUTER] Grokputer MessageBus: {grok_lines} lines")
         print("   Location: src/core/message_bus.py")
         print("   Features:")
-        print("     ✅ Priority queuing (HIGH/NORMAL/LOW)")
-        print("     ✅ Request-response with correlation IDs")
-        print("     ✅ Broadcast support")
-        print("     ✅ Latency tracking")
-        print("     ✅ Message history (last 100)")
-        print("     ✅ Concurrency control")
-        print("     ✅ Pure asyncio.Queue (no Redis)")
-        print("     ✅ TOON format integration")
-        print("     📊 Performance: 15K+ msg/sec, <0.1ms latency")
+        print("     [OK] Priority queuing (HIGH/NORMAL/LOW)")
+        print("     [OK] Request-response with correlation IDs")
+        print("     [OK] Broadcast support")
+        print("     [OK] Latency tracking")
+        print("     [OK] Message history (last 100)")
+        print("     [OK] Concurrency control")
+        print("     [OK] Pure asyncio.Queue (no Redis)")
+        print("     [OK] TOON format integration")
+        print("     [STATS] Performance: 15K+ msg/sec, <0.1ms latency")
     
     if zejzl_bus.exists():
         zejzl_lines = count_lines(zejzl_bus)
-        print(f"\n🚀 zejzl_net MessageBus: {zejzl_lines} lines")
+        print(f"\n[ZEJZL] zejzl_net MessageBus: {zejzl_lines} lines")
         print("   Location: messagebus.py (root)")
         print("   Features:")
-        print("     ✅ Redis pub/sub")
-        print("     ✅ Message persistence")
-        print("     ✅ Conversation history")
-        print("     ✅ Pickle serialization")
-        print("     📊 Performance: ~1-3K msg/sec, ~5-10ms latency")
+        print("     [OK] Redis pub/sub")
+        print("     [OK] Message persistence")
+        print("     [OK] Conversation history")
+        print("     [OK] Pickle serialization")
+        print("     [STATS] Performance: ~1-3K msg/sec, ~5-10ms latency")
     
     print("\n💡 Recommendation:")
     print("   Replace zejzl_net's MessageBus with grokputer's version")
@@ -114,24 +114,24 @@ def compare_memory():
     zejzl_memory = ZEJZL_NET / "src" / "memory"  # Doesn't exist yet
     
     print("\n" + "="*70)
-    print("🧠 MEMORY SYSTEMS COMPARISON")
+    print("[MEMORY] MEMORY SYSTEMS COMPARISON")
     print("="*70)
     
     if grok_memory.exists():
         py_files = list(grok_memory.rglob("*.py"))
-        print(f"\n🦅 Grokputer Memory: {len(py_files)} files")
+        print(f"\n[GROKPUTER] Grokputer Memory: {len(py_files)} files")
         print("   Modules:")
         for module in [d for d in grok_memory.iterdir() if d.is_dir() and not d.name.startswith('_')]:
             print(f"     - {module.name}/")
         print("   Features:")
-        print("     ✅ Redis backend (redis_store.py)")
-        print("     ✅ Hierarchical memory manager")
-        print("     ✅ Episode storage with TTL")
-        print("     ✅ Context retrieval (top-k)")
-        print("     ✅ Memory consolidation")
-        print("     ✅ Agent-specific namespaces")
+        print("     [OK] Redis backend (redis_store.py)")
+        print("     [OK] Hierarchical memory manager")
+        print("     [OK] Episode storage with TTL")
+        print("     [OK] Context retrieval (top-k)")
+        print("     [OK] Memory consolidation")
+        print("     [OK] Agent-specific namespaces")
     
-    print(f"\n🚀 zejzl_net Memory: None (using basic Redis in ai_framework.py)")
+    print(f"\n[ZEJZL] zejzl_net Memory: None (using basic Redis in ai_framework.py)")
     print("\n💡 Recommendation:")
     print("   Extract grokputer's memory/ module for structured memory management")
 
@@ -141,40 +141,40 @@ def compare_observability():
     grok_obs = GROKPUTER / "src" / "observability"
     
     print("\n" + "="*70)
-    print("📊 OBSERVABILITY COMPARISON")
+    print("[STATS] OBSERVABILITY COMPARISON")
     print("="*70)
     
     if grok_obs.exists():
         py_files = list(grok_obs.rglob("*.py"))
-        print(f"\n🦅 Grokputer Observability: {len(py_files)} files")
+        print(f"\n[GROKPUTER] Grokputer Observability: {len(py_files)} files")
         print("   Files:")
         for f in py_files:
             if not f.name.startswith('_'):
                 print(f"     - {f.name} ({count_lines(f)} lines)")
         print("   Features:")
-        print("     ✅ Performance monitoring")
-        print("     ✅ Deadlock detection")
-        print("     ✅ Distributed tracing")
-        print("     ✅ Real-time metrics")
+        print("     [OK] Performance monitoring")
+        print("     [OK] Deadlock detection")
+        print("     [OK] Distributed tracing")
+        print("     [OK] Real-time metrics")
     
-    print(f"\n🚀 zejzl_net Observability: None")
+    print(f"\n[ZEJZL] zejzl_net Observability: None")
     print("\n💡 Recommendation:")
     print("   Critical gap - extract performance_monitor.py and deadlock_detector.py")
 
 
 def main():
     print("="*70)
-    print("🔥 GROKPUTER vs ZEJZL.NET - PROJECT COMPARISON")
+    print("[FIRE] GROKPUTER vs ZEJZL.NET - PROJECT COMPARISON")
     print("="*70)
     
     # Analyze both projects
-    print("\n📊 PROJECT STATISTICS")
+    print("\n[STATS] PROJECT STATISTICS")
     print("="*70)
     
     grok_stats = analyze_directory(GROKPUTER)
     zejzl_stats = analyze_directory(ZEJZL_NET)
     
-    print(f"\n🦅 GROKPUTER ({GROKPUTER.name})")
+    print(f"\n[GROKPUTER] GROKPUTER ({GROKPUTER.name})")
     print(f"   Python files: {grok_stats['python_files']}")
     print(f"   Total lines:  {grok_stats['total_lines']:,}")
     print(f"   Modules:      {len(grok_stats['modules'])}")
@@ -183,7 +183,7 @@ def main():
         print(f"                 ... and {len(grok_stats['modules']) - 10} more")
     print(f"   Async files:  {len(grok_stats['async_files'])}/{grok_stats['python_files']}")
     
-    print(f"\n🚀 ZEJZL_NET ({ZEJZL_NET.name})")
+    print(f"\n[ZEJZL] ZEJZL_NET ({ZEJZL_NET.name})")
     print(f"   Python files: {zejzl_stats['python_files']}")
     print(f"   Total lines:  {zejzl_stats['total_lines']:,}")
     print(f"   Modules:      {len(zejzl_stats['modules'])}")
@@ -194,11 +194,11 @@ def main():
     print(f"\n📄 LARGE FILES (>500 lines)")
     print("="*70)
     
-    print("\n🦅 Grokputer:")
+    print("\n[GROKPUTER] Grokputer:")
     for file, lines in sorted(grok_stats['large_files'], key=lambda x: x[1], reverse=True)[:10]:
         print(f"   {lines:5} lines - {file}")
     
-    print("\n🚀 zejzl_net:")
+    print("\n[ZEJZL] zejzl_net:")
     for file, lines in sorted(zejzl_stats['large_files'], key=lambda x: x[1], reverse=True)[:10]:
         print(f"   {lines:5} lines - {file}")
     
@@ -209,9 +209,9 @@ def main():
     
     # Summary
     print("\n" + "="*70)
-    print("📋 EXTRACTION PRIORITY SUMMARY")
+    print("[TODO] EXTRACTION PRIORITY SUMMARY")
     print("="*70)
-    print("\n🔥 CRITICAL (Extract First):")
+    print("\n[FIRE] CRITICAL (Extract First):")
     print("   1. src/core/message_bus.py       (776 lines) - 15K+ msg/sec")
     print("   2. src/exceptions.py             - Custom error hierarchy")
     print("   3. src/core/logging_config.py    - Structured logging")
@@ -221,13 +221,13 @@ def main():
     print("   5. src/observability/performance_monitor.py - Metrics")
     print("   6. src/observability/deadlock_detector.py - Debugging")
     
-    print("\n🎯 MEDIUM PRIORITY:")
+    print("\n[GG] MEDIUM PRIORITY:")
     print("   7. src/utils/toon_utils.py - Token optimization")
     print("   8. src/collaboration/orchestrator.py - MAF (selective)")
     print("   9. src/workflow/ - State machine (selective)")
     
     print("\n" + "="*70)
-    print("📊 EXPECTED IMPROVEMENTS")
+    print("[STATS] EXPECTED IMPROVEMENTS")
     print("="*70)
     print("   MessageBus:    5-15x faster (1K → 15K msg/sec)")
     print("   Latency:       50-100x lower (5-10ms → <0.1ms)")
@@ -236,13 +236,13 @@ def main():
     print("   Architecture:  Good → Production-ready")
     
     print("\n" + "="*70)
-    print("✅ ANALYSIS COMPLETE")
+    print("[OK] ANALYSIS COMPLETE")
     print("="*70)
     print("\nNext steps:")
     print("  1. Review: GROKPUTER_INTEGRATION_PLAN.md")
     print("  2. Follow: extraction_checklist.md")
     print("  3. Start with: MessageBus extraction (highest ROI)")
-    print("\n🚀 Ready to merge the best of both worlds!")
+    print("\n[ZEJZL] Ready to merge the best of both worlds!")
 
 
 if __name__ == "__main__":

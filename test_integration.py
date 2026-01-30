@@ -12,7 +12,7 @@ import sys
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from messagebus import AsyncMessageBus as InterAgentBus, Message
+from src.core.message_bus import MessageBus as InterAgentBus, Message
 from src.agents.observer import ObserverAgent
 from src.agents.reasoner import ReasonerAgent
 from src.agents.actor import ActorAgent

@@ -11,7 +11,7 @@ import sys
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from messagebus import AsyncMessageBus, Message
+from src.core.message_bus import MessageBus, Message
 from src.agents.observer import ObserverAgent
 
 
@@ -36,12 +36,12 @@ async def test_message_creation():
 @pytest.mark.asyncio
 async def test_message_bus_init():
     """Test MessageBus initialization"""
-    bus = AsyncMessageBus()
+    bus = MessageBus()
     
     try:
-        await bus.initialize()
+        await bus.start()
         assert bus.running is True
-        assert bus.redis is not None
+        # New MessageBus doesn't use Redis - pure in-memory
     except Exception as e:
         pytest.skip(f"Redis not available: {e}")
     finally:
@@ -68,10 +68,10 @@ async def test_observer_agent():
 @pytest.mark.asyncio
 async def test_pub_sub():
     """Test publish/subscribe functionality"""
-    bus = AsyncMessageBus()
+    bus = MessageBus()
     
     try:
-        await bus.initialize()
+        await bus.start()
         
         # Subscribe to a channel
         queue = await bus.subscribe("test_channel")
