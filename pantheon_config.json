@@ -1,0 +1,192 @@
+{
+  "name": "ZEJZL.NET Pantheon",
+  "version": "1.0",
+  "description": "9-Agent orchestration system for multi-AI collaboration",
+  "agents": [
+    {
+      "name": "Observer",
+      "class": "ObserverAgent",
+      "module": "src.agents.observer",
+      "specialization": "Task Analysis & Decomposition",
+      "description": "Analyzes and decomposes tasks into manageable components. Specializes in requirement analysis, complexity assessment, and dependency mapping.",
+      "responsibilities": [
+        "Analyze incoming tasks for complexity and requirements",
+        "Break down complex tasks into manageable subtasks",
+        "Identify dependencies and constraints",
+        "Provide comprehensive task understanding"
+      ],
+      "expertise_areas": [
+        "API integration and data scraping",
+        "Real-time monitoring and alerting",
+        "Data preprocessing and filtering",
+        "Environmental sensing and telemetry"
+      ]
+    },
+    {
+      "name": "Actor",
+      "class": "ActorAgent",
+      "module": "src.agents.actor",
+      "specialization": "Execution Planning & Coordination",
+      "description": "Generates execution plans and coordinates task implementation. Transforms analysis into actionable steps.",
+      "responsibilities": [
+        "Generate execution plans from task analysis",
+        "Coordinate multi-step task processing",
+        "Manage task workflows and dependencies",
+        "Ensure proper sequencing of operations"
+      ],
+      "expertise_areas": [
+        "Workflow orchestration",
+        "Task scheduling",
+        "Resource allocation",
+        "Execution monitoring"
+      ]
+    },
+    {
+      "name": "Reasoner",
+      "class": "ReasonerAgent",
+      "module": "src.agents.reasoner",
+      "specialization": "Logical Reasoning & Problem Solving",
+      "description": "Applies logical reasoning and problem-solving techniques. Analyzes complex scenarios and derives insights.",
+      "responsibilities": [
+        "Apply logical reasoning to complex problems",
+        "Derive insights from data and context",
+        "Identify patterns and relationships",
+        "Validate logical consistency"
+      ],
+      "expertise_areas": [
+        "Deductive reasoning",
+        "Pattern recognition",
+        "Constraint solving",
+        "Decision analysis"
+      ]
+    },
+    {
+      "name": "Analyzer",
+      "class": "AnalyzerAgent",
+      "module": "src.agents.analyzer",
+      "specialization": "Data Analysis & Interpretation",
+      "description": "Analyzes data, metrics, and system behavior. Provides statistical insights and trend analysis.",
+      "responsibilities": [
+        "Analyze data and metrics",
+        "Interpret statistical patterns",
+        "Identify trends and anomalies",
+        "Generate analytical reports"
+      ],
+      "expertise_areas": [
+        "Statistical analysis",
+        "Data visualization",
+        "Performance metrics",
+        "Trend detection"
+      ]
+    },
+    {
+      "name": "Validator",
+      "class": "ValidatorAgent",
+      "module": "src.agents.validator",
+      "specialization": "Quality Assurance & Verification",
+      "description": "Validates outputs, checks correctness, and ensures quality standards. Reviews work for errors and compliance.",
+      "responsibilities": [
+        "Validate outputs and results",
+        "Check correctness and accuracy",
+        "Ensure quality standards",
+        "Identify errors and inconsistencies"
+      ],
+      "expertise_areas": [
+        "Output verification",
+        "Quality assurance",
+        "Compliance checking",
+        "Error detection"
+      ]
+    },
+    {
+      "name": "Improver",
+      "class": "ImproverAgent",
+      "module": "src.agents.improver",
+      "specialization": "Optimization & Enhancement",
+      "description": "Suggests improvements and optimizations. Enhances existing solutions and identifies efficiency gains.",
+      "responsibilities": [
+        "Suggest improvements and optimizations",
+        "Enhance existing solutions",
+        "Identify efficiency opportunities",
+        "Propose alternative approaches"
+      ],
+      "expertise_areas": [
+        "Performance optimization",
+        "Code refactoring",
+        "Process improvement",
+        "Best practices"
+      ]
+    },
+    {
+      "name": "Learner",
+      "class": "LearnerAgent",
+      "module": "src.agents.learner",
+      "specialization": "Knowledge Acquisition & Adaptation",
+      "description": "Captures lessons learned, updates knowledge base, and adapts strategies based on experience.",
+      "responsibilities": [
+        "Capture lessons learned",
+        "Update knowledge base",
+        "Adapt strategies based on experience",
+        "Identify improvement patterns"
+      ],
+      "expertise_areas": [
+        "Knowledge management",
+        "Pattern extraction",
+        "Strategy adaptation",
+        "Continuous improvement"
+      ]
+    },
+    {
+      "name": "Memory",
+      "class": "MemoryAgent",
+      "module": "src.agents.memory",
+      "specialization": "Context Retention & Retrieval",
+      "description": "Stores, indexes, and retrieves important context across sessions. Maintains system memory.",
+      "responsibilities": [
+        "Store important context",
+        "Index and organize information",
+        "Retrieve relevant history",
+        "Maintain session continuity"
+      ],
+      "expertise_areas": [
+        "Information storage",
+        "Context retrieval",
+        "Knowledge graphs",
+        "Semantic search"
+      ]
+    },
+    {
+      "name": "Consensus",
+      "class": "ConsensusManager",
+      "module": "src.agents.consensus",
+      "specialization": "Multi-Agent Coordination & Agreement",
+      "description": "Facilitates agreement between agents, resolves conflicts, and ensures coordinated decision-making.",
+      "responsibilities": [
+        "Facilitate inter-agent agreement",
+        "Resolve conflicts and disputes",
+        "Ensure coordinated decisions",
+        "Manage voting and consensus"
+      ],
+      "expertise_areas": [
+        "Conflict resolution",
+        "Decision coordination",
+        "Voting mechanisms",
+        "Agreement protocols"
+      ]
+    }
+  ],
+  "provider_config": {
+    "default_provider": "grok",
+    "fallback_providers": ["gemini", "chatgpt", "claude"],
+    "timeout_seconds": 60,
+    "max_retries": 3
+  },
+  "magic_system": {
+    "enabled": true,
+    "vitality_boost_range": [1.1, 1.5]
+  },
+  "toon_format": {
+    "enabled": true,
+    "token_efficiency": true
+  }
+}

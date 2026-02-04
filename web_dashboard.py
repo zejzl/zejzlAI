@@ -628,6 +628,50 @@ async def chat_endpoint(request: Request, background_tasks: BackgroundTasks):
         return {"error": str(e)}
 
 
+@app.post("/api/chat-rlm")
+async def chat_rlm_endpoint(request: Request):
+    """Handle RLM (Recursive Language Model) chat requests with Pantheon agents"""
+    try:
+        data = await request.json()
+        message = data.get("message", "")
+        provider = data.get("provider", "grok-3")
+        use_real_agents = data.get("use_real_agents", True)
+
+        if not message:
+            return {"error": "No message provided"}
+
+        # Initialize Pantheon RLM if not already done
+        if not hasattr(dashboard, '_pantheon_rlm'):
+            from pantheon_rlm_integration import ZejzlPantheonRLM
+            dashboard._pantheon_rlm = ZejzlPantheonRLM(
+                pantheon_config_path="pantheon_config.json",
+                model=provider,
+                use_real_agents=use_real_agents,
+                verbose=False  # Don't print debug in production
+            )
+            logger.info("[RLM] Initialized Pantheon RLM")
+
+        # Process task through RLM
+        logger.info(f"[RLM] Processing task: {message[:60]}...")
+        response = await dashboard._pantheon_rlm.process_task_async(message)
+        logger.info(f"[RLM] Task complete: {len(response)} chars")
+
+        # Record the interaction
+        record_metric("dashboard_chat_rlm", 1, {"provider": provider, "use_real_agents": use_real_agents})
+
+        return {
+            "response": response,
+            "provider": provider,
+            "mode": "rlm",
+            "real_agents": use_real_agents,
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f"[RLM] Chat endpoint error: {e}", exc_info=True)
+        return {"error": f"RLM error: {str(e)}"}
+
+
 # Analytics Endpoints
 analytics = UsageAnalytics()
 

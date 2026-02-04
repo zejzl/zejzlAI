@@ -1002,17 +1002,26 @@ class DashboardManager {
             const provider = document.getElementById('chat-provider').value;
             const mode = document.getElementById('chat-mode').value;
             const streaming = document.getElementById('streaming').checked;
+            const rlmMode = document.getElementById('rlm-mode').checked;
 
-            const response = await fetch('/api/chat', {
+            // Choose endpoint based on RLM mode
+            const endpoint = rlmMode ? '/api/chat-rlm' : '/api/chat';
+            const requestBody = rlmMode ? {
+                message: message,
+                provider: provider === 'grok' ? 'grok-3' : provider,
+                use_real_agents: true
+            } : {
+                message: message,
+                provider: provider,
+                stream: streaming
+            };
+
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    message: message,
-                    provider: provider,
-                    stream: streaming
-                })
+                body: JSON.stringify(requestBody)
             });
 
             const result = await response.json();
