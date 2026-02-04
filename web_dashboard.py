@@ -8,6 +8,7 @@ import asyncio
 import json
 import logging
 import base64
+import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Any
 from pathlib import Path
@@ -17,6 +18,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 import uvicorn
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+logger_env = logging.getLogger(__name__)
+logger_env.info(f"Environment loaded - GROK_API_KEY present: {bool(os.environ.get('GROK_API_KEY'))}")
 
 # Import our framework
 from ai_framework import AsyncMessageBus
