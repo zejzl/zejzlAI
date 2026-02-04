@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: zejzl-net
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn web_dashboard:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.7
+      - key: PORT
+        sync: false
+    # Add your API keys in Render dashboard:
+    # OPENAI_API_KEY
+    # ANTHROPIC_API_KEY
+    # GEMINI_API_KEY
+    # GROK_API_KEY
