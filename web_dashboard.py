@@ -256,6 +256,122 @@ async def blackboard_page(request: Request):
     except FileNotFoundError:
         return HTMLResponse("<h1>Blackboard Dashboard Not Found</h1><p>Please ensure blackboard_dashboard.html exists in the static/ directory.</p>", status_code=404)
 
+
+@app.websocket("/ws/blackboard")
+async def blackboard_websocket(websocket: WebSocket):
+    """
+    WebSocket endpoint for real-time blackboard updates
+    
+    Pushes updates every 2 seconds for:
+    - Blackboard state
+    - Budget status
+    - Audit log
+    
+    Replaces HTTP polling for instant updates
+    """
+    await websocket.accept()
+    logger.info("WebSocket connection established for blackboard")
+    
+    try:
+        while True:
+            # Collect all dashboard data
+            data = {
+                "timestamp": datetime.now().isoformat(),
+                "blackboard": {},
+                "budget": {},
+                "audit": {}
+            }
+            
+            # Get blackboard state
+            if dashboard.swarm:
+                try:
+                    blackboard_state = dashboard.swarm.get_blackboard_state()
+                    data["blackboard"] = {
+                        "success": True,
+                        "entries": blackboard_state,
+                        "key_count": len(blackboard_state)
+                    }
+                except Exception as e:
+                    data["blackboard"] = {"success": False, "error": str(e)}
+                
+                # Get budget status
+                try:
+                    budget_file = Path(dashboard.swarm.coordinator.data_dir) / "budget_tracking.json"
+                    if budget_file.exists():
+                        with open(budget_file, 'r', encoding='utf-8') as f:
+                            budget_data = json.load(f)
+                        
+                        tasks = budget_data.get("tasks", {})
+                        task_list = []
+                        total_used = 0
+                        total_limit = 0
+                        
+                        for task_id, task_data in tasks.items():
+                            tokens_used = task_data.get("tokens_used", 0)
+                            budget_limit = task_data.get("budget_limit", 0)
+                            
+                            task_list.append({
+                                "task_id": task_id,
+                                "tokens_used": tokens_used,
+                                "budget_limit": budget_limit,
+                                "percentage": (tokens_used / budget_limit * 100) if budget_limit > 0 else 0,
+                                "status": task_data.get("status", "active")
+                            })
+                            
+                            total_used += tokens_used
+                            total_limit += budget_limit
+                        
+                        data["budget"] = {
+                            "success": True,
+                            "tasks": sorted(task_list, key=lambda x: x["percentage"], reverse=True),
+                            "total_used": total_used,
+                            "total_limit": total_limit,
+                            "global_percentage": (total_used / total_limit * 100) if total_limit > 0 else 0
+                        }
+                    else:
+                        data["budget"] = {"success": True, "tasks": [], "total_used": 0, "total_limit": 0}
+                except Exception as e:
+                    data["budget"] = {"success": False, "error": str(e)}
+                
+                # Get audit log (last 20 entries)
+                try:
+                    audit_file = Path(dashboard.swarm.coordinator.data_dir) / "audit_log.jsonl"
+                    if audit_file.exists():
+                        entries = []
+                        with open(audit_file, 'r', encoding='utf-8') as f:
+                            for line in f:
+                                if line.strip():
+                                    try:
+                                        entry = json.loads(line)
+                                        entries.append(entry)
+                                    except json.JSONDecodeError:
+                                        continue
+                        
+                        entries.reverse()
+                        data["audit"] = {
+                            "success": True,
+                            "entries": entries[:20],
+                            "total_count": len(entries)
+                        }
+                    else:
+                        data["audit"] = {"success": True, "entries": [], "total_count": 0}
+                except Exception as e:
+                    data["audit"] = {"success": False, "error": str(e)}
+            else:
+                data["error"] = "Swarm not initialized"
+            
+            # Send update to client
+            await websocket.send_json(data)
+            
+            # Wait 2 seconds before next update
+            await asyncio.sleep(2)
+            
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+    finally:
+        logger.info("WebSocket connection closed for blackboard")
+
+
 @app.get("/api/status")
 async def get_status():
     """Get current system status"""

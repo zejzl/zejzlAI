@@ -334,7 +334,7 @@
 
         <div class="controls">
             <button id="autoRefreshToggle" class="auto-refresh-toggle active">
-                <span id="toggleIcon">⏸️</span> Auto-Refresh: <span id="toggleStatus">ON</span> (5s)
+                <span id="toggleIcon">⏸️</span> Live Updates: <span id="toggleStatus">ON</span> <span style="opacity: 0.7;">(WebSocket)</span>
             </button>
         </div>
 
@@ -402,9 +402,189 @@
 
     <script>
         const API_BASE = '/api';
-        let autoRefreshInterval = null;
+        let ws = null;
+        let reconnectInterval = null;
         let autoRefreshEnabled = true;
+        let connectionStatus = 'connecting';
 
+        // WebSocket connection
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/blackboard`;
+            
+            console.log('Connecting to WebSocket:', wsUrl);
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                connectionStatus = 'connected';
+                updateConnectionIndicator();
+                
+                // Clear reconnect interval if any
+                if (reconnectInterval) {
+                    clearInterval(reconnectInterval);
+                    reconnectInterval = null;
+                }
+            };
+            
+            ws.onmessage = (event) => {
+                if (!autoRefreshEnabled) return;
+                
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('Received update:', data);
+                    
+                    // Update blackboard
+                    if (data.blackboard) {
+                        updateBlackboard(data.blackboard);
+                    }
+                    
+                    // Update budget
+                    if (data.budget) {
+                        updateBudget(data.budget);
+                    }
+                    
+                    // Update audit log
+                    if (data.audit) {
+                        updateAudit(data.audit);
+                    }
+                    
+                    // Update timestamp
+                    updateTimestamp();
+                    
+                } catch (error) {
+                    console.error('Error processing WebSocket message:', error);
+                }
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                connectionStatus = 'error';
+                updateConnectionIndicator();
+            };
+            
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                connectionStatus = 'disconnected';
+                updateConnectionIndicator();
+                
+                // Attempt reconnection every 3 seconds
+                if (!reconnectInterval) {
+                    reconnectInterval = setInterval(() => {
+                        console.log('Attempting to reconnect...');
+                        connectWebSocket();
+                    }, 3000);
+                }
+            };
+        }
+        
+        function updateConnectionIndicator() {
+            const indicator = document.querySelector('.status-indicator');
+            if (!indicator) return;
+            
+            indicator.classList.remove('status-active', 'status-warning', 'status-critical');
+            
+            if (connectionStatus === 'connected') {
+                indicator.classList.add('status-active');
+            } else if (connectionStatus === 'connecting') {
+                indicator.classList.add('status-warning');
+            } else {
+                indicator.classList.add('status-critical');
+            }
+        }
+
+        function updateBlackboard(data) {
+            const container = document.getElementById('blackboardContent');
+            
+            if (data.entries && Object.keys(data.entries).length > 0) {
+                container.innerHTML = Object.entries(data.entries)
+                    .map(([key, value]) => `
+                        <div class="blackboard-entry">
+                            <div class="blackboard-key">${escapeHtml(key)}</div>
+                            <div class="blackboard-value">${escapeHtml(String(value))}</div>
+                        </div>
+                    `).join('');
+            } else {
+                container.innerHTML = '<div class="empty-state">No entries in blackboard</div>';
+            }
+        }
+        
+        function updateBudget(data) {
+            const container = document.getElementById('budgetContent');
+            
+            if (data.tasks && data.tasks.length > 0) {
+                const totalUsed = data.total_used || 0;
+                const totalLimit = data.total_limit || 0;
+                const percentage = data.global_percentage || 0;
+                
+                let statusClass = 'status-active';
+                if (percentage >= 90) statusClass = 'status-critical';
+                else if (percentage >= 80) statusClass = 'status-warning';
+                
+                document.getElementById('budgetStatus').className = `status-indicator ${statusClass}`;
+                
+                container.innerHTML = `
+                    <div class="budget-bar">
+                        <div class="budget-fill" style="width: ${Math.min(percentage, 100)}%">
+                            ${percentage.toFixed(1)}%
+                        </div>
+                    </div>
+                    <div class="budget-stats">
+                        <div class="stat-box">
+                            <div class="stat-value">${totalUsed.toLocaleString()}</div>
+                            <div class="stat-label">Tokens Used</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">${totalLimit.toLocaleString()}</div>
+                            <div class="stat-label">Total Budget</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">${data.tasks.length}</div>
+                            <div class="stat-label">Active Tasks</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">${(totalLimit - totalUsed).toLocaleString()}</div>
+                            <div class="stat-label">Remaining</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = '<div class="empty-state">No active budget tracking</div>';
+                document.getElementById('budgetStatus').className = 'status-indicator status-active';
+            }
+        }
+        
+        function updateAudit(data) {
+            const container = document.getElementById('auditContent');
+            
+            if (data.entries && data.entries.length > 0) {
+                container.innerHTML = data.entries
+                    .slice(0, 20)
+                    .map(entry => {
+                        const isGranted = entry.granted || entry.decision === 'approved';
+                        const badgeClass = isGranted ? 'permission-granted' : 'permission-denied';
+                        const badgeText = isGranted ? 'GRANTED' : 'DENIED';
+                        
+                        return `
+                            <div class="audit-entry">
+                                <div class="audit-timestamp">${new Date(entry.timestamp).toLocaleString()}</div>
+                                <div>
+                                    <strong>${escapeHtml(entry.agent_id || 'unknown')}</strong> 
+                                    requested <strong>${escapeHtml(entry.resource_type || entry.permission_type || 'unknown')}</strong>
+                                </div>
+                                <div style="margin-top: 5px;">
+                                    <span class="permission-badge ${badgeClass}">${badgeText}</span>
+                                    ${entry.reason ? `<span style="opacity: 0.8; margin-left: 8px;">${escapeHtml(entry.reason)}</span>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+            } else {
+                container.innerHTML = '<div class="empty-state">No audit entries yet</div>';
+            }
+        }
+
+        // Fallback HTTP polling functions (keep for compatibility)
         async function loadBlackboard() {
             try {
                 const response = await fetch(`${API_BASE}/swarm/blackboard`);
@@ -568,18 +748,6 @@
             document.getElementById('lastUpdated').textContent = now.toLocaleTimeString();
         }
 
-        function startAutoRefresh() {
-            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
-            
-            autoRefreshInterval = setInterval(() => {
-                if (autoRefreshEnabled) {
-                    loadBlackboard();
-                    loadBudgetStatus();
-                    loadAuditLog();
-                }
-            }, 5000);
-        }
-
         document.getElementById('autoRefreshToggle').addEventListener('click', function() {
             autoRefreshEnabled = !autoRefreshEnabled;
             const button = this;
@@ -590,20 +758,39 @@
                 button.classList.add('active');
                 icon.textContent = '⏸️';
                 status.textContent = 'ON';
-                startAutoRefresh();
+                // Reconnect WebSocket if disconnected
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    connectWebSocket();
+                }
             } else {
                 button.classList.remove('active');
                 icon.textContent = '▶️';
                 status.textContent = 'OFF';
+                // Keep WebSocket open but stop processing updates
             }
         });
 
         window.addEventListener('load', () => {
+            // Load static agent trust levels
+            loadAgentTrustLevels();
+            
+            // Connect WebSocket for real-time updates
+            connectWebSocket();
+            
+            // Initial HTTP load as fallback
             loadBlackboard();
             loadBudgetStatus();
-            loadAgentTrustLevels();
             loadAuditLog();
-            startAutoRefresh();
+        });
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (ws) {
+                ws.close();
+            }
+            if (reconnectInterval) {
+                clearInterval(reconnectInterval);
+            }
         });
     </script>
 </body>
