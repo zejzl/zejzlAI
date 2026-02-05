@@ -56,6 +56,15 @@ try:
 except ImportError:
     CommunityVault = None
 
+# Import Pantheon Swarm
+try:
+    from pantheon_swarm import PantheonSwarm, BudgetExhaustedError, PermissionDeniedError
+except ImportError:
+    PantheonSwarm = None
+    BudgetExhaustedError = None
+    PermissionDeniedError = None
+    logger.warning("PantheonSwarm not available - swarm features disabled")
+
 from telemetry import get_telemetry
 from src.performance import record_metric
 from src.logging_debug import debug_monitor, logger as debug_logger
@@ -86,6 +95,9 @@ class DashboardServer:
         self.mcp_registry: MCPServerRegistry = None
         self.mcp_agent_interface: MCPAgentInterface = None
         self.mcp_security_manager = None
+        
+        # Pantheon Swarm (budget tracking + permission gates)
+        self.swarm: PantheonSwarm = None
 
     async def initialize(self):
         """Initialize the dashboard with framework components"""
@@ -93,16 +105,35 @@ class DashboardServer:
             self.bus = await get_ai_provider_bus()
             self.magic = self.bus.magic
 
+            # Initialize Pantheon Swarm (budget tracking + permission gates)
+            await self._initialize_swarm()
+
             # Initialize MCP components
             await self._initialize_mcp_system()
 
             # Initialize multi-modal providers
             await self._initialize_multimodal_providers()
 
-            logger.info("Dashboard initialized with AI framework, MCP system, and multi-modal support")
+            logger.info("Dashboard initialized with AI framework, Pantheon Swarm, MCP system, and multi-modal support")
         except Exception as e:
             logger.error(f"Failed to initialize dashboard: {e}")
             # Create fallback instances for demo
+    
+    async def _initialize_swarm(self):
+        """Initialize Pantheon Swarm for budget-tracked multi-agent coordination"""
+        try:
+            if PantheonSwarm:
+                self.swarm = PantheonSwarm(
+                    pantheon_config_path="pantheon_config.json",
+                    model="grok-4-fast-reasoning",
+                    verbose=False  # Set True for debugging
+                )
+                logger.info("✓ Pantheon Swarm initialized with budget tracking & permission gates")
+            else:
+                logger.warning("PantheonSwarm not available - skipping swarm initialization")
+        except Exception as e:
+            logger.error(f"Failed to initialize Pantheon Swarm: {e}")
+            self.swarm = None
 
     async def _initialize_multimodal_providers(self):
         """Initialize multi-modal AI providers"""
@@ -670,6 +701,160 @@ async def chat_rlm_endpoint(request: Request):
     except Exception as e:
         logger.error(f"[RLM] Chat endpoint error: {e}", exc_info=True)
         return {"error": f"RLM error: {str(e)}"}
+
+
+@app.post("/api/chat-swarm")
+async def chat_swarm_endpoint(request: Request):
+    """Handle Pantheon Swarm chat requests with budget tracking and permission gates"""
+    try:
+        data = await request.json()
+        message = data.get("message", "")
+        budget = data.get("budget", 10000)  # Default 10K tokens
+        provider = data.get("provider", "grok-4-fast-reasoning")
+        
+        # Auto-detect required permissions from message
+        permissions = []
+        message_lower = message.lower()
+        if any(kw in message_lower for kw in ["deploy", "update", "delete", "schema", "migration"]):
+            permissions.append("DATABASE")
+        if any(kw in message_lower for kw in ["payment", "charge", "refund", "transaction"]):
+            permissions.append("PAYMENTS")
+        if any(kw in message_lower for kw in ["email", "send", "notify", "alert"]):
+            permissions.append("EMAIL")
+
+        if not message:
+            return JSONResponse({
+                "error": "No message provided"
+            }, status_code=400)
+        
+        if not dashboard.swarm:
+            return JSONResponse({
+                "error": "Pantheon Swarm not initialized",
+                "fallback_available": True
+            }, status_code=503)
+
+        # Process task through Pantheon Swarm
+        logger.info(f"[SWARM] Processing task: {message[:60]}... (budget: {budget:,})")
+        
+        result = await dashboard.swarm.process_task(
+            task=message,
+            budget=budget,
+            required_permissions=permissions if permissions else None
+        )
+        
+        if result['success']:
+            logger.info(f"[SWARM] Task complete: {result['estimated_tokens']:,} / {budget:,} tokens")
+            
+            # Record the interaction
+            record_metric("dashboard_chat_swarm", 1, {
+                "provider": provider,
+                "budget": budget,
+                "tokens_used": result['estimated_tokens']
+            })
+            
+            return JSONResponse({
+                "success": True,
+                "response": result['result'],
+                "mode": "swarm",
+                "task_id": result['task_id'],
+                "budget": {
+                    "used": result['budget_status']['used_tokens'],
+                    "max": result['budget_status']['max_tokens'],
+                    "remaining": result['budget_status']['remaining_tokens'],
+                    "percentage": result['budget_status']['usage_percentage'],
+                    "status": result['budget_status']['status']
+                },
+                "execution_time": result['execution_time'],
+                "permissions_checked": permissions,
+                "timestamp": datetime.now().isoformat()
+            })
+        else:
+            # Handle errors
+            error_type = result.get('error', 'unknown')
+            status_code = 429 if error_type == 'budget_exhausted' else \
+                         403 if error_type == 'permission_denied' else 500
+            
+            logger.warning(f"[SWARM] Task failed: {error_type} - {result.get('message')}")
+            
+            return JSONResponse({
+                "success": False,
+                "error": result.get('message', 'Unknown error'),
+                "error_type": error_type,
+                "task_id": result.get('task_id'),
+                "budget_status": result.get('budget_status'),
+                "timestamp": datetime.now().isoformat()
+            }, status_code=status_code)
+
+    except Exception as e:
+        logger.error(f"[SWARM] Chat endpoint error: {e}", exc_info=True)
+        return JSONResponse({
+            "error": f"Swarm error: {str(e)}"
+        }, status_code=500)
+
+
+@app.get("/api/swarm/budget/{task_id}")
+async def get_swarm_budget(task_id: str):
+    """Get budget status for a Pantheon Swarm task"""
+    try:
+        if not dashboard.swarm:
+            return JSONResponse({
+                "error": "Pantheon Swarm not initialized"
+            }, status_code=503)
+        
+        status = dashboard.swarm.get_budget_status(task_id)
+        return JSONResponse(status)
+    
+    except Exception as e:
+        logger.error(f"[SWARM] Budget endpoint error: {e}")
+        return JSONResponse({
+            "error": str(e)
+        }, status_code=500)
+
+
+@app.get("/api/swarm/blackboard")
+async def get_swarm_blackboard():
+    """Get current blackboard state (all keys)"""
+    try:
+        if not dashboard.swarm:
+            return JSONResponse({
+                "error": "Pantheon Swarm not initialized"
+            }, status_code=503)
+        
+        state = dashboard.swarm.get_blackboard_state()
+        return JSONResponse({
+            "success": True,
+            "state": state,
+            "key_count": len(state)
+        })
+    
+    except Exception as e:
+        logger.error(f"[SWARM] Blackboard endpoint error: {e}")
+        return JSONResponse({
+            "error": str(e)
+        }, status_code=500)
+
+
+@app.get("/api/swarm/blackboard/{key}")
+async def get_swarm_blackboard_key(key: str):
+    """Get specific blackboard key value"""
+    try:
+        if not dashboard.swarm:
+            return JSONResponse({
+                "error": "Pantheon Swarm not initialized"
+            }, status_code=503)
+        
+        value = dashboard.swarm.get_blackboard_state(key)
+        return JSONResponse({
+            "success": True,
+            "key": key,
+            "value": value
+        })
+    
+    except Exception as e:
+        logger.error(f"[SWARM] Blackboard key endpoint error: {e}")
+        return JSONResponse({
+            "error": str(e)
+        }, status_code=500)
 
 
 # Analytics Endpoints
