@@ -1,79 +1,100 @@
-# Python
+# Docker ignore - exclude everything not needed for deployment
+
+# Documentation (not needed in container)
+*.md
+!README.md
+ideas_MD/
+diagrams.md
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+GROK.md
+ARCHITECTURE.md
+COLLABORATION_MODE_PLAN.md
+BLACKBOARD_DASHBOARD.md
+BUDGET_ALERTS.md
+DEPLOYMENT_SUMMARY.md
+INTEGRATION_SUCCESS.md
+GROKPUTER_INTEGRATION_PLAN.md
+SHANNON_*.md
+WEBSOCKET_IMPLEMENTATION.md
+foundation.md
+extraction_checklist.md
+cost_tracking_readme.md
+commands.md
+CONTRIBUTING.md
+DOCKER_README.md
+
+# Test files
+*test*.py
+tests/
+test_data/
+benchmark_comparison.py
+compare_projects.py
+
+# Example/demo files
+example_*.py
+interactive_session_example.py
+docker-demo.py
+community_vault.py
+advanced_ai_test.py
+advanced_workflow_test.py
+9agent_pantheon_test.py
+
+# Development tools
+debug_cli.py
+load_redis.py
+
+# Logs & outputs
+logs/
+outputs/
+*.log
+ai_framework.log
+
+# Cache directories
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+.mypy_cache/
+.pytest_cache/
+*.pyc
+*.pyo
+*.pyd
 
-# Virtual environments
-venv/
-env/
-ENV/
-
-# IDE
+# IDE/Editor
+.claude/
+.grok/
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
-
-# OS
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
 
 # Git
 .git/
 .gitignore
+.gitattributes
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
+# CI/CD
+.github/
 
-# Documentation
-*.md
-!README.md
-docs/
+# Environment (use Render env vars instead)
+.env
+.env.local
 
-# Logs
-logs/
-*.log
+# OS
+.DS_Store
+Thumbs.db
 
 # Temporary files
 *.tmp
-*.temp
-
-# Local configuration
-.env
-.env.local
-.env.*.local
-
-# Docker
-Dockerfile*
-docker-compose*.yml
-.dockerignore
-
-# Data directories (will be mounted as volumes)
+temp/
 data/
-!data/.gitkeep
+
+# Scripts (if not needed in container)
+scripts/
+
+# Web directory if using static separately
+web/
+
+# Database dumps
+*.db
+*.sqlite
+dump.rdb
