@@ -1167,7 +1167,7 @@ class GrokProvider(AIProvider):
     
     @property
     def default_model(self) -> str:
-        return "grok-4-1-fast-reasoning"
+        return "grok-4-fast-reasoning"
     
     async def initialize(self):
         self.session = aiohttp.ClientSession(
@@ -1175,15 +1175,81 @@ class GrokProvider(AIProvider):
         )
     
     async def generate_response(self, message: str, history: List[Dict] = None) -> Tuple[str, TokenUsage]:
-        await asyncio.sleep(1)
-        response = f"Grok response to: {message}"
-        token_usage = TokenUsage(
-            provider=self.name,
-            model=self.model,
-            prompt_tokens=len(message) // 4,
-            completion_tokens=len(response) // 4
-        )
-        return response, token_usage
+        if not self.session:
+            await self.initialize()
+
+        messages = history or []
+        messages.append({"role": "user", "content": message})
+
+        url = "https://api.x.ai/v1/chat/completions"
+        data = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": 0.7
+        }
+
+        try:
+            async with self.session.post(url, json=data) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    response_content = result["choices"][0]["message"]["content"]
+
+                    # Extract token usage from xAI response
+                    usage = result.get("usage", {})
+                    token_usage = TokenUsage(
+                        provider=self.name,
+                        model=self.model,
+                        prompt_tokens=usage.get("prompt_tokens", 0),
+                        completion_tokens=usage.get("completion_tokens", 0),
+                        total_tokens=usage.get("total_tokens", 0)
+                    )
+
+                    return response_content, token_usage
+                else:
+                    error_text = await response.text()
+                    raise Exception(f"API error {response.status}: {error_text}")
+        except Exception as e:
+            raise
+
+    async def generate_response_stream(self, message: str, history: List[Dict] = None):
+        """Generate streaming response from xAI Grok API"""
+        if not self.session:
+            await self.initialize()
+
+        messages = history or []
+        messages.append({"role": "user", "content": message})
+
+        url = "https://api.x.ai/v1/chat/completions"
+        data = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": 0.7,
+            "stream": True
+        }
+
+        try:
+            async with self.session.post(url, json=data) as response:
+                if response.status == 200:
+                    async for line in response.content:
+                        line_str = line.decode('utf-8').strip()
+                        if line_str.startswith('data: '):
+                            data_str = line_str[6:]  # Remove 'data: ' prefix
+                            if data_str == '[DONE]':
+                                break
+                            try:
+                                chunk_data = json.loads(data_str)
+                                if 'choices' in chunk_data and chunk_data['choices']:
+                                    delta = chunk_data['choices'][0].get('delta', {})
+                                    if 'content' in delta:
+                                        yield delta['content']
+                            except json.JSONDecodeError:
+                                continue
+                else:
+                    error_text = await response.text()
+                    raise Exception(f"API error {response.status}: {error_text}")
+        except Exception as e:
+            logger.error(f"Error in {self.name} streaming API call: {str(e)}")
+            raise
     
     async def cleanup(self):
         if self.session:
