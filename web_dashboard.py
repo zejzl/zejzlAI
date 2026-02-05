@@ -80,8 +80,11 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="ZEJZL.NET Dashboard", version="1.0.0")
 
 # Templates and static files
-templates = Jinja2Templates(directory="web/templates")
-app.mount("/static", StaticFiles(directory="web/static"), name="static")
+import os
+os.makedirs("templates", exist_ok=True)
+os.makedirs("static", exist_ok=True)
+templates = Jinja2Templates(directory="templates")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 class DashboardServer:
     """Web dashboard for ZEJZL.NET monitoring and control"""
@@ -257,6 +260,22 @@ async def blackboard_page(request: Request):
 async def get_status():
     """Get current system status"""
     return await dashboard.get_system_status()
+
+@app.get("/api/debug/routes")
+async def debug_routes():
+    """Debug endpoint to show registered routes"""
+    routes = []
+    for route in app.routes:
+        if hasattr(route, 'path'):
+            routes.append({
+                "path": route.path,
+                "name": route.name if hasattr(route, 'name') else None
+            })
+    return {
+        "total_routes": len(app.routes),
+        "routes": sorted(routes, key=lambda x: x["path"]),
+        "swarm_count": len([r for r in routes if 'swarm' in r['path']])
+    }
 
 @app.get("/api/personalities")
 async def get_personalities():
@@ -2010,6 +2029,6 @@ if __name__ == "__main__":
         "web_dashboard:app",
         host="0.0.0.0",
         port=8000,
-        reload=True,
+        reload=False,
         log_level="info"
     )
