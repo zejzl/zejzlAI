@@ -144,6 +144,25 @@ except ImportError as e:
 except Exception as e:
     logger.error(f"User management import error: {e}")
 
+# Include user management router (safe import)
+user_db = None
+onboarding_router = None
+
+try:
+    # Import only if dependencies are available
+    import aiosqlite
+    import jwt
+    from passlib.context import CryptContext
+    from src.user_management import onboarding_router as obr, user_db as udb
+
+    user_db = udb
+    app.include_router(obr)
+    logger.info("User management system loaded successfully")
+except ImportError as e:
+    logger.warning(f"User management not available: {e}")
+except Exception as e:
+    logger.error(f"User management import error: {e}")
+
 # Include task management router (safe import)
 task_router = None
 try:
@@ -222,6 +241,206 @@ except ImportError as e:
     logger.warning(f"Task management not available: {e}")
 except Exception as e:
     logger.error(f"Task management import error: {e}")
+
+# Include business analytics router (safe import)
+business_analytics_router = None
+try:
+    from src.business_analytics import business_analytics
+    from fastapi import APIRouter
+
+    business_analytics_router = APIRouter(
+        prefix="/api/analytics", tags=["business-analytics"]
+    )
+
+    @business_analytics_router.get("/revenue")
+    async def get_revenue_metrics():
+        """Get current revenue metrics"""
+        metrics = await business_analytics.calculate_revenue_metrics()
+        return {"success": True, "data": metrics}
+
+    @business_analytics_router.get("/customer-segments")
+    async def get_customer_segments():
+        """Get customer segment analysis"""
+        segments = business_analytics.analyze_customer_segments()
+        return {"success": True, "data": segments}
+
+    @business_analytics_router.get("/behavioral-insights")
+    async def get_behavioral_insights():
+        """Get behavioral insights"""
+        insights = business_analytics.analyze_behavioral_patterns()
+        return {"success": True, "data": insights}
+
+    @business_analytics_router.get("/cohort-analysis")
+    async def get_cohort_analysis():
+        """Get cohort analysis"""
+        await business_analytics.generate_business_intelligence_report()
+        return {"success": True, "data": "Cohort analysis generated"}
+
+    @business_analytics_router.post("/track-event")
+    async def track_analytics_event(request):
+        """Track analytics event"""
+        event_data = await request.json()
+        from src.business_analytics import EventType
+
+        await business_analytics.track_event(
+            event_data.get("user_id", "anonymous"),
+            EventType(event_data.get("event_type", "api_call")),
+            event_data.get("event_data", {}),
+            event_data.get("revenue_impact", 0),
+            event_data.get("session_id", None),
+        )
+
+        return {"success": True, "message": "Event tracked"}
+
+    app.include_router(business_analytics_router)
+    logger.info("Business analytics system loaded successfully")
+
+except ImportError as e:
+    logger.warning(f"Business analytics not available: {e}")
+except Exception as e:
+    logger.error(f"Business analytics import error: {e}")
+
+# Include insight extraction router (safe import)
+insight_router = None
+try:
+    from src.insight_engine import insight_engine, memory_engine
+    from fastapi import APIRouter
+
+    insight_router = APIRouter(prefix="/api/intelligence", tags=["insights"])
+
+    @insight_router.get("/insights")
+    async def get_insights():
+        """Get all consolidated insights"""
+        insights = list(insight_engine.insights.values())
+        return {"success": True, "data": insights}
+
+    @insight_router.get("/memories")
+    async def get_memories():
+        """Get consolidated memories"""
+        memories = list(memory_engine.memories.values())
+        return {"success": True, "data": memories}
+
+    @insight_router.get("/patterns")
+    async def get_patterns():
+        """Get detected patterns"""
+        patterns = list(insight_engine.patterns.values())
+        return {"success": True, "data": patterns}
+
+    @insight_router.post("/extract-insights")
+    async def extract_insights(request):
+        """Extract insights from performance data"""
+        data = await request.json()
+
+        # Extract insights from different data sources
+        performance_insights = (
+            await insight_engine.extract_insights_from_performance_data(
+                data.get("performance_data", {})
+            )
+        )
+        behavioral_insights = await insight_engine.extract_insights_from_user_behavior(
+            data.get("behavioral_data", {})
+        )
+        revenue_insights = await insight_engine.extract_insights_from_revenue_data(
+            data.get("revenue_data", {})
+        )
+
+        all_insights = performance_insights + behavioral_insights + revenue_insights
+
+        # Consolidate into memories
+        memories = await memory_engine.consolidate_insights(all_insights)
+
+        return {
+            "success": True,
+            "data": {
+                "insights_extracted": len(all_insights),
+                "memories_created": len(memories),
+                "insights": all_insights,
+                "memories": memories,
+            },
+        }
+
+    app.include_router(insight_router)
+    logger.info("Insight extraction system loaded successfully")
+
+except ImportError as e:
+    logger.warning(f"Insight extraction not available: {e}")
+except Exception as e:
+    logger.error(f"Insight extraction import error: {e}")
+
+# Include predictive analytics router (safe import)
+predictive_router = None
+try:
+    from src.predictive_analytics import predictive_engine, AlertSeverity, ForecastType
+    from fastapi import APIRouter
+
+    predictive_router = APIRouter(
+        prefix="/api/predictive", tags=["predictive-analytics"]
+    )
+
+    @predictive_router.get("/forecasts/revenue")
+    async def get_revenue_forecast():
+        """Get revenue forecast"""
+        # Mock historical data
+        revenue_data = [
+            {"date": "2026-01-01", "revenue": 1000},
+            {"date": "2026-01-02", "revenue": 1050},
+            {"date": "2026-01-03", "revenue": 1100},
+            {"date": "2026-01-04", "revenue": 1080},
+            {"date": "2026-01-05", "revenue": 1150},
+            {"date": "2026-01-06", "revenue": 1200},
+            {"date": "2026-01-07", "revenue": 1180},
+        ]
+
+        forecast = await predictive_engine.generate_revenue_forecast(revenue_data, 30)
+        return {"success": True, "data": forecast}
+
+    @predictive_router.get("/forecasts/usage")
+    async def get_usage_forecast():
+        """Get usage forecast"""
+        # Mock historical data
+        usage_data = [
+            {"date": "2026-01-01", "api_calls": 100},
+            {"date": "2026-01-02", "api_calls": 105},
+            {"date": "2026-01-03", "api_calls": 110},
+            {"date": "2026-01-04", "api_calls": 108},
+            {"date": "2026-01-05", "api_calls": 115},
+            {"date": "2026-01-06", "api_calls": 120},
+            {"date": "2026-01-07", "api_calls": 118},
+        ]
+
+        forecast = await predictive_engine.generate_usage_forecast(usage_data, 30)
+        return {"success": True, "data": forecast}
+
+    @predictive_router.get("/forecasts/churn")
+    async def get_churn_forecast():
+        """Get churn forecast"""
+        # Mock historical data
+        churn_data = [
+            {"date": "2026-01-01", "churned_customers": 5, "total_customers": 100},
+            {"date": "2026-01-02", "churned_customers": 3, "total_customers": 105},
+            {"date": "2026-01-03", "churned_customers": 4, "total_customers": 110},
+            {"date": "2026-01-04", "churned_customers": 6, "total_customers": 115},
+            {"date": "2026-01-05", "churned_customers": 4, "total_customers": 120},
+            {"date": "2026-01-06", "churned_customers": 2, "total_customers": 125},
+            {"date": "2026-01-07", "churned_customers": 3, "total_customers": 130},
+        ]
+
+        forecast = await predictive_engine.generate_churn_forecast(churn_data, 30)
+        return {"success": True, "data": forecast}
+
+    @predictive_router.get("/alerts")
+    async def get_alerts():
+        """Get active predictive alerts"""
+        alerts = await predictive_engine.get_active_alerts()
+        return {"success": True, "data": alerts}
+
+    app.include_router(predictive_router)
+    logger.info("Predictive analytics system loaded successfully")
+
+except ImportError as e:
+    logger.warning(f"Predictive analytics not available: {e}")
+except Exception as e:
+    logger.error(f"Predictive analytics import error: {e}")
 
 
 class DashboardServer:
