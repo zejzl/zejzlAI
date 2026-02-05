@@ -23,16 +23,23 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 logger_env = logging.getLogger(__name__)
-logger_env.info(f"Environment loaded - GROK_API_KEY present: {bool(os.environ.get('GROK_API_KEY'))}")
+logger_env.info(
+    f"Environment loaded - GROK_API_KEY present: {bool(os.environ.get('GROK_API_KEY'))}"
+)
 
 # Import our framework
 from ai_framework import AsyncMessageBus
 from base import get_ai_provider_bus
 from src.magic import FairyMagic
 from src.usage_analytics import UsageAnalytics
+
 try:
     from src.multimodal_processing import multimodal_processor
-    from src.multimodal_ai import create_multimodal_message, MultiModalContent, ModalityType
+    from src.multimodal_ai import (
+        create_multimodal_message,
+        MultiModalContent,
+        ModalityType,
+    )
 except ImportError:
     multimodal_processor = None
     create_multimodal_message = None
@@ -56,9 +63,22 @@ try:
 except ImportError:
     CommunityVault = None
 
+# Import Payment System
+try:
+    from src.payments import payment_manager, payment_router, SubscriptionTier
+except ImportError:
+    payment_manager = None
+    payment_router = None
+    SubscriptionTier = None
+    logger.warning("Payment system not available")
+
 # Import Pantheon Swarm
 try:
-    from pantheon_swarm import PantheonSwarm, BudgetExhaustedError, PermissionDeniedError
+    from pantheon_swarm import (
+        PantheonSwarm,
+        BudgetExhaustedError,
+        PermissionDeniedError,
+    )
 except ImportError:
     PantheonSwarm = None
     BudgetExhaustedError = None
@@ -81,10 +101,25 @@ app = FastAPI(title="ZEJZL.NET Dashboard", version="1.0.0")
 
 # Templates and static files
 import os
+
 os.makedirs("templates", exist_ok=True)
 os.makedirs("static", exist_ok=True)
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Include payment router if available
+if payment_router:
+    app.include_router(payment_router)
+
+# Include user management router
+try:
+    from src.user_management import onboarding_router, user_db
+
+    app.include_router(onboarding_router)
+except ImportError as e:
+    logger.warning(f"User management not available: {e}")
+    user_db = None
+
 
 class DashboardServer:
     """Web dashboard for ZEJZL.NET monitoring and control"""
@@ -98,7 +133,7 @@ class DashboardServer:
         self.mcp_registry: MCPServerRegistry = None
         self.mcp_agent_interface: MCPAgentInterface = None
         self.mcp_security_manager = None
-        
+
         # Pantheon Swarm (budget tracking + permission gates)
         self.swarm: PantheonSwarm = None
 
@@ -117,11 +152,13 @@ class DashboardServer:
             # Initialize multi-modal providers
             await self._initialize_multimodal_providers()
 
-            logger.info("Dashboard initialized with AI framework, Pantheon Swarm, MCP system, and multi-modal support")
+            logger.info(
+                "Dashboard initialized with AI framework, Pantheon Swarm, MCP system, and multi-modal support"
+            )
         except Exception as e:
             logger.error(f"Failed to initialize dashboard: {e}")
             # Create fallback instances for demo
-    
+
     async def _initialize_swarm(self):
         """Initialize Pantheon Swarm for budget-tracked multi-agent coordination"""
         try:
@@ -129,11 +166,15 @@ class DashboardServer:
                 self.swarm = PantheonSwarm(
                     pantheon_config_path="pantheon_config.json",
                     model="grok-4-fast-reasoning",
-                    verbose=False  # Set True for debugging
+                    verbose=False,  # Set True for debugging
                 )
-                logger.info("✓ Pantheon Swarm initialized with budget tracking & permission gates")
+                logger.info(
+                    "✓ Pantheon Swarm initialized with budget tracking & permission gates"
+                )
             else:
-                logger.warning("PantheonSwarm not available - skipping swarm initialization")
+                logger.warning(
+                    "PantheonSwarm not available - skipping swarm initialization"
+                )
         except Exception as e:
             logger.error(f"Failed to initialize Pantheon Swarm: {e}")
             self.swarm = None
@@ -146,6 +187,7 @@ class DashboardServer:
 
             # Get API keys from environment
             import os
+
             openai_key = os.environ.get("OPENAI_API_KEY", "")
             gemini_key = os.environ.get("GEMINI_API_KEY", "")
 
@@ -192,19 +234,19 @@ class DashboardServer:
                     "acorn_reserve": self.magic.acorn_reserve,
                     "is_shielded": self.magic.is_shielded,
                     "circuit_breakers": len(self.magic.circuit_breakers),
-                    "healing_history": len(self.magic.healing_history)
+                    "healing_history": len(self.magic.healing_history),
                 },
                 "ai_providers": {},
                 "metrics": {},
-                "recent_activity": []
+                "recent_activity": [],
             }
 
             # Provider status
-            if self.bus and hasattr(self.bus, 'providers'):
+            if self.bus and hasattr(self.bus, "providers"):
                 for name, provider in self.bus.providers.items():
                     status["ai_providers"][name] = {
-                        "model": getattr(provider, 'model', 'unknown'),
-                        "status": "active"
+                        "model": getattr(provider, "model", "unknown"),
+                        "status": "active",
                     }
 
             # Get basic telemetry data
@@ -215,10 +257,14 @@ class DashboardServer:
                     status["metrics"] = {
                         "total_calls": summary_data.get("total_calls", 0),
                         "avg_response_time": summary_data.get("avg_response_time", 0),
-                        "success_rate": summary_data.get("success_rate", 0)
+                        "success_rate": summary_data.get("success_rate", 0),
                     }
                 except:
-                    status["metrics"] = {"total_calls": 0, "avg_response_time": 0, "success_rate": 0}
+                    status["metrics"] = {
+                        "total_calls": 0,
+                        "avg_response_time": 0,
+                        "success_rate": 0,
+                    }
                 status["recent_activity"] = []  # Simplified for now
 
             return status
@@ -228,11 +274,13 @@ class DashboardServer:
             return {
                 "timestamp": datetime.now().isoformat(),
                 "error": str(e),
-                "magic_system": {"energy_level": 0, "status": "error"}
+                "magic_system": {"energy_level": 0, "status": "error"},
             }
+
 
 # Global dashboard instance
 dashboard = DashboardServer()
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -241,10 +289,12 @@ async def startup_event():
     await dashboard.initialize()
     debug_logger.info("Dashboard initialization complete")
 
+
 @app.get("/", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
     """Main dashboard page"""
     return templates.TemplateResponse("dashboard.html", {"request": request})
+
 
 @app.get("/blackboard", response_class=HTMLResponse)
 async def blackboard_page(request: Request):
@@ -254,24 +304,55 @@ async def blackboard_page(request: Request):
             html_content = f.read()
         return HTMLResponse(content=html_content)
     except FileNotFoundError:
-        return HTMLResponse("<h1>Blackboard Dashboard Not Found</h1><p>Please ensure blackboard_dashboard.html exists in the static/ directory.</p>", status_code=404)
+        return HTMLResponse(
+            "<h1>Blackboard Dashboard Not Found</h1><p>Please ensure blackboard_dashboard.html exists in the static/ directory.</p>",
+            status_code=404,
+        )
+
+
+@app.get("/billing", response_class=HTMLResponse)
+async def billing_page(request: Request):
+    """Billing and revenue dashboard"""
+    try:
+        with open("static/billing_dashboard.html", "r", encoding="utf-8") as f:
+            html_content = f.read()
+        return HTMLResponse(content=html_content)
+    except FileNotFoundError:
+        return HTMLResponse(
+            "<h1>Billing Dashboard Not Found</h1><p>Please ensure billing_dashboard.html exists in the static/ directory.</p>",
+            status_code=404,
+        )
+
+
+@app.get("/get-started", response_class=HTMLResponse)
+async def get_started_page(request: Request):
+    """Onboarding and registration page"""
+    try:
+        with open("static/onboarding.html", "r", encoding="utf-8") as f:
+            html_content = f.read()
+        return HTMLResponse(content=html_content)
+    except FileNotFoundError:
+        return HTMLResponse(
+            "<h1>Onboarding Page Not Found</h1><p>Please ensure onboarding.html exists in the static/ directory.</p>",
+            status_code=404,
+        )
 
 
 @app.websocket("/ws/blackboard")
 async def blackboard_websocket(websocket: WebSocket):
     """
     WebSocket endpoint for real-time blackboard updates
-    
+
     Pushes updates every 2 seconds for:
     - Blackboard state
     - Budget status
     - Audit log
-    
+
     Replaces HTTP polling for instant updates
     """
     await websocket.accept()
     logger.info("WebSocket connection established for blackboard")
-    
+
     try:
         while True:
             # Collect all dashboard data
@@ -279,9 +360,9 @@ async def blackboard_websocket(websocket: WebSocket):
                 "timestamp": datetime.now().isoformat(),
                 "blackboard": {},
                 "budget": {},
-                "audit": {}
+                "audit": {},
             }
-            
+
             # Get blackboard state
             if dashboard.swarm:
                 try:
@@ -289,56 +370,74 @@ async def blackboard_websocket(websocket: WebSocket):
                     data["blackboard"] = {
                         "success": True,
                         "entries": blackboard_state,
-                        "key_count": len(blackboard_state)
+                        "key_count": len(blackboard_state),
                     }
                 except Exception as e:
                     data["blackboard"] = {"success": False, "error": str(e)}
-                
+
                 # Get budget status
                 try:
-                    budget_file = Path(dashboard.swarm.coordinator.data_dir) / "budget_tracking.json"
+                    budget_file = (
+                        Path(dashboard.swarm.coordinator.data_dir)
+                        / "budget_tracking.json"
+                    )
                     if budget_file.exists():
-                        with open(budget_file, 'r', encoding='utf-8') as f:
+                        with open(budget_file, "r", encoding="utf-8") as f:
                             budget_data = json.load(f)
-                        
+
                         tasks = budget_data.get("tasks", {})
                         task_list = []
                         total_used = 0
                         total_limit = 0
-                        
+
                         for task_id, task_data in tasks.items():
                             tokens_used = task_data.get("tokens_used", 0)
                             budget_limit = task_data.get("budget_limit", 0)
-                            
-                            task_list.append({
-                                "task_id": task_id,
-                                "tokens_used": tokens_used,
-                                "budget_limit": budget_limit,
-                                "percentage": (tokens_used / budget_limit * 100) if budget_limit > 0 else 0,
-                                "status": task_data.get("status", "active")
-                            })
-                            
+
+                            task_list.append(
+                                {
+                                    "task_id": task_id,
+                                    "tokens_used": tokens_used,
+                                    "budget_limit": budget_limit,
+                                    "percentage": (tokens_used / budget_limit * 100)
+                                    if budget_limit > 0
+                                    else 0,
+                                    "status": task_data.get("status", "active"),
+                                }
+                            )
+
                             total_used += tokens_used
                             total_limit += budget_limit
-                        
+
                         data["budget"] = {
                             "success": True,
-                            "tasks": sorted(task_list, key=lambda x: x["percentage"], reverse=True),
+                            "tasks": sorted(
+                                task_list, key=lambda x: x["percentage"], reverse=True
+                            ),
                             "total_used": total_used,
                             "total_limit": total_limit,
-                            "global_percentage": (total_used / total_limit * 100) if total_limit > 0 else 0
+                            "global_percentage": (total_used / total_limit * 100)
+                            if total_limit > 0
+                            else 0,
                         }
                     else:
-                        data["budget"] = {"success": True, "tasks": [], "total_used": 0, "total_limit": 0}
+                        data["budget"] = {
+                            "success": True,
+                            "tasks": [],
+                            "total_used": 0,
+                            "total_limit": 0,
+                        }
                 except Exception as e:
                     data["budget"] = {"success": False, "error": str(e)}
-                
+
                 # Get audit log (last 20 entries)
                 try:
-                    audit_file = Path(dashboard.swarm.coordinator.data_dir) / "audit_log.jsonl"
+                    audit_file = (
+                        Path(dashboard.swarm.coordinator.data_dir) / "audit_log.jsonl"
+                    )
                     if audit_file.exists():
                         entries = []
-                        with open(audit_file, 'r', encoding='utf-8') as f:
+                        with open(audit_file, "r", encoding="utf-8") as f:
                             for line in f:
                                 if line.strip():
                                     try:
@@ -346,26 +445,30 @@ async def blackboard_websocket(websocket: WebSocket):
                                         entries.append(entry)
                                     except json.JSONDecodeError:
                                         continue
-                        
+
                         entries.reverse()
                         data["audit"] = {
                             "success": True,
                             "entries": entries[:20],
-                            "total_count": len(entries)
+                            "total_count": len(entries),
                         }
                     else:
-                        data["audit"] = {"success": True, "entries": [], "total_count": 0}
+                        data["audit"] = {
+                            "success": True,
+                            "entries": [],
+                            "total_count": 0,
+                        }
                 except Exception as e:
                     data["audit"] = {"success": False, "error": str(e)}
             else:
                 data["error"] = "Swarm not initialized"
-            
+
             # Send update to client
             await websocket.send_json(data)
-            
+
             # Wait 2 seconds before next update
             await asyncio.sleep(2)
-            
+
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
     finally:
@@ -377,27 +480,32 @@ async def get_status():
     """Get current system status"""
     return await dashboard.get_system_status()
 
+
 @app.get("/api/debug/routes")
 async def debug_routes():
     """Debug endpoint to show registered routes"""
     routes = []
     for route in app.routes:
-        if hasattr(route, 'path'):
-            routes.append({
-                "path": route.path,
-                "name": route.name if hasattr(route, 'name') else None
-            })
+        if hasattr(route, "path"):
+            routes.append(
+                {
+                    "path": route.path,
+                    "name": route.name if hasattr(route, "name") else None,
+                }
+            )
     return {
         "total_routes": len(app.routes),
         "routes": sorted(routes, key=lambda x: x["path"]),
-        "swarm_count": len([r for r in routes if 'swarm' in r['path']])
+        "swarm_count": len([r for r in routes if "swarm" in r["path"]]),
     }
+
 
 @app.get("/api/personalities")
 async def get_personalities():
     """Get available agent personalities"""
     try:
         from src.agent_personality import AGENT_PERSONALITIES
+
         return {
             "personalities": {
                 name: {
@@ -405,12 +513,14 @@ async def get_personalities():
                     "communication_style": p.communication_style.value,
                     "expertise_areas": p.expertise_areas,
                     "behavioral_traits": p.behavioral_traits,
-                    "motivational_drivers": p.motivational_drivers
-                } for name, p in AGENT_PERSONALITIES.items()
+                    "motivational_drivers": p.motivational_drivers,
+                }
+                for name, p in AGENT_PERSONALITIES.items()
             }
         }
     except Exception as e:
         return {"error": str(e)}
+
 
 @app.get("/api/metrics")
 async def get_metrics():
@@ -420,11 +530,13 @@ async def get_metrics():
         return await telemetry.get_metrics()
     return {}
 
+
 @app.get("/api/debug/snapshot")
 async def get_debug_snapshot():
     """Get current system debug snapshot"""
     snapshot = await debug_monitor.create_snapshot(dashboard.bus)
     return asdict(snapshot)
+
 
 @app.get("/api/debug/logs")
 async def get_recent_logs(lines: int = 50):
@@ -434,13 +546,14 @@ async def get_recent_logs(lines: int = 50):
         log_file = log_dir / "debug.log"
 
         if log_file.exists():
-            with open(log_file, 'r', encoding='utf-8') as f:
+            with open(log_file, "r", encoding="utf-8") as f:
                 all_lines = f.readlines()
                 return {"logs": all_lines[-lines:]}
         else:
             return {"logs": [], "message": "No debug logs found"}
     except Exception as e:
         return {"error": str(e)}
+
 
 @app.get("/api/debug/performance")
 async def get_performance_data():
@@ -449,14 +562,16 @@ async def get_performance_data():
         "performance_history": debug_monitor.performance_history[-100:],
         "active_requests": list(debug_monitor.active_requests.values()),
         "total_requests": len(debug_monitor.performance_history),
-        "active_request_count": len(debug_monitor.active_requests)
+        "active_request_count": len(debug_monitor.active_requests),
     }
+
 
 @app.post("/api/debug/log-level")
 async def set_log_level(level: str):
     """Set logging level (DEBUG, INFO, WARNING, ERROR)"""
     try:
         import logging
+
         numeric_level = getattr(logging, level.upper(), logging.INFO)
         logging.getLogger().setLevel(numeric_level)
 
@@ -464,6 +579,7 @@ async def set_log_level(level: str):
         return {"success": True, "level": level}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
 
 @app.get("/api/activity/recent")
 async def get_recent_activity(limit: int = 10):
@@ -476,13 +592,17 @@ async def get_recent_activity(limit: int = 10):
             try:
                 recent_events = await dashboard.bus.memory.recall(limit=limit)
                 for event in recent_events[-limit:]:
-                    activities.append({
-                        "type": "agent_activity",
-                        "timestamp": event.get("timestamp", datetime.now().isoformat()),
-                        "title": f"Agent {event.get('agent', 'Unknown')} Activity",
-                        "description": event.get("type", "Activity"),
-                        "icon": "bot"
-                    })
+                    activities.append(
+                        {
+                            "type": "agent_activity",
+                            "timestamp": event.get(
+                                "timestamp", datetime.now().isoformat()
+                            ),
+                            "title": f"Agent {event.get('agent', 'Unknown')} Activity",
+                            "description": event.get("type", "Activity"),
+                            "icon": "bot",
+                        }
+                    )
             except Exception:
                 pass
 
@@ -490,41 +610,53 @@ async def get_recent_activity(limit: int = 10):
         try:
             usage_data = await analytics.get_usage_report(days=1)
             if usage_data.success and usage_data.data.total_requests > 0:
-                activities.append({
-                    "type": "api_activity",
-                    "timestamp": datetime.now().isoformat(),
-                    "title": f"{usage_data.data.total_requests} API Requests Today",
-                    "description": f"Used {usage_data.data.total_tokens or 0} tokens",
-                    "icon": "zap"
-                })
+                activities.append(
+                    {
+                        "type": "api_activity",
+                        "timestamp": datetime.now().isoformat(),
+                        "title": f"{usage_data.data.total_requests} API Requests Today",
+                        "description": f"Used {usage_data.data.total_tokens or 0} tokens",
+                        "icon": "zap",
+                    }
+                )
         except Exception:
             pass
 
         # Get recent chat messages
         try:
-            chat_history = await dashboard.bus.memory.recall(query={"type": "chat_message"}, limit=limit)
+            chat_history = await dashboard.bus.memory.recall(
+                query={"type": "chat_message"}, limit=limit
+            )
             for chat in chat_history[-3:]:  # Show last 3 chat messages
-                activities.append({
-                    "type": "chat_message",
-                    "timestamp": chat.get("timestamp", datetime.now().isoformat()),
-                    "title": "Chat Message",
-                    "description": chat.get("content", "")[:50] + "..." if len(chat.get("content", "")) > 50 else chat.get("content", ""),
-                    "icon": "message-circle"
-                })
+                activities.append(
+                    {
+                        "type": "chat_message",
+                        "timestamp": chat.get("timestamp", datetime.now().isoformat()),
+                        "title": "Chat Message",
+                        "description": chat.get("content", "")[:50] + "..."
+                        if len(chat.get("content", "")) > 50
+                        else chat.get("content", ""),
+                        "icon": "message-circle",
+                    }
+                )
         except Exception:
             pass
 
         # Get recent learning activities
         try:
-            learning_cycles = await dashboard.bus.memory.recall(query={"type": "learning_cycle"}, limit=limit)
+            learning_cycles = await dashboard.bus.memory.recall(
+                query={"type": "learning_cycle"}, limit=limit
+            )
             for cycle in learning_cycles[-2:]:  # Show last 2 learning cycles
-                activities.append({
-                    "type": "learning_cycle",
-                    "timestamp": cycle.get("timestamp", datetime.now().isoformat()),
-                    "title": "Learning Cycle Completed",
-                    "description": f"Found {cycle.get('insights', 0)} insights",
-                    "icon": "brain"
-                })
+                activities.append(
+                    {
+                        "type": "learning_cycle",
+                        "timestamp": cycle.get("timestamp", datetime.now().isoformat()),
+                        "title": "Learning Cycle Completed",
+                        "description": f"Found {cycle.get('insights', 0)} insights",
+                        "icon": "brain",
+                    }
+                )
         except Exception:
             pass
 
@@ -540,21 +672,20 @@ async def get_recent_activity(limit: int = 10):
                     "timestamp": datetime.now().isoformat(),
                     "title": "System Started",
                     "description": "ZEJZL.NET dashboard initialized",
-                    "icon": "power"
+                    "icon": "power",
                 },
                 {
                     "type": "info",
-                    "timestamp": (datetime.now().replace(second=0, microsecond=0)).isoformat(),
+                    "timestamp": (
+                        datetime.now().replace(second=0, microsecond=0)
+                    ).isoformat(),
                     "title": "Dashboard Ready",
                     "description": "All systems operational",
-                    "icon": "check-circle"
-                }
+                    "icon": "check-circle",
+                },
             ]
 
-        return {
-            "success": True,
-            "data": activities
-        }
+        return {"success": True, "data": activities}
 
     except Exception as e:
         logger.error(f"Recent activity endpoint error: {e}")
@@ -566,10 +697,11 @@ async def get_recent_activity(limit: int = 10):
                     "timestamp": datetime.now().isoformat(),
                     "title": "Activity Loading Error",
                     "description": "Unable to load recent activity",
-                    "icon": "alert-triangle"
+                    "icon": "alert-triangle",
                 }
-            ]
+            ],
         }
+
 
 @app.get("/api/offline/status")
 async def get_offline_status():
@@ -585,13 +717,15 @@ async def get_offline_status():
                 "connectivity_status": dashboard.bus.connectivity_status,
                 "is_online": connectivity,
                 "cache_stats": cache_stats,
-                "monitoring_active": dashboard.bus.connectivity_checker is not None and not dashboard.bus.connectivity_checker.done()
-            }
+                "monitoring_active": dashboard.bus.connectivity_checker is not None
+                and not dashboard.bus.connectivity_checker.done(),
+            },
         }
 
     except Exception as e:
         logger.error(f"Offline status endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.post("/api/offline/toggle")
 async def toggle_offline_mode(request: Request):
@@ -605,12 +739,13 @@ async def toggle_offline_mode(request: Request):
         return {
             "success": True,
             "message": f"Offline mode {'enabled' if enabled else 'disabled'}",
-            "offline_mode": dashboard.bus.offline_mode
+            "offline_mode": dashboard.bus.offline_mode,
         }
 
     except Exception as e:
         logger.error(f"Toggle offline mode endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.get("/api/cache/stats")
 async def get_cache_statistics():
@@ -623,6 +758,7 @@ async def get_cache_statistics():
         logger.error(f"Cache stats endpoint error: {e}")
         return {"success": False, "error": str(e)}
 
+
 @app.delete("/api/cache/clear")
 async def clear_cache():
     """Clear all cached responses"""
@@ -633,16 +769,14 @@ async def clear_cache():
             # Also clear any in-memory caches
             dashboard.bus.conversation_cache.clear()
 
-            return {
-                "success": True,
-                "message": "Cache cleared successfully"
-            }
+            return {"success": True, "message": "Cache cleared successfully"}
         else:
             return {"success": False, "error": "Failed to clear cache"}
 
     except Exception as e:
         logger.error(f"Clear cache endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.get("/api/health/detailed")
 async def detailed_health_check():
@@ -662,22 +796,28 @@ async def detailed_health_check():
                 "memory": {
                     "total": psutil.virtual_memory().total,
                     "available": psutil.virtual_memory().available,
-                    "percent": psutil.virtual_memory().percent
+                    "percent": psutil.virtual_memory().percent,
                 },
                 "disk": {
-                    "total": psutil.disk_usage('/').total,
-                    "free": psutil.disk_usage('/').free,
-                    "percent": psutil.disk_usage('/').percent
-                }
+                    "total": psutil.disk_usage("/").total,
+                    "free": psutil.disk_usage("/").free,
+                    "percent": psutil.disk_usage("/").percent,
+                },
             },
             "zejzl": {
                 "bus_status": "connected" if dashboard.bus else "disconnected",
                 "magic_energy": dashboard.magic.energy_level if dashboard.magic else 0,
                 "providers_count": len(dashboard.bus.providers) if dashboard.bus else 0,
-                "mcp_servers": len(dashboard.mcp_registry.configs) if dashboard.mcp_registry else 0,
-                "mcp_connected": len([s for s in dashboard.mcp_registry.status.values() if s.connected]) if dashboard.mcp_registry else 0,
-                "active_requests": len(debug_monitor.active_requests)
-            }
+                "mcp_servers": len(dashboard.mcp_registry.configs)
+                if dashboard.mcp_registry
+                else 0,
+                "mcp_connected": len(
+                    [s for s in dashboard.mcp_registry.status.values() if s.connected]
+                )
+                if dashboard.mcp_registry
+                else 0,
+                "active_requests": len(debug_monitor.active_requests),
+            },
         }
 
         return health_data
@@ -685,15 +825,18 @@ async def detailed_health_check():
         return {
             "status": "error",
             "error": str(e),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
+
 
 @app.post("/api/magic/{action}")
 async def magic_action(action: str, background_tasks: BackgroundTasks):
     """Perform magic system actions"""
     try:
         if action == "boost":
-            result = await dashboard.magic.acorn_vitality_boost("web_dashboard", {"max_tokens": 1024})
+            result = await dashboard.magic.acorn_vitality_boost(
+                "web_dashboard", {"max_tokens": 1024}
+            )
             record_metric("dashboard_magic_boost", 1, {"source": "web"})
             return {"success": True, "result": result}
 
@@ -702,13 +845,16 @@ async def magic_action(action: str, background_tasks: BackgroundTasks):
             return {"success": True, "shielded": dashboard.magic.is_shielded}
 
         elif action == "heal":
-            result = await dashboard.magic.blue_spark_heal("dashboard_request", "Web interface healing")
+            result = await dashboard.magic.blue_spark_heal(
+                "dashboard_request", "Web interface healing"
+            )
             return {"success": True, "result": result}
 
         return {"success": False, "error": f"Unknown action: {action}"}
 
     except Exception as e:
         return {"success": False, "error": str(e)}
+
 
 @app.websocket("/ws/live")
 async def websocket_endpoint(websocket: WebSocket):
@@ -728,6 +874,7 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         dashboard.connected_clients.remove(websocket)
 
+
 @app.post("/api/chat")
 async def chat_endpoint(request: Request, background_tasks: BackgroundTasks):
     """Handle chat requests from the web interface"""
@@ -743,19 +890,19 @@ async def chat_endpoint(request: Request, background_tasks: BackgroundTasks):
 
         # Check for magic commands
         magic_commands = {
-            'shield': 'shield',
-            'magic shield': 'shield',
-            'activate shield': 'shield',
-            'enable shield': 'shield',
-            'disable shield': 'shield',
-            'boost': 'boost',
-            'magic boost': 'boost',
-            'vitality boost': 'boost',
-            'acorn boost': 'boost',
-            'heal': 'heal',
-            'magic heal': 'heal',
-            'blue spark': 'heal',
-            'spark heal': 'heal'
+            "shield": "shield",
+            "magic shield": "shield",
+            "activate shield": "shield",
+            "enable shield": "shield",
+            "disable shield": "shield",
+            "boost": "boost",
+            "magic boost": "boost",
+            "vitality boost": "boost",
+            "acorn boost": "boost",
+            "heal": "heal",
+            "magic heal": "heal",
+            "blue spark": "heal",
+            "spark heal": "heal",
         }
 
         message_lower = message.lower().strip()
@@ -767,7 +914,9 @@ async def chat_endpoint(request: Request, background_tasks: BackgroundTasks):
             if magic_result.get("success"):
                 # Format the response nicely
                 if action == "shield":
-                    status = "activated" if magic_result.get("shielded") else "deactivated"
+                    status = (
+                        "activated" if magic_result.get("shielded") else "deactivated"
+                    )
                     response = f"[MAGIC] **Magic Shield {status.capitalize()}!**\n\n[SHIELD] The Fairy Magic shield has been {status} to protect against failures and ensure system stability."
                 elif action == "boost":
                     boost_result = magic_result.get("result", {})
@@ -785,7 +934,7 @@ async def chat_endpoint(request: Request, background_tasks: BackgroundTasks):
                 content=message,
                 provider_name=provider,
                 stream=stream,
-                consensus=consensus
+                consensus=consensus,
             )
 
         # Record the interaction
@@ -796,7 +945,7 @@ async def chat_endpoint(request: Request, background_tasks: BackgroundTasks):
             "response": response,
             "provider": provider,
             "consensus": consensus,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
     except Exception as e:
@@ -817,13 +966,14 @@ async def chat_rlm_endpoint(request: Request):
             return {"error": "No message provided"}
 
         # Initialize Pantheon RLM if not already done
-        if not hasattr(dashboard, '_pantheon_rlm'):
+        if not hasattr(dashboard, "_pantheon_rlm"):
             from pantheon_rlm_integration import ZejzlPantheonRLM
+
             dashboard._pantheon_rlm = ZejzlPantheonRLM(
                 pantheon_config_path="pantheon_config.json",
                 model=provider,
                 use_real_agents=use_real_agents,
-                verbose=False  # Don't print debug in production
+                verbose=False,  # Don't print debug in production
             )
             logger.info("[RLM] Initialized Pantheon RLM")
 
@@ -833,14 +983,18 @@ async def chat_rlm_endpoint(request: Request):
         logger.info(f"[RLM] Task complete: {len(response)} chars")
 
         # Record the interaction
-        record_metric("dashboard_chat_rlm", 1, {"provider": provider, "use_real_agents": use_real_agents})
+        record_metric(
+            "dashboard_chat_rlm",
+            1,
+            {"provider": provider, "use_real_agents": use_real_agents},
+        )
 
         return {
             "response": response,
             "provider": provider,
             "mode": "rlm",
             "real_agents": use_real_agents,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
     except Exception as e:
@@ -856,85 +1010,104 @@ async def chat_swarm_endpoint(request: Request):
         message = data.get("message", "")
         budget = data.get("budget", 10000)  # Default 10K tokens
         provider = data.get("provider", "grok-4-fast-reasoning")
-        
+
         # Auto-detect required permissions from message
         permissions = []
         message_lower = message.lower()
-        if any(kw in message_lower for kw in ["deploy", "update", "delete", "schema", "migration"]):
+        if any(
+            kw in message_lower
+            for kw in ["deploy", "update", "delete", "schema", "migration"]
+        ):
             permissions.append("DATABASE")
-        if any(kw in message_lower for kw in ["payment", "charge", "refund", "transaction"]):
+        if any(
+            kw in message_lower for kw in ["payment", "charge", "refund", "transaction"]
+        ):
             permissions.append("PAYMENTS")
         if any(kw in message_lower for kw in ["email", "send", "notify", "alert"]):
             permissions.append("EMAIL")
 
         if not message:
-            return JSONResponse({
-                "error": "No message provided"
-            }, status_code=400)
-        
+            return JSONResponse({"error": "No message provided"}, status_code=400)
+
         if not dashboard.swarm:
-            return JSONResponse({
-                "error": "Pantheon Swarm not initialized",
-                "fallback_available": True
-            }, status_code=503)
+            return JSONResponse(
+                {"error": "Pantheon Swarm not initialized", "fallback_available": True},
+                status_code=503,
+            )
 
         # Process task through Pantheon Swarm
         logger.info(f"[SWARM] Processing task: {message[:60]}... (budget: {budget:,})")
-        
+
         result = await dashboard.swarm.process_task(
             task=message,
             budget=budget,
-            required_permissions=permissions if permissions else None
+            required_permissions=permissions if permissions else None,
         )
-        
-        if result['success']:
-            logger.info(f"[SWARM] Task complete: {result['estimated_tokens']:,} / {budget:,} tokens")
-            
+
+        if result["success"]:
+            logger.info(
+                f"[SWARM] Task complete: {result['estimated_tokens']:,} / {budget:,} tokens"
+            )
+
             # Record the interaction
-            record_metric("dashboard_chat_swarm", 1, {
-                "provider": provider,
-                "budget": budget,
-                "tokens_used": result['estimated_tokens']
-            })
-            
-            return JSONResponse({
-                "success": True,
-                "response": result['result'],
-                "mode": "swarm",
-                "task_id": result['task_id'],
-                "budget": {
-                    "used": result['budget_status']['used_tokens'],
-                    "max": result['budget_status']['max_tokens'],
-                    "remaining": result['budget_status']['remaining_tokens'],
-                    "percentage": result['budget_status']['usage_percentage'],
-                    "status": result['budget_status']['status']
+            record_metric(
+                "dashboard_chat_swarm",
+                1,
+                {
+                    "provider": provider,
+                    "budget": budget,
+                    "tokens_used": result["estimated_tokens"],
                 },
-                "execution_time": result['execution_time'],
-                "permissions_checked": permissions,
-                "timestamp": datetime.now().isoformat()
-            })
+            )
+
+            return JSONResponse(
+                {
+                    "success": True,
+                    "response": result["result"],
+                    "mode": "swarm",
+                    "task_id": result["task_id"],
+                    "budget": {
+                        "used": result["budget_status"]["used_tokens"],
+                        "max": result["budget_status"]["max_tokens"],
+                        "remaining": result["budget_status"]["remaining_tokens"],
+                        "percentage": result["budget_status"]["usage_percentage"],
+                        "status": result["budget_status"]["status"],
+                    },
+                    "execution_time": result["execution_time"],
+                    "permissions_checked": permissions,
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
         else:
             # Handle errors
-            error_type = result.get('error', 'unknown')
-            status_code = 429 if error_type == 'budget_exhausted' else \
-                         403 if error_type == 'permission_denied' else 500
-            
-            logger.warning(f"[SWARM] Task failed: {error_type} - {result.get('message')}")
-            
-            return JSONResponse({
-                "success": False,
-                "error": result.get('message', 'Unknown error'),
-                "error_type": error_type,
-                "task_id": result.get('task_id'),
-                "budget_status": result.get('budget_status'),
-                "timestamp": datetime.now().isoformat()
-            }, status_code=status_code)
+            error_type = result.get("error", "unknown")
+            status_code = (
+                429
+                if error_type == "budget_exhausted"
+                else 403
+                if error_type == "permission_denied"
+                else 500
+            )
+
+            logger.warning(
+                f"[SWARM] Task failed: {error_type} - {result.get('message')}"
+            )
+
+            return JSONResponse(
+                {
+                    "success": False,
+                    "error": result.get("message", "Unknown error"),
+                    "error_type": error_type,
+                    "task_id": result.get("task_id"),
+                    "budget_status": result.get("budget_status"),
+                    "timestamp": datetime.now().isoformat(),
+                },
+                status_code=status_code,
+            )
 
     except Exception as e:
         logger.error(f"[SWARM] Chat endpoint error: {e}", exc_info=True)
-        return JSONResponse({
-            "error": f"Swarm error: {str(e)}"
-        }, status_code=500)
+        return JSONResponse({"error": f"Swarm error: {str(e)}"}, status_code=500)
 
 
 @app.get("/api/swarm/budget/{task_id}")
@@ -942,18 +1115,16 @@ async def get_swarm_budget(task_id: str):
     """Get budget status for a Pantheon Swarm task"""
     try:
         if not dashboard.swarm:
-            return JSONResponse({
-                "error": "Pantheon Swarm not initialized"
-            }, status_code=503)
-        
+            return JSONResponse(
+                {"error": "Pantheon Swarm not initialized"}, status_code=503
+            )
+
         status = dashboard.swarm.get_budget_status(task_id)
         return JSONResponse(status)
-    
+
     except Exception as e:
         logger.error(f"[SWARM] Budget endpoint error: {e}")
-        return JSONResponse({
-            "error": str(e)
-        }, status_code=500)
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 @app.get("/api/swarm/blackboard")
@@ -961,23 +1132,18 @@ async def get_swarm_blackboard():
     """Get current blackboard state (all keys)"""
     try:
         if not dashboard.swarm:
-            return JSONResponse({
-                "error": "Pantheon Swarm not initialized"
-            }, status_code=503)
-        
+            return JSONResponse(
+                {"error": "Pantheon Swarm not initialized"}, status_code=503
+            )
+
         state = dashboard.swarm.get_blackboard_state()
-        return JSONResponse({
-            "success": True,
-            "entries": state,
-            "state": state,
-            "key_count": len(state)
-        })
-    
+        return JSONResponse(
+            {"success": True, "entries": state, "state": state, "key_count": len(state)}
+        )
+
     except Exception as e:
         logger.error(f"[SWARM] Blackboard endpoint error: {e}")
-        return JSONResponse({
-            "error": str(e)
-        }, status_code=500)
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 @app.get("/api/swarm/blackboard/{key}")
@@ -985,22 +1151,16 @@ async def get_swarm_blackboard_key(key: str):
     """Get specific blackboard key value"""
     try:
         if not dashboard.swarm:
-            return JSONResponse({
-                "error": "Pantheon Swarm not initialized"
-            }, status_code=503)
-        
+            return JSONResponse(
+                {"error": "Pantheon Swarm not initialized"}, status_code=503
+            )
+
         value = dashboard.swarm.get_blackboard_state(key)
-        return JSONResponse({
-            "success": True,
-            "key": key,
-            "value": value
-        })
-    
+        return JSONResponse({"success": True, "key": key, "value": value})
+
     except Exception as e:
         logger.error(f"[SWARM] Blackboard key endpoint error: {e}")
-        return JSONResponse({
-            "error": str(e)
-        }, status_code=500)
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 @app.get("/api/swarm/budget/global")
@@ -1008,57 +1168,62 @@ async def get_swarm_budget_global():
     """Get aggregated budget status across all tasks"""
     try:
         if not dashboard.swarm:
-            return JSONResponse({
-                "error": "Pantheon Swarm not initialized"
-            }, status_code=503)
-        
-        budget_file = Path(dashboard.swarm.coordinator.data_dir) / "budget_tracking.json"
-        
+            return JSONResponse(
+                {"error": "Pantheon Swarm not initialized"}, status_code=503
+            )
+
+        budget_file = (
+            Path(dashboard.swarm.coordinator.data_dir) / "budget_tracking.json"
+        )
+
         if not budget_file.exists():
-            return JSONResponse({
-                "success": True,
-                "tasks": [],
-                "total_used": 0,
-                "total_limit": 0
-            })
-        
-        with open(budget_file, 'r', encoding='utf-8') as f:
+            return JSONResponse(
+                {"success": True, "tasks": [], "total_used": 0, "total_limit": 0}
+            )
+
+        with open(budget_file, "r", encoding="utf-8") as f:
             data = json.load(f)
-        
+
         tasks = data.get("tasks", {})
         task_list = []
         total_used = 0
         total_limit = 0
-        
+
         for task_id, task_data in tasks.items():
             tokens_used = task_data.get("tokens_used", 0)
             budget_limit = task_data.get("budget_limit", 0)
-            
-            task_list.append({
-                "task_id": task_id,
-                "tokens_used": tokens_used,
-                "budget_limit": budget_limit,
-                "percentage": (tokens_used / budget_limit * 100) if budget_limit > 0 else 0,
-                "status": task_data.get("status", "active"),
-                "last_updated": task_data.get("last_updated", "")
-            })
-            
+
+            task_list.append(
+                {
+                    "task_id": task_id,
+                    "tokens_used": tokens_used,
+                    "budget_limit": budget_limit,
+                    "percentage": (tokens_used / budget_limit * 100)
+                    if budget_limit > 0
+                    else 0,
+                    "status": task_data.get("status", "active"),
+                    "last_updated": task_data.get("last_updated", ""),
+                }
+            )
+
             total_used += tokens_used
             total_limit += budget_limit
-        
-        return JSONResponse({
-            "success": True,
-            "tasks": sorted(task_list, key=lambda x: x["percentage"], reverse=True),
-            "total_used": total_used,
-            "total_limit": total_limit,
-            "global_percentage": (total_used / total_limit * 100) if total_limit > 0 else 0
-        })
-    
+
+        return JSONResponse(
+            {
+                "success": True,
+                "tasks": sorted(task_list, key=lambda x: x["percentage"], reverse=True),
+                "total_used": total_used,
+                "total_limit": total_limit,
+                "global_percentage": (total_used / total_limit * 100)
+                if total_limit > 0
+                else 0,
+            }
+        )
+
     except Exception as e:
         logger.error(f"[SWARM] Global budget endpoint error: {e}")
-        return JSONResponse({
-            "error": str(e)
-        }, status_code=500)
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 @app.get("/api/swarm/audit")
@@ -1066,20 +1231,17 @@ async def get_swarm_audit_log():
     """Get permission audit log entries"""
     try:
         if not dashboard.swarm:
-            return JSONResponse({
-                "error": "Pantheon Swarm not initialized"
-            }, status_code=503)
-        
+            return JSONResponse(
+                {"error": "Pantheon Swarm not initialized"}, status_code=503
+            )
+
         audit_file = Path(dashboard.swarm.coordinator.data_dir) / "audit_log.jsonl"
-        
+
         if not audit_file.exists():
-            return JSONResponse({
-                "success": True,
-                "entries": []
-            })
-        
+            return JSONResponse({"success": True, "entries": []})
+
         entries = []
-        with open(audit_file, 'r', encoding='utf-8') as f:
+        with open(audit_file, "r", encoding="utf-8") as f:
             for line in f:
                 if line.strip():
                     try:
@@ -1087,20 +1249,16 @@ async def get_swarm_audit_log():
                         entries.append(entry)
                     except json.JSONDecodeError:
                         continue
-        
+
         entries.reverse()
-        
-        return JSONResponse({
-            "success": True,
-            "entries": entries[:100],
-            "total_count": len(entries)
-        })
-    
+
+        return JSONResponse(
+            {"success": True, "entries": entries[:100], "total_count": len(entries)}
+        )
+
     except Exception as e:
         logger.error(f"[SWARM] Audit log endpoint error: {e}")
-        return JSONResponse({
-            "error": str(e)
-        }, status_code=500)
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 @app.post("/api/swarm/test-alert")
@@ -1111,37 +1269,36 @@ async def test_budget_alert(request: Request):
         task_id = data.get("task_id", "test_task_alert")
         tokens_used = data.get("tokens_used", 8500)
         budget_limit = data.get("budget_limit", 10000)
-        
+
         if not dashboard.swarm:
-            return JSONResponse({
-                "error": "Pantheon Swarm not initialized"
-            }, status_code=503)
-        
+            return JSONResponse(
+                {"error": "Pantheon Swarm not initialized"}, status_code=503
+            )
+
         # Import alert manager
         from src.budget_alerts import send_budget_alert
-        
+
         # Send test alert
         result = await send_budget_alert(
-            task_id=task_id,
-            tokens_used=tokens_used,
-            budget_limit=budget_limit
+            task_id=task_id, tokens_used=tokens_used, budget_limit=budget_limit
         )
-        
-        return JSONResponse({
-            "success": True,
-            "result": result,
-            "message": f"Alert check complete: {result.get('alert_level', 'None')}"
-        })
-    
+
+        return JSONResponse(
+            {
+                "success": True,
+                "result": result,
+                "message": f"Alert check complete: {result.get('alert_level', 'None')}",
+            }
+        )
+
     except Exception as e:
         logger.error(f"[SWARM] Test alert endpoint error: {e}")
-        return JSONResponse({
-            "error": str(e)
-        }, status_code=500)
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 # Analytics Endpoints
 analytics = UsageAnalytics()
+
 
 @app.get("/api/analytics/usage")
 async def get_analytics(days: int = 7):
@@ -1158,12 +1315,13 @@ async def get_analytics(days: int = 7):
                 "avg_response_time": report.avg_response_time,
                 "success_rate": report.success_rate,
                 "provider_breakdown": report.provider_breakdown,
-                "hourly_usage": report.hourly_usage[:24]  # Last 24 hours
-            }
+                "hourly_usage": report.hourly_usage[:24],  # Last 24 hours
+            },
         }
     except Exception as e:
         logger.error(f"Analytics endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.get("/api/analytics/costs")
 async def get_cost_analytics(days: int = 30):
@@ -1179,35 +1337,31 @@ async def get_cost_analytics(days: int = 30):
                 "avg_request_cost": cost_analysis.avg_request_cost,
                 "most_expensive_provider": cost_analysis.most_expensive_provider,
                 "cost_trend": cost_analysis.cost_trend,
-                "projected_monthly_cost": cost_analysis.projected_monthly_cost
-            }
+                "projected_monthly_cost": cost_analysis.projected_monthly_cost,
+            },
         }
     except Exception as e:
         logger.error(f"Cost analytics endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.get("/api/analytics/provider/{provider}")
 async def get_provider_analytics(provider: str, days: int = 7):
     """Get detailed analytics for a specific provider"""
     try:
         provider_data = await analytics.get_provider_performance(provider, days=days)
-        return {
-            "success": True,
-            "data": provider_data
-        }
+        return {"success": True, "data": provider_data}
     except Exception as e:
         logger.error(f"Provider analytics endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.get("/api/analytics/expensive-requests")
 async def get_expensive_requests(limit: int = 10):
     """Get the most expensive individual requests"""
     try:
         expensive_requests = await analytics.get_top_expensive_requests(limit=limit)
-        return {
-            "success": True,
-            "data": expensive_requests
-        }
+        return {"success": True, "data": expensive_requests}
     except Exception as e:
         logger.error(f"Expensive requests endpoint error: {e}")
         return {"success": False, "error": str(e)}
@@ -1220,14 +1374,11 @@ async def get_multimodal_providers():
     try:
         providers = multimodal_processor.get_supported_providers()
         provider_info = multimodal_processor.get_provider_info()
-        return {
-            "success": True,
-            "providers": providers,
-            "details": provider_info
-        }
+        return {"success": True, "providers": providers, "details": provider_info}
     except Exception as e:
         logger.error(f"Multi-modal providers endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.post("/api/multimodal/analyze-image")
 async def analyze_image_endpoint(request: Request):
@@ -1245,16 +1396,15 @@ async def analyze_image_endpoint(request: Request):
         image_content = MultiModalContent.from_image_base64(image_data)
 
         # Analyze the image
-        analysis = await multimodal_processor.process_image_analysis(image_content, query, provider)
+        analysis = await multimodal_processor.process_image_analysis(
+            image_content, query, provider
+        )
 
-        return {
-            "success": True,
-            "analysis": analysis,
-            "provider": provider
-        }
+        return {"success": True, "analysis": analysis, "provider": provider}
     except Exception as e:
         logger.error(f"Image analysis endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.post("/api/multimodal/chat")
 async def multimodal_chat_endpoint(request: Request):
@@ -1263,7 +1413,9 @@ async def multimodal_chat_endpoint(request: Request):
         data = await request.json()
         message = data.get("message", "")
         provider = data.get("provider", "gpt4vision")
-        attachments = data.get("attachments", [])  # List of {type: "image", data: "base64..."}
+        attachments = data.get(
+            "attachments", []
+        )  # List of {type: "image", data: "base64..."}
 
         if not message and not attachments:
             return {"success": False, "error": "No message or attachments provided"}
@@ -1281,7 +1433,11 @@ async def multimodal_chat_endpoint(request: Request):
             if attachment_type == "image":
                 if attachment_data.startswith("data:image"):
                     # Handle data URL format
-                    base64_data = attachment_data.split(",")[1] if "," in attachment_data else attachment_data
+                    base64_data = (
+                        attachment_data.split(",")[1]
+                        if "," in attachment_data
+                        else attachment_data
+                    )
                     content.append(MultiModalContent.from_image_base64(base64_data))
                 else:
                     # Assume direct base64
@@ -1293,35 +1449,38 @@ async def multimodal_chat_endpoint(request: Request):
         multimodal_msg = create_multimodal_message(content, provider=provider)
 
         # Process through multi-modal system
-        response = await multimodal_processor.process_multimodal_message(multimodal_msg, provider)
+        response = await multimodal_processor.process_multimodal_message(
+            multimodal_msg, provider
+        )
 
         # Format response
-        if hasattr(response, 'get_text_content'):
+        if hasattr(response, "get_text_content"):
             # MultiModalMessage response
             text_response = response.get_text_content()
             has_images = len(response.get_image_content()) > 0
             response_data = {
                 "text": text_response,
                 "has_images": has_images,
-                "image_count": len(response.get_image_content())
+                "image_count": len(response.get_image_content()),
             }
         else:
             # Traditional Message response
             response_data = {
                 "text": response.response or "No response generated",
                 "has_images": False,
-                "image_count": 0
+                "image_count": 0,
             }
 
         return {
             "success": True,
             "response": response_data,
             "provider": provider,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
         logger.error(f"Multi-modal chat endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.post("/api/multimodal/describe-image")
 async def describe_image_endpoint(request: Request):
@@ -1339,17 +1498,20 @@ async def describe_image_endpoint(request: Request):
         image_content = MultiModalContent.from_image_base64(image_data)
 
         # Generate description
-        description = await multimodal_processor.generate_image_description(image_content, style, provider)
+        description = await multimodal_processor.generate_image_description(
+            image_content, style, provider
+        )
 
         return {
             "success": True,
             "description": description,
             "style": style,
-            "provider": provider
+            "provider": provider,
         }
     except Exception as e:
         logger.error(f"Image description endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.post("/api/multimodal/analyze-pdf")
 async def analyze_pdf_endpoint(request: Request):
@@ -1369,14 +1531,16 @@ async def analyze_pdf_endpoint(request: Request):
             modality=ModalityType.DOCUMENT,
             content=f"[PDF Analysis Request] Query: {query}",
             encoding="text",
-            metadata={"format": "pdf", "base64_size": len(pdf_data)}
+            metadata={"format": "pdf", "base64_size": len(pdf_data)},
         )
 
         # Create multi-modal message
         multimodal_msg = create_multimodal_message([pdf_content])
 
         # Process through multi-modal system
-        response = await multimodal_processor.process_multimodal_message(multimodal_msg, provider)
+        response = await multimodal_processor.process_multimodal_message(
+            multimodal_msg, provider
+        )
 
         # Format response
         if isinstance(response, MultiModalMessage):
@@ -1389,11 +1553,12 @@ async def analyze_pdf_endpoint(request: Request):
             "analysis": text_response,
             "provider": provider,
             "document_type": "pdf",
-            "note": "PDF processing is in development - currently returns basic analysis"
+            "note": "PDF processing is in development - currently returns basic analysis",
         }
     except Exception as e:
         logger.error(f"PDF analysis endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.post("/api/multimodal/extract-pdf-text")
 async def extract_pdf_text_endpoint(request: Request):
@@ -1420,7 +1585,7 @@ async def extract_pdf_text_endpoint(request: Request):
             "text": extracted_text,
             "page_count": page_count,
             "text_length": len(extracted_text),
-            "has_content": bool(extracted_text.strip())
+            "has_content": bool(extracted_text.strip()),
         }
     except Exception as e:
         logger.error(f"PDF text extraction endpoint error: {e}")
@@ -1442,11 +1607,12 @@ async def get_mcp_status():
             "success": True,
             "servers": servers,
             "stats": stats,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
         logger.error(f"MCP status endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.get("/api/mcp/servers")
 async def get_mcp_servers():
@@ -1460,11 +1626,12 @@ async def get_mcp_servers():
         return {
             "success": True,
             "servers": servers,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
         logger.error(f"MCP servers endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.get("/api/mcp/security")
 async def get_mcp_security_status():
@@ -1478,11 +1645,12 @@ async def get_mcp_security_status():
         return {
             "success": True,
             "security": metrics,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
         logger.error(f"MCP security endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.get("/api/mcp/security/principals")
 async def get_mcp_security_principals():
@@ -1500,17 +1668,18 @@ async def get_mcp_security_principals():
                 "security_level": principal.security_level.value,
                 "permissions": [p.value for p in principal.permissions],
                 "created_at": principal.created_at.isoformat(),
-                "last_active": principal.last_active.isoformat()
+                "last_active": principal.last_active.isoformat(),
             }
 
         return {
             "success": True,
             "principals": principals,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
         logger.error(f"MCP security principals endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.post("/api/mcp/security/principals")
 async def create_mcp_security_principal(request: Request):
@@ -1535,7 +1704,10 @@ async def create_mcp_security_principal(request: Request):
         try:
             level = SecurityLevel(security_level.upper())
         except ValueError:
-            return {"success": False, "error": f"Invalid security level: {security_level}"}
+            return {
+                "success": False,
+                "error": f"Invalid security level: {security_level}",
+            }
 
         # Convert permissions
         permission_enums = []
@@ -1556,13 +1728,14 @@ async def create_mcp_security_principal(request: Request):
                 "name": principal.name,
                 "type": principal.type,
                 "security_level": principal.security_level.value,
-                "permissions": [p.value for p in principal.permissions]
+                "permissions": [p.value for p in principal.permissions],
             },
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
         logger.error(f"Create MCP security principal endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.get("/api/mcp/security/tokens")
 async def get_mcp_security_tokens():
@@ -1577,17 +1750,18 @@ async def get_mcp_security_tokens():
                 "principal_id": token.principal_id,
                 "expires_at": token.expires_at.isoformat(),
                 "permissions": [p.value for p in token.permissions],
-                "created_at": token.created_at.isoformat()
+                "created_at": token.created_at.isoformat(),
             }
 
         return {
             "success": True,
             "tokens": tokens,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
         logger.error(f"MCP security tokens endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.post("/api/mcp/security/tokens")
 async def create_mcp_security_token(request: Request):
@@ -1609,26 +1783,33 @@ async def create_mcp_security_token(request: Request):
         for perm in permissions:
             try:
                 from src.mcp_security import Permission
+
                 permission_enums.append(Permission(perm.upper()))
             except ValueError:
                 return {"success": False, "error": f"Invalid permission: {perm}"}
 
         token = await dashboard.mcp_security_manager.create_token(
-            principal_id, expires_in, set(permission_enums) if permission_enums else None
+            principal_id,
+            expires_in,
+            set(permission_enums) if permission_enums else None,
         )
 
         if not token:
-            return {"success": False, "error": "Failed to create token - principal not found"}
+            return {
+                "success": False,
+                "error": "Failed to create token - principal not found",
+            }
 
         return {
             "success": True,
             "token": token,
             "expires_in": expires_in,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
         logger.error(f"Create MCP security token endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.delete("/api/mcp/security/tokens/{token_prefix}")
 async def revoke_mcp_security_token(token_prefix: str):
@@ -1651,15 +1832,20 @@ async def revoke_mcp_security_token(token_prefix: str):
 
         return {
             "success": success,
-            "message": "Token revoked successfully" if success else "Failed to revoke token",
-            "timestamp": datetime.now().isoformat()
+            "message": "Token revoked successfully"
+            if success
+            else "Failed to revoke token",
+            "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
         logger.error(f"Revoke MCP security token endpoint error: {e}")
         return {"success": False, "error": str(e)}
 
+
 @app.get("/api/mcp/security/audit")
-async def get_mcp_security_audit(limit: int = 100, principal_id: str = None, action: str = None):
+async def get_mcp_security_audit(
+    limit: int = 100, principal_id: str = None, action: str = None
+):
     """Get audit log events"""
     try:
         if not dashboard.mcp_security_manager:
@@ -1671,25 +1857,28 @@ async def get_mcp_security_audit(limit: int = 100, principal_id: str = None, act
 
         audit_events = []
         for event in events:
-            audit_events.append({
-                "timestamp": event.timestamp.isoformat(),
-                "principal_id": event.principal_id,
-                "action": event.action,
-                "resource": event.resource,
-                "success": event.success,
-                "details": event.details,
-                "ip_address": event.ip_address,
-                "user_agent": event.user_agent
-            })
+            audit_events.append(
+                {
+                    "timestamp": event.timestamp.isoformat(),
+                    "principal_id": event.principal_id,
+                    "action": event.action,
+                    "resource": event.resource,
+                    "success": event.success,
+                    "details": event.details,
+                    "ip_address": event.ip_address,
+                    "user_agent": event.user_agent,
+                }
+            )
 
         return {
             "success": True,
             "events": audit_events,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
         logger.error(f"MCP security audit endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.get("/api/mcp/security/rate-limits")
 async def get_mcp_security_rate_limits():
@@ -1705,17 +1894,18 @@ async def get_mcp_security_rate_limits():
                 "max_requests": rule.max_requests,
                 "window_seconds": rule.window_seconds,
                 "burst_limit": rule.burst_limit,
-                "cooldown_seconds": rule.cooldown_seconds
+                "cooldown_seconds": rule.cooldown_seconds,
             }
 
         return {
             "success": True,
             "rules": rules,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
         logger.error(f"MCP security rate limits endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.post("/api/mcp/tool-call")
 async def call_mcp_tool(request: Request):
@@ -1735,13 +1925,13 @@ async def call_mcp_tool(request: Request):
             server_name=server_name,
             tool_name=tool_name,
             arguments=arguments,
-            agent_name=agent_name
+            agent_name=agent_name,
         )
 
         return {
             "success": True,
             "result": result,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
         logger.error(f"MCP tool call endpoint error: {e}")
@@ -1760,7 +1950,7 @@ async def get_mcp_tools(server_name: str = None):
         return {
             "success": True,
             "tools": tools,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
         logger.error(f"MCP tools endpoint error: {e}")
@@ -1779,7 +1969,7 @@ async def get_mcp_resources(server_name: str = None):
         return {
             "success": True,
             "resources": resources,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
         logger.error(f"MCP resources endpoint error: {e}")
@@ -1800,15 +1990,13 @@ async def read_mcp_resource(request: Request):
 
         # Read the resource through the registry
         result = await dashboard.mcp_registry.read_resource(
-            server_name=server_name,
-            uri=uri,
-            agent_name=agent_name
+            server_name=server_name, uri=uri, agent_name=agent_name
         )
 
         return {
             "success": True,
             "result": result,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
         logger.error(f"MCP resource read endpoint error: {e}")
@@ -1827,7 +2015,7 @@ async def connect_mcp_server(server_name: str):
         return {
             "success": True,
             "message": f"Connected to {server_name}",
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
         logger.error(f"MCP server connect error: {e}")
@@ -1846,7 +2034,7 @@ async def disconnect_mcp_server(server_name: str):
         return {
             "success": True,
             "message": f"Disconnected from {server_name}",
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
         logger.error(f"MCP server disconnect error: {e}")
@@ -1865,11 +2053,12 @@ async def get_mcp_agents():
         return {
             "success": True,
             "agents": agents,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
         logger.error(f"MCP agents endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 # Security Validation Endpoints
 @app.get("/api/security/overview")
@@ -1888,12 +2077,15 @@ async def get_security_overview():
                 "pending_approvals": pending_approvals,
                 "total_validations": report.get("total_operations", 0),
                 "pending_count": len(pending_approvals),
-                "blocked_count": sum(1 for op in pending_approvals if op.get("status") == "denied")
-            }
+                "blocked_count": sum(
+                    1 for op in pending_approvals if op.get("status") == "denied"
+                ),
+            },
         }
     except Exception as e:
         logger.error(f"Security overview endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.post("/api/security/validate")
 async def validate_operation(request: Request):
@@ -1921,12 +2113,13 @@ async def validate_operation(request: Request):
                 "recommendations": result.recommendations,
                 "requires_user_approval": result.requires_user_approval,
                 "requires_admin_approval": result.requires_admin_approval,
-                "can_proceed": result.can_proceed
-            }
+                "can_proceed": result.can_proceed,
+            },
         }
     except Exception as e:
         logger.error(f"Security validation endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.get("/api/security/approvals")
 async def get_pending_approvals(user_id: str = None):
@@ -1936,13 +2129,11 @@ async def get_pending_approvals(user_id: str = None):
 
         approvals = security_validator.get_pending_approvals(user_id)
 
-        return {
-            "success": True,
-            "data": approvals
-        }
+        return {"success": True, "data": approvals}
     except Exception as e:
         logger.error(f"Pending approvals endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.post("/api/security/approve")
 async def approve_operation(request: Request):
@@ -1958,15 +2149,18 @@ async def approve_operation(request: Request):
         if not approval_id:
             return {"success": False, "error": "Approval ID required"}
 
-        success = security_validator.approve_operation(approval_id, approved, admin_user)
+        success = security_validator.approve_operation(
+            approval_id, approved, admin_user
+        )
 
         return {
             "success": success,
-            "message": f"Operation {'approved' if approved else 'denied'}"
+            "message": f"Operation {'approved' if approved else 'denied'}",
         }
     except Exception as e:
         logger.error(f"Approve operation endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.post("/api/security/request-approval")
 async def request_user_approval(request: Request):
@@ -1979,22 +2173,27 @@ async def request_user_approval(request: Request):
         validation_data = data.get("validation", {})
         user_id = data.get("user_id", "web_user")
 
-        approval_request = security_validator.request_approval(operation, validation_data, user_id)
+        approval_request = security_validator.request_approval(
+            operation, validation_data, user_id
+        )
 
         return {
             "success": True,
             "data": {
                 "request_id": approval_request.id,
                 "status": approval_request.status.value,
-                "requires_approval": approval_request.requires_user_approval or approval_request.requires_admin_approval
-            }
+                "requires_approval": approval_request.requires_user_approval
+                or approval_request.requires_admin_approval,
+            },
         }
 
     except Exception as e:
         logger.error(f"Request approval endpoint error: {e}")
         return {"success": False, "error": str(e)}
 
+
 # Community Vault API Endpoints
+
 
 @app.get("/api/vault/categories")
 async def get_vault_categories():
@@ -2006,6 +2205,7 @@ async def get_vault_categories():
         logger.error(f"Vault categories endpoint error: {e}")
         return {"success": False, "error": str(e)}
 
+
 @app.get("/api/vault/stats")
 async def get_vault_stats():
     """Get vault statistics"""
@@ -2015,6 +2215,7 @@ async def get_vault_stats():
     except Exception as e:
         logger.error(f"Vault stats endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.get("/api/vault/featured")
 async def get_featured_items(limit: int = 10):
@@ -2026,6 +2227,7 @@ async def get_featured_items(limit: int = 10):
         logger.error(f"Featured items endpoint error: {e}")
         return {"success": False, "error": str(e)}
 
+
 @app.get("/api/vault/search")
 async def search_vault_items(
     q: str = "",
@@ -2035,7 +2237,7 @@ async def search_vault_items(
     sort_by: str = "downloads",
     sort_order: str = "desc",
     limit: int = 20,
-    offset: int = 0
+    offset: int = 0,
 ):
     """Search vault items"""
     try:
@@ -2050,7 +2252,7 @@ async def search_vault_items(
             sort_by=sort_by,
             sort_order=sort_order,
             limit=limit,
-            offset=offset
+            offset=offset,
         )
 
         return {
@@ -2059,12 +2261,13 @@ async def search_vault_items(
             "pagination": {
                 "limit": limit,
                 "offset": offset,
-                "has_more": len(items) == limit
-            }
+                "has_more": len(items) == limit,
+            },
         }
     except Exception as e:
         logger.error(f"Vault search endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.get("/api/vault/item/{item_id}")
 async def get_vault_item(item_id: str):
@@ -2078,6 +2281,7 @@ async def get_vault_item(item_id: str):
     except Exception as e:
         logger.error(f"Get vault item endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.post("/api/vault/publish")
 async def publish_vault_item(request: Request):
@@ -2104,6 +2308,7 @@ async def publish_vault_item(request: Request):
         logger.error(f"Publish vault item endpoint error: {e}")
         return {"success": False, "error": str(e)}
 
+
 @app.get("/api/vault/download/{item_id}")
 async def download_vault_item(item_id: str, request: Request):
     """Download a vault item"""
@@ -2113,9 +2318,7 @@ async def download_vault_item(item_id: str, request: Request):
         user_agent = request.headers.get("User-Agent")
 
         content = await vault.download_item(
-            item_id=item_id,
-            ip_address=client_ip,
-            user_agent=user_agent
+            item_id=item_id, ip_address=client_ip, user_agent=user_agent
         )
 
         if content:
@@ -2125,9 +2328,9 @@ async def download_vault_item(item_id: str, request: Request):
                     "success": True,
                     "data": {
                         "item": item.to_dict(),
-                        "content": base64.b64encode(content).decode('utf-8'),
-                        "content_type": item.content_type
-                    }
+                        "content": base64.b64encode(content).decode("utf-8"),
+                        "content_type": item.content_type,
+                    },
                 }
 
         return {"success": False, "error": "Item not found or download failed"}
@@ -2135,6 +2338,7 @@ async def download_vault_item(item_id: str, request: Request):
     except Exception as e:
         logger.error(f"Download vault item endpoint error: {e}")
         return {"success": False, "error": str(e)}
+
 
 @app.post("/api/vault/rate/{item_id}")
 async def rate_vault_item(item_id: str, request: Request):
@@ -2159,6 +2363,7 @@ async def rate_vault_item(item_id: str, request: Request):
         logger.error(f"Rate vault item endpoint error: {e}")
         return {"success": False, "error": str(e)}
 
+
 @app.delete("/api/vault/item/{item_id}")
 async def delete_vault_item(item_id: str, author: str = "admin"):
     """Delete a vault item (admin only)"""
@@ -2177,11 +2382,172 @@ async def delete_vault_item(item_id: str, author: str = "admin"):
         return {"success": False, "error": str(e)}
 
 
+# ===== SUBSCRIPTION & BILLING ENDPOINTS =====
+
+
+@app.get("/api/subscriptions/plans")
+async def get_subscription_plans():
+    """Get available subscription plans"""
+    try:
+        if payment_manager:
+            return {"success": True, "data": payment_manager.get_plans()}
+        else:
+            return {"success": False, "error": "Payment system not available"}
+    except Exception as e:
+        logger.error(f"Get subscription plans error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/subscriptions/create-checkout")
+async def create_subscription_checkout(request: Request):
+    """Create checkout session for subscription"""
+    try:
+        if not payment_manager:
+            return {"success": False, "error": "Payment system not available"}
+
+        data = await request.json()
+        from src.payments import CreateCheckoutSessionRequest
+
+        checkout_request = CreateCheckoutSessionRequest(**data)
+        result = await payment_manager.create_checkout_session(checkout_request)
+        return {"success": True, "data": result}
+
+    except Exception as e:
+        logger.error(f"Create checkout session error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/subscriptions/portal")
+async def create_customer_portal(request: Request):
+    """Create customer portal session for billing management"""
+    try:
+        if not payment_manager:
+            return {"success": False, "error": "Payment system not available"}
+
+        data = await request.json()
+        from src.payments import CustomerPortalRequest
+
+        portal_request = CustomerPortalRequest(**data)
+        result = await payment_manager.create_customer_portal_session(portal_request)
+        return {"success": True, "data": result}
+
+    except Exception as e:
+        logger.error(f"Create portal session error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/subscriptions/{subscription_id}")
+async def get_user_subscription(subscription_id: str):
+    """Get user's subscription details"""
+    try:
+        if not payment_manager:
+            return {"success": False, "error": "Payment system not available"}
+
+        subscription = await payment_manager.get_subscription(subscription_id)
+        return {"success": True, "data": subscription}
+
+    except Exception as e:
+        logger.error(f"Get subscription error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.delete("/api/subscriptions/{subscription_id}")
+async def cancel_user_subscription(subscription_id: str, request: Request):
+    """Cancel user's subscription"""
+    try:
+        if not payment_manager:
+            return {"success": False, "error": "Payment system not available"}
+
+        data = await request.json()
+        immediate = data.get("immediate", False)
+
+        result = await payment_manager.cancel_subscription(subscription_id, immediate)
+        return {"success": True, "data": result}
+
+    except Exception as e:
+        logger.error(f"Cancel subscription error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/subscriptions/webhook")
+async def stripe_webhook_handler(request: Request):
+    """Handle Stripe webhooks for subscription events"""
+    try:
+        if not payment_manager:
+            return {"status": "ignored", "reason": "Payment system not available"}
+
+        payload = await request.body()
+        sig_header = request.headers.get("stripe-signature")
+
+        result = await payment_manager.handle_webhook(payload.decode(), sig_header)
+        return result
+
+    except Exception as e:
+        logger.error(f"Webhook handler error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@app.get("/api/billing/usage")
+async def get_billing_usage(user_id: str = "demo"):
+    """Get user's API usage for billing"""
+    try:
+        # This would typically fetch from a database
+        # For demo, return mock data
+        usage_data = {
+            "user_id": user_id,
+            "current_period_start": (datetime.now() - timedelta(days=30)).isoformat(),
+            "current_period_end": datetime.now().isoformat(),
+            "api_calls_used": 847,
+            "api_calls_limit": 1000 if user_id == "demo" else None,
+            "tokens_used": 125420,
+            "cost_breakdown": {
+                "chatgpt": {"calls": 342, "tokens": 52123, "cost": 2.45},
+                "claude": {"calls": 287, "tokens": 48921, "cost": 3.12},
+                "gemini": {"calls": 218, "tokens": 24376, "cost": 0.89},
+            },
+        }
+        return {"success": True, "data": usage_data}
+
+    except Exception as e:
+        logger.error(f"Get billing usage error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/revenue/dashboard")
+async def get_revenue_dashboard():
+    """Get revenue analytics dashboard data"""
+    try:
+        # Mock revenue data - in production this would come from database
+        revenue_data = {
+            "current_mrr": 0,  # Monthly Recurring Revenue
+            "current_arr": 0,  # Annual Recurring Revenue
+            "total_customers": 0,
+            "conversion_rate": 0,
+            "churn_rate": 0,
+            "mrr_growth": {"this_month": 0, "last_month": 0, "growth_percent": 0},
+            "customer_breakdown": {
+                "free": 1,  # demo user
+                "pro": 0,
+                "enterprise": 0,
+            },
+            "revenue_by_tier": {"free": 0, "pro": 0, "enterprise": 0},
+            "monthly_revenue": [
+                {"month": "Jan", "revenue": 0},
+                {"month": "Feb", "revenue": 0},
+                {"month": "Mar", "revenue": 0},
+                {"month": "Apr", "revenue": 0},
+                {"month": "May", "revenue": 0},
+                {"month": "Jun", "revenue": 0},
+            ],
+        }
+        return {"success": True, "data": revenue_data}
+
+    except Exception as e:
+        logger.error(f"Get revenue dashboard error: {e}")
+        return {"success": False, "error": str(e)}
+
+
 if __name__ == "__main__":
     uvicorn.run(
-        "web_dashboard:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=False,
-        log_level="info"
+        "web_dashboard:app", host="0.0.0.0", port=8000, reload=False, log_level="info"
     )

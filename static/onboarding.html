@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZEJZL.NET - Get Started</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .step-indicator {
+            transition: all 0.3s ease;
+        }
+        .step-indicator.active {
+            background: #4f46e5;
+            color: white;
+            border-color: #4f46e5;
+        }
+        .step-indicator.completed {
+            background: #10b981;
+            color: white;
+            border-color: #10b981;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-2xl font-bold">ZEJZL.NET</h1>
+                    <span class="text-sm opacity-75">AI Multi-Agent Framework</span>
+                </div>
+                <nav class="flex items-center space-x-6">
+                    <a href="/blackboard" class="hover:text-blue-200 transition">Dashboard</a>
+                    <a href="/billing" class="hover:text-blue-200 transition">Pricing</a>
+                    <button onclick="showLoginModal()" class="bg-white text-indigo-600 px-4 py-2 rounded-lg hover:bg-gray-100 transition">
+                        Login
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-12">
+        <!-- Hero Section -->
+        <div class="text-center mb-16 fade-in">
+            <h2 class="text-5xl font-bold text-gray-900 mb-6">
+                Start Your <span class="text-indigo-600">14-Day Free Trial</span>
+            </h2>
+            <p class="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+                Experience the power of 9-Agent AI orchestration with unlimited access to all features. 
+                No credit card required to start.
+            </p>
+            <div class="flex justify-center space-x-4 mb-8">
+                <div class="flex items-center space-x-2">
+                    <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span>1000 API calls</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span>All 7 AI providers</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span>No credit card</span>
+                </div>
+            </div>
+            <button onclick="showRegisterModal()" class="bg-indigo-600 text-white text-lg px-8 py-4 rounded-lg hover:bg-indigo-700 transition transform hover:scale-105">
+                Start Free Trial
+            </button>
+        </div>
+
+        <!-- Onboarding Steps -->
+        <div class="max-w-4xl mx-auto mb-16">
+            <h3 class="text-2xl font-bold text-center text-gray-900 mb-12">How It Works</h3>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div class="text-center card-hover bg-white p-6 rounded-lg shadow">
+                    <div class="step-indicator active w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center font-bold mb-4 mx-auto">
+                        1
+                    </div>
+                    <h4 class="font-semibold text-lg mb-2">Sign Up</h4>
+                    <p class="text-gray-600">Create your account in 30 seconds with just email and password</p>
+                </div>
+                <div class="text-center card-hover bg-white p-6 rounded-lg shadow">
+                    <div class="step-indicator w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center font-bold mb-4 mx-auto">
+                        2
+                    </div>
+                    <h4 class="font-semibold text-lg mb-2">Verify Email</h4>
+                    <p class="text-gray-600">Click the verification link we send to your inbox</p>
+                </div>
+                <div class="text-center card-hover bg-white p-6 rounded-lg shadow">
+                    <div class="step-indicator w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center font-bold mb-4 mx-auto">
+                        3
+                    </div>
+                    <h4 class="font-semibold text-lg mb-2">Start Building</h4>
+                    <p class="text-gray-600">Get instant access to the 9-Agent Pantheon system</p>
+                </div>
+                <div class="text-center card-hover bg-white p-6 rounded-lg shadow">
+                    <div class="step-indicator w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center font-bold mb-4 mx-auto">
+                        4
+                    </div>
+                    <h4 class="font-semibold text-lg mb-2">Upgrade When Ready</h4>
+                    <p class="text-gray-600">Convert to paid plan before trial ends to keep access</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trial Features -->
+        <div class="bg-white rounded-2xl shadow-xl p-8 mb-16">
+            <h3 class="text-2xl font-bold text-center text-gray-900 mb-8">What's Included in Your Trial</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="flex items-start space-x-3">
+                    <div class="bg-indigo-100 rounded-lg p-2 mt-1">
+                        <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-1">9-Agent Pantheon</h4>
+                        <p class="text-gray-600 text-sm">Full access to Observer, Reasoner, Actor, and all other agents</p>
+                    </div>
+                </div>
+                <div class="flex items-start space-x-3">
+                    <div class="bg-indigo-100 rounded-lg p-2 mt-1">
+                        <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-1">408K+ msg/sec</h4>
+                        <p class="text-gray-600 text-sm">Ultra-high performance MessageBus architecture</p>
+                    </div>
+                </div>
+                <div class="flex items-start space-x-3">
+                    <div class="bg-indigo-100 rounded-lg p-2 mt-1">
+                        <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-1">7 AI Providers</h4>
+                        <p class="text-gray-600 text-sm">ChatGPT, Claude, Gemini, Grok, DeepSeek, Qwen, Zai</p>
+                    </div>
+                </div>
+                <div class="flex items-start space-x-3">
+                    <div class="bg-indigo-100 rounded-lg p-2 mt-1">
+                        <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-1">Real-time Analytics</h4>
+                        <p class="text-gray-600 text-sm">Monitor usage, performance, and costs</p>
+                    </div>
+                </div>
+                <div class="flex items-start space-x-3">
+                    <div class="bg-indigo-100 rounded-lg p-2 mt-1">
+                        <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c-.94 1.543.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c.94-1.543-.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-1">MCP Protocol</h4>
+                        <p class="text-gray-600 text-sm">Advanced Model Context Protocol integration</p>
+                    </div>
+                </div>
+                <div class="flex items-start space-x-3">
+                    <div class="bg-indigo-100 rounded-lg p-2 mt-1">
+                        <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-1">Self-Healing</h4>
+                        <p class="text-gray-600 text-sm">Magic system with circuit breakers and auto-recovery</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Registration Modal -->
+    <div id="registerModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <h3 class="text-2xl font-bold mb-6">Start Your Free Trial</h3>
+            <form id="registerForm" onsubmit="handleRegister(event)">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Full Name</label>
+                    <input type="text" id="name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Email</label>
+                    <input type="email" id="email" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Password</label>
+                    <input type="password" id="password" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Company (Optional)</label>
+                    <input type="text" id="company" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition">
+                    Start Free Trial
+                </button>
+                <p class="text-xs text-gray-500 mt-4">
+                    By signing up, you agree to our Terms of Service and Privacy Policy.
+                    No credit card required for the 14-day trial.
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <h3 class="text-2xl font-bold mb-6">Login</h3>
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Email</label>
+                    <input type="email" id="loginEmail" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Password</label>
+                    <input type="password" id="loginPassword" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition">
+                    Login
+                </button>
+                <p class="text-sm text-gray-600 mt-4">
+                    Don't have an account? <a href="#" onclick="showRegisterModal()" class="text-indigo-600 hover:underline">Sign up</a>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Success Message -->
+    <div id="successMessage" class="fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-6 py-4 rounded-lg shadow-lg hidden z-50">
+        <div class="flex items-center">
+            <svg class="w-6 h-6 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+            </svg>
+            <span id="successText">Success!</span>
+        </div>
+    </div>
+
+    <!-- Error Message -->
+    <div id="errorMessage" class="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-lg shadow-lg hidden z-50">
+        <div class="flex items-center">
+            <svg class="w-6 h-6 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+            </svg>
+            <span id="errorText">Error occurred!</span>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('zejzl_auth_token');
+        let currentUser = null;
+
+        // Check if user is already logged in
+        if (authToken) {
+            window.location.href = '/billing';
+        }
+
+        function showRegisterModal() {
+            document.getElementById('registerModal').classList.remove('hidden');
+            document.getElementById('loginModal').classList.add('hidden');
+        }
+
+        function showLoginModal() {
+            document.getElementById('loginModal').classList.remove('hidden');
+            document.getElementById('registerModal').classList.add('hidden');
+        }
+
+        function hideModals() {
+            document.getElementById('registerModal').classList.add('hidden');
+            document.getElementById('loginModal').classList.add('hidden');
+        }
+
+        function showSuccess(message) {
+            document.getElementById('successText').textContent = message;
+            document.getElementById('successMessage').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('successMessage').classList.add('hidden');
+            }, 5000);
+        }
+
+        function showError(message) {
+            document.getElementById('errorText').textContent = message;
+            document.getElementById('errorMessage').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('errorMessage').classList.add('hidden');
+            }, 5000);
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+            
+            const formData = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+                company: document.getElementById('company').value
+            };
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    hideModals();
+                    showSuccess('Registration successful! Please check your email to verify your account.');
+                    // In a real app, you'd show email verification UI
+                } else {
+                    showError(data.error || 'Registration failed. Please try again.');
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                showError('Network error. Please try again.');
+            }
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const formData = {
+                email: document.getElementById('loginEmail').value,
+                password: document.getElementById('loginPassword').value
+            };
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    localStorage.setItem('zejzl_auth_token', data.access_token);
+                    localStorage.setItem('zejzl_user', JSON.stringify(data.user));
+                    hideModals();
+                    showSuccess('Login successful! Redirecting...');
+                    setTimeout(() => {
+                        window.location.href = '/billing';
+                    }, 2000);
+                } else {
+                    showError(data.error || 'Login failed. Please check your credentials.');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showError('Network error. Please try again.');
+            }
+        }
+
+        // Close modals when clicking outside
+        window.addEventListener('click', (event) => {
+            if (event.target.id === 'registerModal' || event.target.id === 'loginModal') {
+                hideModals();
+            }
+        });
+    </script>
+</body>
+</html>
