@@ -398,6 +398,11 @@ class SwarmCoordinator:
         
         logger.info("SwarmCoordinator initialized")
     
+    @property
+    def data_dir(self):
+        """Get data directory from budget tracker"""
+        return self.budget_tracker.data_dir
+    
     async def execute_task(
         self,
         task_id: str,
