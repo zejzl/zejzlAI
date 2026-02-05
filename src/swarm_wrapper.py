@@ -29,6 +29,14 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 import logging
 
+# Import budget alert system
+try:
+    from src.budget_alerts import BudgetAlertManager
+    ALERTS_AVAILABLE = True
+except ImportError:
+    ALERTS_AVAILABLE = False
+    logging.warning("BudgetAlertManager not available - alerts disabled")
+
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -104,6 +112,12 @@ class BudgetTracker:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.budget_file = self.data_dir / "budget_tracking.json"
         self.budgets = self._load_budgets()
+        
+        # Initialize budget alert manager
+        if ALERTS_AVAILABLE:
+            self.alert_manager = BudgetAlertManager(data_dir=data_dir)
+        else:
+            self.alert_manager = None
     
     def _load_budgets(self) -> Dict[str, Any]:
         """Load budgets from file"""
@@ -160,6 +174,16 @@ class BudgetTracker:
         self._save_budgets()
         
         logger.info(f"Budget spend for {task_id}: {tokens:,} tokens ({reason})")
+        
+        # Trigger budget alert check (async, non-blocking)
+        if self.alert_manager:
+            asyncio.create_task(
+                self.alert_manager.check_and_notify(
+                    task_id,
+                    budget["used_tokens"],
+                    budget["max_tokens"]
+                )
+            )
         
         return self.check(task_id)
     

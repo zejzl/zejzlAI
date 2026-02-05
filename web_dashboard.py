@@ -987,6 +987,43 @@ async def get_swarm_audit_log():
         }, status_code=500)
 
 
+@app.post("/api/swarm/test-alert")
+async def test_budget_alert(request: Request):
+    """Test budget alert system with sample data"""
+    try:
+        data = await request.json()
+        task_id = data.get("task_id", "test_task_alert")
+        tokens_used = data.get("tokens_used", 8500)
+        budget_limit = data.get("budget_limit", 10000)
+        
+        if not dashboard.swarm:
+            return JSONResponse({
+                "error": "Pantheon Swarm not initialized"
+            }, status_code=503)
+        
+        # Import alert manager
+        from src.budget_alerts import send_budget_alert
+        
+        # Send test alert
+        result = await send_budget_alert(
+            task_id=task_id,
+            tokens_used=tokens_used,
+            budget_limit=budget_limit
+        )
+        
+        return JSONResponse({
+            "success": True,
+            "result": result,
+            "message": f"Alert check complete: {result.get('alert_level', 'None')}"
+        })
+    
+    except Exception as e:
+        logger.error(f"[SWARM] Test alert endpoint error: {e}")
+        return JSONResponse({
+            "error": str(e)
+        }, status_code=500)
+
+
 # Analytics Endpoints
 analytics = UsageAnalytics()
 
