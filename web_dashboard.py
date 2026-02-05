@@ -144,6 +144,85 @@ except ImportError as e:
 except Exception as e:
     logger.error(f"User management import error: {e}")
 
+# Include task management router (safe import)
+task_router = None
+try:
+    from src.task_manager import task_manager, Task, TaskStatus, TaskPriority
+    from fastapi import APIRouter
+    from typing import List, Optional
+
+    task_router = APIRouter(prefix="/api/tasks", tags=["task-management"])
+
+    @task_router.get("/", response_model=List[dict])
+    async def get_all_tasks():
+        """Get all tasks"""
+        return [task.__dict__ for task in task_manager.tasks.values()]
+
+    @task_router.get("/{task_id}")
+    async def get_task(task_id: str):
+        """Get specific task"""
+        task = task_manager.get_task(task_id)
+        if task:
+            return task.__dict__
+        return {"error": "Task not found"}
+
+    @task_router.post("/", response_model=dict)
+    async def create_task(request):
+        """Create new task"""
+        task_data = await request.json()
+
+        new_task = Task(id=f"task-{len(task_manager.tasks) + 1:03d}", **task_data)
+
+        task_manager.tasks[new_task.id] = new_task
+        await task_manager.save_data()
+
+        return {"success": True, "task": new_task.__dict__}
+
+    @task_router.put("/{task_id}", response_model=dict)
+    async def update_task(task_id: str, request):
+        """Update task"""
+        update_data = await request.json()
+
+        if task_id in task_manager.tasks:
+            task_manager.update_task(task_id, **update_data)
+            await task_manager.save_data()
+
+            return {"success": True, "task": task_manager.get_task(task_id).__dict__}
+
+        return {"error": "Task not found"}
+
+    @task_router.get("/project/{project_id}/status")
+    async def get_project_status(project_id: str):
+        """Get project status with task breakdown"""
+        status = task_manager.get_project_status(project_id)
+        return status
+
+    @task_router.get("/critical-path")
+    async def get_critical_path():
+        """Get critical path analysis"""
+        critical_path = task_manager.calculate_critical_path()
+        return {
+            "critical_path": critical_path,
+            "analysis": {
+                "total_tasks": len(task_manager.tasks),
+                "dependencies": len(task_manager.dependencies),
+                "blocked_tasks": len(task_manager.get_blocked_tasks()),
+            },
+        }
+
+    @task_router.get("/resource-allocation")
+    async def get_resource_allocation():
+        """Get resource allocation analysis"""
+        return task_manager.get_resource_allocation()
+
+    app.include_router(task_router)
+    logger.info("Task management system loaded successfully")
+
+except ImportError as e:
+    logger.warning(f"Task management not available: {e}")
+except Exception as e:
+    logger.error(f"Task management import error: {e}")
+
 
 class DashboardServer:
     """Web dashboard for ZEJZL.NET monitoring and control"""
