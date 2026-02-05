@@ -63,14 +63,28 @@ try:
 except ImportError:
     CommunityVault = None
 
-# Import Payment System
+# Import Payment System (safe import)
+payment_manager = None
+payment_router = None
+SubscriptionTier = None
+
 try:
-    from src.payments import payment_manager, payment_router, SubscriptionTier
-except ImportError:
-    payment_manager = None
-    payment_router = None
-    SubscriptionTier = None
-    logger.warning("Payment system not available")
+    # Import only if dependencies are available
+    import stripe
+    from src.payments import (
+        payment_manager as pm,
+        payment_router as pr,
+        SubscriptionTier as st,
+    )
+
+    payment_manager = pm
+    payment_router = pr
+    SubscriptionTier = st
+    logger.info("Payment system loaded successfully")
+except ImportError as e:
+    logger.warning(f"Payment system not available: {e}")
+except Exception as e:
+    logger.error(f"Payment system import error: {e}")
 
 # Import Pantheon Swarm
 try:
@@ -111,14 +125,24 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 if payment_router:
     app.include_router(payment_router)
 
-# Include user management router
-try:
-    from src.user_management import onboarding_router, user_db
+# Include user management router (safe import)
+user_db = None
+onboarding_router = None
 
-    app.include_router(onboarding_router)
+try:
+    # Import only if dependencies are available
+    import aiosqlite
+    import jwt
+    from passlib.context import CryptContext
+    from src.user_management import onboarding_router as obr, user_db as udb
+
+    user_db = udb
+    app.include_router(obr)
+    logger.info("User management system loaded successfully")
 except ImportError as e:
     logger.warning(f"User management not available: {e}")
-    user_db = None
+except Exception as e:
+    logger.error(f"User management import error: {e}")
 
 
 class DashboardServer:
