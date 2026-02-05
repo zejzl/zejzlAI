@@ -896,7 +896,7 @@ async def get_swarm_budget_global():
                 "error": "Pantheon Swarm not initialized"
             }, status_code=503)
         
-        budget_file = Path(dashboard.swarm.data_dir) / "budget_tracking.json"
+        budget_file = Path(dashboard.swarm.coordinator.data_dir) / "budget_tracking.json"
         
         if not budget_file.exists():
             return JSONResponse({
@@ -954,7 +954,7 @@ async def get_swarm_audit_log():
                 "error": "Pantheon Swarm not initialized"
             }, status_code=503)
         
-        audit_file = Path(dashboard.swarm.data_dir) / "audit_log.jsonl"
+        audit_file = Path(dashboard.swarm.coordinator.data_dir) / "audit_log.jsonl"
         
         if not audit_file.exists():
             return JSONResponse({
