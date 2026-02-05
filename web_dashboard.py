@@ -243,6 +243,11 @@ async def dashboard_page(request: Request):
     """Main dashboard page"""
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
+@app.get("/blackboard", response_class=HTMLResponse)
+async def blackboard_page(request: Request):
+    """Blackboard coordination dashboard"""
+    return templates.TemplateResponse("blackboard.html", {"request": request})
+
 @app.get("/api/status")
 async def get_status():
     """Get current system status"""

@@ -1,0 +1,77 @@
+{
+  "test_budget_001": {
+    "max_tokens": 5000,
+    "used_tokens": 5500,
+    "created_at": "2026-02-05T10:41:54.896144+00:00",
+    "status": "EXHAUSTED",
+    "updated_at": "2026-02-05T10:41:54.897094+00:00"
+  },
+  "test_task_001": {
+    "max_tokens": 10000,
+    "used_tokens": 264,
+    "created_at": "2026-02-05T10:41:54.901263+00:00",
+    "status": "OK",
+    "updated_at": "2026-02-05T10:41:54.902712+00:00"
+  },
+  "test_task_002": {
+    "max_tokens": 100,
+    "used_tokens": 300,
+    "created_at": "2026-02-05T10:41:54.903824+00:00",
+    "status": "EXHAUSTED",
+    "updated_at": "2026-02-05T10:41:54.905210+00:00"
+  },
+  "test_task_003": {
+    "max_tokens": 10000,
+    "used_tokens": 0,
+    "created_at": "2026-02-05T10:41:54.906238+00:00",
+    "status": "OK"
+  },
+  "pantheon_1_1770288148": {
+    "max_tokens": 10000,
+    "used_tokens": 3088,
+    "created_at": "2026-02-05T10:42:28.682975+00:00",
+    "status": "OK",
+    "updated_at": "2026-02-05T10:42:40.522984+00:00"
+  },
+  "pantheon_1_1770288160": {
+    "max_tokens": 100,
+    "used_tokens": 2884,
+    "created_at": "2026-02-05T10:42:40.954758+00:00",
+    "status": "EXHAUSTED",
+    "updated_at": "2026-02-05T10:42:58.726979+00:00"
+  },
+  "pantheon_2_1770288160": {
+    "max_tokens": 10000,
+    "used_tokens": 0,
+    "created_at": "2026-02-05T10:42:40.739152+00:00",
+    "status": "OK"
+  },
+  "pantheon_1_1770288178": {
+    "max_tokens": 5000,
+    "used_tokens": 2136,
+    "created_at": "2026-02-05T10:42:58.936143+00:00",
+    "status": "OK",
+    "updated_at": "2026-02-05T10:43:07.331554+00:00"
+  },
+  "pantheon_1_1770288187": {
+    "max_tokens": 3000,
+    "used_tokens": 1872,
+    "created_at": "2026-02-05T10:43:07.547295+00:00",
+    "status": "OK",
+    "updated_at": "2026-02-05T10:43:15.194346+00:00"
+  },
+  "pantheon_2_1770288195": {
+    "max_tokens": 3000,
+    "used_tokens": 2004,
+    "created_at": "2026-02-05T10:43:15.196372+00:00",
+    "status": "OK",
+    "updated_at": "2026-02-05T10:43:24.742382+00:00"
+  },
+  "pantheon_3_1770288204": {
+    "max_tokens": 3000,
+    "used_tokens": 2728,
+    "created_at": "2026-02-05T10:43:24.744498+00:00",
+    "status": "CRITICAL",
+    "updated_at": "2026-02-05T10:43:37.481062+00:00"
+  }
+}

@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blackboard Dashboard - zejzl.net</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 36px;
+            color: #667eea;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card h3 {
+            font-size: 14px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .value {
+            font-size: 42px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-card .label {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .controls {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 300px;
+            padding: 12px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .filter-btn {
+            padding: 12px 24px;
+            border: none;
+            background: #667eea;
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .filter-btn:hover {
+            background: #5568d3;
+        }
+
+        .filter-btn.active {
+            background: #764ba2;
+        }
+
+        .refresh-btn {
+            background: #10b981;
+        }
+
+        .refresh-btn:hover {
+            background: #059669;
+        }
+
+        .blackboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .blackboard-entry {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .blackboard-entry:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .entry-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+
+        .entry-key {
+            font-size: 14px;
+            font-weight: 600;
+            color: #667eea;
+            word-break: break-all;
+            flex: 1;
+        }
+
+        .entry-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-task {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-agent {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .badge-result {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-status {
+            background: #e0e7ff;
+            color: #4338ca;
+        }
+
+        .entry-value {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            margin-bottom: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #334155;
+            max-height: 200px;
+            overflow-y: auto;
+            word-break: break-word;
+        }
+
+        .entry-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: #999;
+        }
+
+        .entry-meta .timestamp {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .empty-state-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+
+        .empty-state h2 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            color: #666;
+        }
+
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: #10b981;
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <span>🧠</span>
+                Blackboard Dashboard
+            </h1>
+            <p>Real-time agent coordination state · zejzl.net Pantheon Swarm</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Keys</h3>
+                <div class="value" id="total-keys">0</div>
+                <div class="label">entries in blackboard</div>
+            </div>
+            <div class="stat-card">
+                <h3>Active Tasks</h3>
+                <div class="value" id="active-tasks">0</div>
+                <div class="label">tasks in progress</div>
+            </div>
+            <div class="stat-card">
+                <h3>Agent States</h3>
+                <div class="value" id="agent-states">0</div>
+                <div class="label">agent coordination</div>
+            </div>
+            <div class="stat-card">
+                <h3>Last Update</h3>
+                <div class="value" id="last-update" style="font-size: 24px;">--:--</div>
+                <div class="label">seconds ago</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <input type="text" id="search-box" class="search-box" placeholder="Search keys or values...">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="task">Tasks</button>
+            <button class="filter-btn" data-filter="agent">Agents</button>
+            <button class="filter-btn" data-filter="status">Status</button>
+            <button class="filter-btn refresh-btn" onclick="loadBlackboard()">🔄 Refresh</button>
+            <label class="auto-refresh">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="auto-refresh-toggle" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+                Auto-refresh
+            </label>
+        </div>
+
+        <div id="blackboard-container">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <p>Loading blackboard state...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentFilter = 'all';
+        let searchQuery = '';
+        let autoRefreshInterval = null;
+
+        // Load blackboard data
+        async function loadBlackboard() {
+            try {
+                const response = await fetch('/api/swarm/blackboard');
+                const data = await response.json();
+
+                if (data.success) {
+                    updateStats(data);
+                    renderBlackboard(data.state);
+                } else {
+                    showError(data.error);
+                }
+            } catch (error) {
+                console.error('Failed to load blackboard:', error);
+                showError('Failed to connect to API');
+            }
+        }
+
+        // Update statistics
+        function updateStats(data) {
+            const state = data.state;
+            const keys = Object.keys(state);
+            
+            document.getElementById('total-keys').textContent = keys.length;
+            
+            const tasks = keys.filter(k => k.startsWith('task:') && k.endsWith(':status')).length;
+            document.getElementById('active-tasks').textContent = tasks;
+            
+            const agents = keys.filter(k => k.startsWith('agent:')).length;
+            document.getElementById('agent-states').textContent = agents;
+            
+            const now = new Date();
+            document.getElementById('last-update').textContent = now.toLocaleTimeString();
+        }
+
+        // Render blackboard entries
+        function renderBlackboard(state) {
+            const container = document.getElementById('blackboard-container');
+            const keys = Object.keys(state);
+            
+            if (keys.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <h2>No entries yet</h2>
+                        <p>The blackboard is empty. Entries will appear here when tasks are executed.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Filter entries
+            let filteredKeys = keys.filter(key => {
+                // Apply filter
+                if (currentFilter !== 'all') {
+                    if (currentFilter === 'task' && !key.startsWith('task:')) return false;
+                    if (currentFilter === 'agent' && !key.startsWith('agent:')) return false;
+                    if (currentFilter === 'status' && !key.includes(':status')) return false;
+                }
+
+                // Apply search
+                if (searchQuery) {
+                    const searchLower = searchQuery.toLowerCase();
+                    return key.toLowerCase().includes(searchLower) || 
+                           String(state[key]).toLowerCase().includes(searchLower);
+                }
+
+                return true;
+            });
+
+            // Sort by key name
+            filteredKeys.sort();
+
+            // Render entries
+            container.innerHTML = `
+                <div class="blackboard-grid">
+                    ${filteredKeys.map(key => renderEntry(key, state[key])).join('')}
+                </div>
+            `;
+        }
+
+        // Render single entry
+        function renderEntry(key, value) {
+            const badge = getBadge(key);
+            const displayValue = formatValue(value);
+            
+            return `
+                <div class="blackboard-entry">
+                    <div class="entry-header">
+                        <div class="entry-key">${escapeHtml(key)}</div>
+                        <div class="entry-badge ${badge.class}">${badge.label}</div>
+                    </div>
+                    <div class="entry-value">${escapeHtml(displayValue)}</div>
+                    <div class="entry-meta">
+                        <div class="timestamp">
+                            <span>🕒</span>
+                            <span>Just now</span>
+                        </div>
+                        <div>${getSize(value)}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Get badge for key
+        function getBadge(key) {
+            if (key.startsWith('task:')) return { label: 'Task', class: 'badge-task' };
+            if (key.startsWith('agent:')) return { label: 'Agent', class: 'badge-agent' };
+            if (key.includes(':result')) return { label: 'Result', class: 'badge-result' };
+            if (key.includes(':status')) return { label: 'Status', class: 'badge-status' };
+            return { label: 'Data', class: 'badge-task' };
+        }
+
+        // Format value for display
+        function formatValue(value) {
+            if (typeof value === 'object') {
+                return JSON.stringify(value, null, 2);
+            }
+            return String(value);
+        }
+
+        // Get size display
+        function getSize(value) {
+            const str = formatValue(value);
+            return `${str.length} chars`;
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Show error
+        function showError(message) {
+            const container = document.getElementById('blackboard-container');
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">⚠️</div>
+                    <h2>Error Loading Blackboard</h2>
+                    <p>${escapeHtml(message)}</p>
+                </div>
+            `;
+        }
+
+        // Filter buttons
+        document.querySelectorAll('.filter-btn:not(.refresh-btn)').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn:not(.refresh-btn)').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                loadBlackboard();
+            });
+        });
+
+        // Search box
+        document.getElementById('search-box').addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            loadBlackboard();
+        });
+
+        // Auto-refresh toggle
+        document.getElementById('auto-refresh-toggle').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                autoRefreshInterval = setInterval(loadBlackboard, 3000); // Refresh every 3s
+            } else {
+                clearInterval(autoRefreshInterval);
+            }
+        });
+
+        // Initial load
+        loadBlackboard();
+
+        // Start auto-refresh
+        autoRefreshInterval = setInterval(loadBlackboard, 3000);
+    </script>
+</body>
+</html>

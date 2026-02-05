@@ -71,7 +71,9 @@ AGENT_TRUST_LEVELS = {
     "improver": 0.7,
     "learner": 0.8,
     "memory": 0.9,
-    "validator": 0.8
+    "validator": 0.8,
+    "pantheon": 0.95,      # High trust - coordinates all agents
+    "orchestrator": 0.9    # High trust - coordination role
 }
 
 # ============================================================================
