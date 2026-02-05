@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blackboard Coordination Dashboard - ZEJZL.NET Pantheon</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+            color: #a8d5ff;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .panel:hover {
+            transform: translateY(-5px);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .panel-title {
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+
+        .refresh-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-active {
+            background: #4ade80;
+            box-shadow: 0 0 10px #4ade80;
+        }
+
+        .status-warning {
+            background: #fbbf24;
+            box-shadow: 0 0 10px #fbbf24;
+        }
+
+        .status-critical {
+            background: #ef4444;
+            box-shadow: 0 0 10px #ef4444;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .blackboard-entries {
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .blackboard-entry {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #60a5fa;
+        }
+
+        .blackboard-key {
+            font-weight: 600;
+            color: #93c5fd;
+            margin-bottom: 5px;
+            font-size: 1.1em;
+        }
+
+        .blackboard-value {
+            color: #e0e0e0;
+            word-break: break-word;
+            font-family: 'Courier New', monospace;
+        }
+
+        .budget-bar {
+            width: 100%;
+            height: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 15px 0;
+            position: relative;
+        }
+
+        .budget-fill {
+            height: 100%;
+            transition: width 0.5s ease;
+            background: linear-gradient(90deg, #4ade80 0%, #fbbf24 70%, #ef4444 90%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .budget-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-box {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 5px;
+            color: #60a5fa;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .agent-card {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .agent-name {
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .agent-trust {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+
+        .audit-log {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .audit-entry {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+            border-left: 3px solid #60a5fa;
+        }
+
+        .audit-timestamp {
+            color: #93c5fd;
+            font-size: 0.85em;
+            margin-bottom: 5px;
+        }
+
+        .permission-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin: 2px;
+            font-weight: 600;
+        }
+
+        .permission-granted {
+            background: rgba(74, 222, 128, 0.3);
+            color: #4ade80;
+        }
+
+        .permission-denied {
+            background: rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            opacity: 0.6;
+            font-style: italic;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2em;
+            opacity: 0.7;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .last-updated {
+            text-align: center;
+            margin-top: 20px;
+            opacity: 0.7;
+            font-size: 0.9em;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .auto-refresh-toggle {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 20px;
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }
+
+        .auto-refresh-toggle.active {
+            background: rgba(74, 222, 128, 0.3);
+            border-color: #4ade80;
+        }
+
+        .auto-refresh-toggle:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔮 Blackboard Coordination Dashboard</h1>
+            <p class="subtitle">ZEJZL.NET 9-Agent Pantheon • Real-Time Monitoring</p>
+        </header>
+
+        <div class="controls">
+            <button id="autoRefreshToggle" class="auto-refresh-toggle active">
+                <span id="toggleIcon">⏸️</span> Auto-Refresh: <span id="toggleStatus">ON</span> (5s)
+            </button>
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- Blackboard State Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div>
+                        <span class="status-indicator status-active"></span>
+                        <span class="panel-title">Blackboard State</span>
+                    </div>
+                    <button class="refresh-btn" onclick="loadBlackboard()">🔄 Refresh</button>
+                </div>
+                <div id="blackboardContent" class="blackboard-entries">
+                    <div class="loading">Loading blackboard data...</div>
+                </div>
+            </div>
+
+            <!-- Budget Tracking Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div>
+                        <span id="budgetStatus" class="status-indicator status-active"></span>
+                        <span class="panel-title">Budget Tracking</span>
+                    </div>
+                    <button class="refresh-btn" onclick="loadBudgetStatus()">🔄 Refresh</button>
+                </div>
+                <div id="budgetContent">
+                    <div class="loading">Loading budget data...</div>
+                </div>
+            </div>
+
+            <!-- Agent Trust Levels Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div>
+                        <span class="status-indicator status-active"></span>
+                        <span class="panel-title">Agent Trust Levels</span>
+                    </div>
+                </div>
+                <div id="agentContent">
+                    <div class="loading">Loading agent data...</div>
+                </div>
+            </div>
+
+            <!-- Audit Log Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div>
+                        <span class="status-indicator status-active"></span>
+                        <span class="panel-title">Permission Audit Log</span>
+                    </div>
+                    <button class="refresh-btn" onclick="loadAuditLog()">🔄 Refresh</button>
+                </div>
+                <div id="auditContent" class="audit-log">
+                    <div class="loading">Loading audit log...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="last-updated">
+            Last updated: <span id="lastUpdated">--:--:--</span>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let autoRefreshInterval = null;
+        let autoRefreshEnabled = true;
+
+        async function loadBlackboard() {
+            try {
+                const response = await fetch(`${API_BASE}/swarm/blackboard`);
+                const data = await response.json();
+                
+                const container = document.getElementById('blackboardContent');
+                
+                if (data.entries && Object.keys(data.entries).length > 0) {
+                    container.innerHTML = Object.entries(data.entries)
+                        .map(([key, value]) => `
+                            <div class="blackboard-entry">
+                                <div class="blackboard-key">${escapeHtml(key)}</div>
+                                <div class="blackboard-value">${escapeHtml(String(value))}</div>
+                            </div>
+                        `).join('');
+                } else {
+                    container.innerHTML = '<div class="empty-state">No entries in blackboard</div>';
+                }
+                
+                updateTimestamp();
+            } catch (error) {
+                console.error('Error loading blackboard:', error);
+                document.getElementById('blackboardContent').innerHTML = 
+                    '<div class="empty-state">Error loading blackboard data</div>';
+            }
+        }
+
+        async function loadBudgetStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/swarm/budget/global`);
+                const data = await response.json();
+                
+                const container = document.getElementById('budgetContent');
+                
+                if (data.tasks && data.tasks.length > 0) {
+                    const totalUsed = data.tasks.reduce((sum, t) => sum + (t.tokens_used || 0), 0);
+                    const totalLimit = data.tasks.reduce((sum, t) => sum + (t.budget_limit || 0), 0);
+                    const percentage = totalLimit > 0 ? (totalUsed / totalLimit) * 100 : 0;
+                    
+                    let statusClass = 'status-active';
+                    if (percentage >= 90) statusClass = 'status-critical';
+                    else if (percentage >= 80) statusClass = 'status-warning';
+                    
+                    document.getElementById('budgetStatus').className = `status-indicator ${statusClass}`;
+                    
+                    container.innerHTML = `
+                        <div class="budget-bar">
+                            <div class="budget-fill" style="width: ${Math.min(percentage, 100)}%">
+                                ${percentage.toFixed(1)}%
+                            </div>
+                        </div>
+                        <div class="budget-stats">
+                            <div class="stat-box">
+                                <div class="stat-value">${totalUsed.toLocaleString()}</div>
+                                <div class="stat-label">Tokens Used</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-value">${totalLimit.toLocaleString()}</div>
+                                <div class="stat-label">Total Budget</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-value">${data.tasks.length}</div>
+                                <div class="stat-label">Active Tasks</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-value">${(totalLimit - totalUsed).toLocaleString()}</div>
+                                <div class="stat-label">Remaining</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = '<div class="empty-state">No active budget tracking</div>';
+                    document.getElementById('budgetStatus').className = 'status-indicator status-active';
+                }
+                
+                updateTimestamp();
+            } catch (error) {
+                console.error('Error loading budget:', error);
+                document.getElementById('budgetContent').innerHTML = 
+                    '<div class="empty-state">Error loading budget data</div>';
+            }
+        }
+
+        function loadAgentTrustLevels() {
+            const agents = [
+                { name: 'pantheon', trust: 0.95, role: 'Coordinator' },
+                { name: 'orchestrator', trust: 0.90, role: 'Orchestration' },
+                { name: 'memory', trust: 0.90, role: 'Context' },
+                { name: 'analyzer', trust: 0.80, role: 'Analysis' },
+                { name: 'learner', trust: 0.80, role: 'Learning' },
+                { name: 'validator', trust: 0.80, role: 'Quality' },
+                { name: 'reasoner', trust: 0.70, role: 'Logic' },
+                { name: 'improver', trust: 0.70, role: 'Optimization' },
+                { name: 'actor', trust: 0.50, role: 'Execution' },
+                { name: 'executor', trust: 0.50, role: 'Tasks' }
+            ];
+            
+            const container = document.getElementById('agentContent');
+            container.innerHTML = agents
+                .sort((a, b) => b.trust - a.trust)
+                .map(agent => `
+                    <div class="agent-card">
+                        <div>
+                            <div class="agent-name">${agent.name.charAt(0).toUpperCase() + agent.name.slice(1)}</div>
+                            <div style="font-size: 0.85em; opacity: 0.7; margin-top: 3px;">${agent.role}</div>
+                        </div>
+                        <div class="agent-trust">Trust: ${(agent.trust * 100).toFixed(0)}%</div>
+                    </div>
+                `).join('');
+        }
+
+        async function loadAuditLog() {
+            try {
+                const response = await fetch(`${API_BASE}/swarm/audit`);
+                const data = await response.json();
+                
+                const container = document.getElementById('auditContent');
+                
+                if (data.entries && data.entries.length > 0) {
+                    container.innerHTML = data.entries
+                        .slice(0, 20)
+                        .map(entry => {
+                            const isGranted = entry.granted || entry.decision === 'approved';
+                            const badgeClass = isGranted ? 'permission-granted' : 'permission-denied';
+                            const badgeText = isGranted ? 'GRANTED' : 'DENIED';
+                            
+                            return `
+                                <div class="audit-entry">
+                                    <div class="audit-timestamp">${new Date(entry.timestamp).toLocaleString()}</div>
+                                    <div>
+                                        <strong>${escapeHtml(entry.agent_id || 'unknown')}</strong> 
+                                        requested <strong>${escapeHtml(entry.resource_type || entry.permission_type || 'unknown')}</strong>
+                                    </div>
+                                    <div style="margin-top: 5px;">
+                                        <span class="permission-badge ${badgeClass}">${badgeText}</span>
+                                        ${entry.reason ? `<span style="opacity: 0.8; margin-left: 8px;">${escapeHtml(entry.reason)}</span>` : ''}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                } else {
+                    container.innerHTML = '<div class="empty-state">No audit entries yet</div>';
+                }
+                
+                updateTimestamp();
+            } catch (error) {
+                console.error('Error loading audit log:', error);
+                document.getElementById('auditContent').innerHTML = 
+                    '<div class="empty-state">Error loading audit log</div>';
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function updateTimestamp() {
+            const now = new Date();
+            document.getElementById('lastUpdated').textContent = now.toLocaleTimeString();
+        }
+
+        function startAutoRefresh() {
+            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+            
+            autoRefreshInterval = setInterval(() => {
+                if (autoRefreshEnabled) {
+                    loadBlackboard();
+                    loadBudgetStatus();
+                    loadAuditLog();
+                }
+            }, 5000);
+        }
+
+        document.getElementById('autoRefreshToggle').addEventListener('click', function() {
+            autoRefreshEnabled = !autoRefreshEnabled;
+            const button = this;
+            const icon = document.getElementById('toggleIcon');
+            const status = document.getElementById('toggleStatus');
+            
+            if (autoRefreshEnabled) {
+                button.classList.add('active');
+                icon.textContent = '⏸️';
+                status.textContent = 'ON';
+                startAutoRefresh();
+            } else {
+                button.classList.remove('active');
+                icon.textContent = '▶️';
+                status.textContent = 'OFF';
+            }
+        });
+
+        window.addEventListener('load', () => {
+            loadBlackboard();
+            loadBudgetStatus();
+            loadAgentTrustLevels();
+            loadAuditLog();
+            startAutoRefresh();
+        });
+    </script>
+</body>
+</html>

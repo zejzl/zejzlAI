@@ -246,7 +246,12 @@ async def dashboard_page(request: Request):
 @app.get("/blackboard", response_class=HTMLResponse)
 async def blackboard_page(request: Request):
     """Blackboard coordination dashboard"""
-    return templates.TemplateResponse("blackboard.html", {"request": request})
+    try:
+        with open("static/blackboard_dashboard.html", "r", encoding="utf-8") as f:
+            html_content = f.read()
+        return HTMLResponse(content=html_content)
+    except FileNotFoundError:
+        return HTMLResponse("<h1>Blackboard Dashboard Not Found</h1><p>Please ensure blackboard_dashboard.html exists in the static/ directory.</p>", status_code=404)
 
 @app.get("/api/status")
 async def get_status():
@@ -828,6 +833,7 @@ async def get_swarm_blackboard():
         state = dashboard.swarm.get_blackboard_state()
         return JSONResponse({
             "success": True,
+            "entries": state,
             "state": state,
             "key_count": len(state)
         })
@@ -857,6 +863,106 @@ async def get_swarm_blackboard_key(key: str):
     
     except Exception as e:
         logger.error(f"[SWARM] Blackboard key endpoint error: {e}")
+        return JSONResponse({
+            "error": str(e)
+        }, status_code=500)
+
+
+@app.get("/api/swarm/budget/global")
+async def get_swarm_budget_global():
+    """Get aggregated budget status across all tasks"""
+    try:
+        if not dashboard.swarm:
+            return JSONResponse({
+                "error": "Pantheon Swarm not initialized"
+            }, status_code=503)
+        
+        budget_file = Path(dashboard.swarm.data_dir) / "budget_tracking.json"
+        
+        if not budget_file.exists():
+            return JSONResponse({
+                "success": True,
+                "tasks": [],
+                "total_used": 0,
+                "total_limit": 0
+            })
+        
+        with open(budget_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        tasks = data.get("tasks", {})
+        task_list = []
+        total_used = 0
+        total_limit = 0
+        
+        for task_id, task_data in tasks.items():
+            tokens_used = task_data.get("tokens_used", 0)
+            budget_limit = task_data.get("budget_limit", 0)
+            
+            task_list.append({
+                "task_id": task_id,
+                "tokens_used": tokens_used,
+                "budget_limit": budget_limit,
+                "percentage": (tokens_used / budget_limit * 100) if budget_limit > 0 else 0,
+                "status": task_data.get("status", "active"),
+                "last_updated": task_data.get("last_updated", "")
+            })
+            
+            total_used += tokens_used
+            total_limit += budget_limit
+        
+        return JSONResponse({
+            "success": True,
+            "tasks": sorted(task_list, key=lambda x: x["percentage"], reverse=True),
+            "total_used": total_used,
+            "total_limit": total_limit,
+            "global_percentage": (total_used / total_limit * 100) if total_limit > 0 else 0
+        })
+    
+    except Exception as e:
+        logger.error(f"[SWARM] Global budget endpoint error: {e}")
+        return JSONResponse({
+            "error": str(e)
+        }, status_code=500)
+
+
+@app.get("/api/swarm/audit")
+async def get_swarm_audit_log():
+    """Get permission audit log entries"""
+    try:
+        if not dashboard.swarm:
+            return JSONResponse({
+                "error": "Pantheon Swarm not initialized"
+            }, status_code=503)
+        
+        audit_file = Path(dashboard.swarm.data_dir) / "audit_log.jsonl"
+        
+        if not audit_file.exists():
+            return JSONResponse({
+                "success": True,
+                "entries": []
+            })
+        
+        entries = []
+        with open(audit_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                if line.strip():
+                    try:
+                        entry = json.loads(line)
+                        entries.append(entry)
+                    except json.JSONDecodeError:
+                        continue
+        
+        entries.reverse()
+        
+        return JSONResponse({
+            "success": True,
+            "entries": entries[:100],
+            "total_count": len(entries)
+        })
+    
+    except Exception as e:
+        logger.error(f"[SWARM] Audit log endpoint error: {e}")
         return JSONResponse({
             "error": str(e)
         }, status_code=500)
