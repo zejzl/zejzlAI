@@ -1167,7 +1167,7 @@ class GrokProvider(AIProvider):
     
     @property
     def default_model(self) -> str:
-        return "grok-4-fast-reasoning"
+        return "grok-3"  # Updated: old models deprecated, using grok-3
     
     async def initialize(self):
         self.session = aiohttp.ClientSession(

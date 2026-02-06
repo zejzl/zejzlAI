@@ -487,7 +487,7 @@ class DashboardServer:
             if PantheonSwarm:
                 self.swarm = PantheonSwarm(
                     pantheon_config_path="pantheon_config.json",
-                    model="grok-4-fast-reasoning",
+                    model="grok-3",
                     verbose=False,  # Set True for debugging
                 )
                 logger.info(
@@ -1331,7 +1331,7 @@ async def chat_swarm_endpoint(request: Request):
         data = await request.json()
         message = data.get("message", "")
         budget = data.get("budget", 10000)  # Default 10K tokens
-        provider = data.get("provider", "grok-4-fast-reasoning")
+        provider = data.get("provider", "grok-3")
 
         # Auto-detect required permissions from message
         permissions = []
