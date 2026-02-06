@@ -269,7 +269,7 @@ async def example_usage():
     # Initialize swarm
     swarm = PantheonSwarm(
         pantheon_config_path="pantheon_config.json",
-        model="grok-3",  # Use Grok (latest model)
+        model="grok-4-1-fast-reasoning",  # Use Grok (fast + reasoning)
         verbose=True
     )
     

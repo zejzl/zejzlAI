@@ -467,7 +467,7 @@ def test_pantheon_rlm():
     
     parser = argparse.ArgumentParser(description="Test Pantheon RLM")
     parser.add_argument("--config", default="pantheon_config.json", help="Pantheon config path")
-    parser.add_argument("--model", default="grok-3", help="Model to use")
+    parser.add_argument("--model", default="grok-4-1-fast-reasoning", help="Model to use")
     parser.add_argument("--task", default="Explain what Training-Free GRPO is and why it matters", help="Test task")
     args = parser.parse_args()
     

@@ -47,7 +47,7 @@ class AgentConfig:
     role: str
     channels: List[str]  # Channels this agent listens to
     api_provider: str = "grok"  # Default to Grok
-    model: str = "grok-3"
+    model: str = "grok-4-1-fast-reasoning"
     max_retries: int = 3
     timeout: float = 30.0
 
