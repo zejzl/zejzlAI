@@ -1,5 +1,6 @@
 # src/agents/improver.py
 import asyncio
+import json
 import logging
 from typing import Any, Dict, Optional
 
@@ -121,15 +122,51 @@ Provide your response as a JSON object with this structure:
             )
 
             # Parse JSON response
-            import json
             try:
                 improvement_data = json.loads(response)
+                
+                # Parse fields that might be stringified JSON arrays
+                magic_improvements = improvement_data.get("magic_improvements", [])
+                if isinstance(magic_improvements, str) and magic_improvements.strip().startswith('['):
+                    try:
+                        magic_improvements = json.loads(magic_improvements)
+                    except json.JSONDecodeError:
+                        magic_improvements = []
+                
+                system_optimizations = improvement_data.get("system_optimizations", [])
+                if isinstance(system_optimizations, str) and system_optimizations.strip().startswith('['):
+                    try:
+                        system_optimizations = json.loads(system_optimizations)
+                    except json.JSONDecodeError:
+                        system_optimizations = []
+                
+                architectural_changes = improvement_data.get("architectural_changes", [])
+                if isinstance(architectural_changes, str) and architectural_changes.strip().startswith('['):
+                    try:
+                        architectural_changes = json.loads(architectural_changes)
+                    except json.JSONDecodeError:
+                        architectural_changes = []
+                
+                monitoring_enhancements = improvement_data.get("monitoring_enhancements", [])
+                if isinstance(monitoring_enhancements, str) and monitoring_enhancements.strip().startswith('['):
+                    try:
+                        monitoring_enhancements = json.loads(monitoring_enhancements)
+                    except json.JSONDecodeError:
+                        monitoring_enhancements = []
+                
+                priority_actions = improvement_data.get("priority_actions", [])
+                if isinstance(priority_actions, str) and priority_actions.strip().startswith('['):
+                    try:
+                        priority_actions = json.loads(priority_actions)
+                    except json.JSONDecodeError:
+                        priority_actions = []
+                
                 result = {
-                    "magic_improvements": improvement_data.get("magic_improvements", []),
-                    "system_optimizations": improvement_data.get("system_optimizations", []),
-                    "architectural_changes": improvement_data.get("architectural_changes", []),
-                    "monitoring_enhancements": improvement_data.get("monitoring_enhancements", []),
-                    "priority_actions": improvement_data.get("priority_actions", []),
+                    "magic_improvements": magic_improvements,
+                    "system_optimizations": system_optimizations,
+                    "architectural_changes": architectural_changes,
+                    "monitoring_enhancements": monitoring_enhancements,
+                    "priority_actions": priority_actions,
                     "long_term_vision": improvement_data.get("long_term_vision", "Continuous improvement through magic integration"),
                     "timestamp": asyncio.get_event_loop().time(),
                     "ai_generated": True

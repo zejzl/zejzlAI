@@ -1,6 +1,8 @@
 # src/agents/observer.py
 import asyncio
+import json
 import logging
+import re
 from typing import Any, Dict, Optional
 
 logger = logging.getLogger("ObserverAgent")
@@ -87,9 +89,6 @@ estimated_effort: "Medium" """
 
             # If TOON/JSON parsing failed, try fallback extraction
             if not isinstance(observation_data, dict):
-                import json
-                import re
-
                 def extract_json_from_text(text):
                     """Extract JSON from text that might contain extra content"""
                     # Look for JSON-like content
@@ -123,14 +122,50 @@ estimated_effort: "Medium" """
                 if not observation_data:
                     raise json.JSONDecodeError("Could not parse JSON from AI response", response, 0)
 
+            # Parse fields that might be stringified JSON arrays
+            requirements = observation_data.get("requirements", [task])
+            if isinstance(requirements, str) and requirements.strip().startswith('['):
+                try:
+                    requirements = json.loads(requirements)
+                except json.JSONDecodeError:
+                    requirements = [task]
+            
+            constraints = observation_data.get("constraints", [])
+            if isinstance(constraints, str) and constraints.strip().startswith('['):
+                try:
+                    constraints = json.loads(constraints)
+                except json.JSONDecodeError:
+                    constraints = []
+            
+            resources_needed = observation_data.get("resources_needed", ["AI assistance"])
+            if isinstance(resources_needed, str) and resources_needed.strip().startswith('['):
+                try:
+                    resources_needed = json.loads(resources_needed)
+                except json.JSONDecodeError:
+                    resources_needed = ["AI assistance"]
+            
+            success_criteria = observation_data.get("success_criteria", ["Task completion"])
+            if isinstance(success_criteria, str) and success_criteria.strip().startswith('['):
+                try:
+                    success_criteria = json.loads(success_criteria)
+                except json.JSONDecodeError:
+                    success_criteria = ["Task completion"]
+            
+            potential_challenges = observation_data.get("potential_challenges", [])
+            if isinstance(potential_challenges, str) and potential_challenges.strip().startswith('['):
+                try:
+                    potential_challenges = json.loads(potential_challenges)
+                except json.JSONDecodeError:
+                    potential_challenges = []
+            
             observation = {
                 "task": task,
                 "objective": observation_data.get("objective", f"Complete: {task}"),
-                "requirements": observation_data.get("requirements", [task]),
-                "constraints": observation_data.get("constraints", []),
-                "resources_needed": observation_data.get("resources_needed", ["AI assistance"]),
-                "success_criteria": observation_data.get("success_criteria", ["Task completion"]),
-                "potential_challenges": observation_data.get("potential_challenges", []),
+                "requirements": requirements,
+                "constraints": constraints,
+                "resources_needed": resources_needed,
+                "success_criteria": success_criteria,
+                "potential_challenges": potential_challenges,
                 "context": observation_data.get("context", "AI-generated analysis"),
                 "complexity_level": observation_data.get("complexity_level", "Medium"),
                 "estimated_effort": observation_data.get("estimated_effort", "Medium"),

@@ -1,5 +1,6 @@
 # src/agents/analyzer.py
 import asyncio
+import json
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -113,17 +114,32 @@ Provide your response as a JSON object with this structure:
             )
 
             # Parse JSON response
-            import json
             try:
                 analysis_data = json.loads(response)
+                
+                # Parse fields that might be stringified JSON arrays
+                recommendations = analysis_data.get("recommendations", [])
+                if isinstance(recommendations, str) and recommendations.strip().startswith('['):
+                    try:
+                        recommendations = json.loads(recommendations)
+                    except json.JSONDecodeError:
+                        recommendations = []
+                
+                alerts = analysis_data.get("alerts", [])
+                if isinstance(alerts, str) and alerts.strip().startswith('['):
+                    try:
+                        alerts = json.loads(alerts)
+                    except json.JSONDecodeError:
+                        alerts = []
+                
                 result = {
                     "basic_metrics": metrics,
                     "performance_metrics": analysis_data.get("performance_metrics", {}),
                     "efficiency_analysis": analysis_data.get("efficiency_analysis", {}),
                     "pattern_insights": analysis_data.get("pattern_insights", {}),
-                    "recommendations": analysis_data.get("recommendations", []),
+                    "recommendations": recommendations,
                     "health_score": analysis_data.get("health_score", 50),
-                    "alerts": analysis_data.get("alerts", []),
+                    "alerts": alerts,
                     "timestamp": asyncio.get_event_loop().time(),
                     "ai_generated": True
                 }

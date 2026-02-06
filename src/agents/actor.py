@@ -1,5 +1,6 @@
 # src/agents/actor.py
 import asyncio
+import json
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -98,13 +99,28 @@ Return ONLY valid JSON:
                 )
 
                 # Parse JSON response
-                import json
                 try:
                     action_data = json.loads(response)
+                    
+                    # Parse fields that might be stringified JSON arrays
+                    execution_steps = action_data.get("execution_steps", [])
+                    if isinstance(execution_steps, str) and execution_steps.strip().startswith('['):
+                        try:
+                            execution_steps = json.loads(execution_steps)
+                        except json.JSONDecodeError:
+                            execution_steps = []
+                    
+                    tools_needed = action_data.get("tools_needed", [])
+                    if isinstance(tools_needed, str) and tools_needed.strip().startswith('['):
+                        try:
+                            tools_needed = json.loads(tools_needed)
+                        except json.JSONDecodeError:
+                            tools_needed = []
+                    
                     result = {
                         "subtask": subtask,
-                        "execution_plan": action_data.get("execution_steps", []),
-                        "tools_needed": action_data.get("tools_needed", []),
+                        "execution_plan": execution_steps,
+                        "tools_needed": tools_needed,
                         "expected_outcome": action_data.get("expected_outcome", "Outcome not specified"),
                         "risk_mitigation": action_data.get("risk_mitigation", "No mitigation specified"),
                         "estimated_duration": action_data.get("estimated_duration", "Unknown"),

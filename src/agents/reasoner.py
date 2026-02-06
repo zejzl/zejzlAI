@@ -1,5 +1,6 @@
 # src/agents/reasoner.py
 import asyncio
+import json
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -88,14 +89,29 @@ Return ONLY valid JSON:
             )
 
             # Parse JSON response
-            import json
             try:
                 plan_data = json.loads(response)
+                
+                # Parse fields that might be stringified JSON arrays
+                subtasks = plan_data.get("subtasks", [])
+                if isinstance(subtasks, str) and subtasks.strip().startswith('['):
+                    try:
+                        subtasks = json.loads(subtasks)
+                    except json.JSONDecodeError:
+                        subtasks = []
+                
+                risks = plan_data.get("risks", [])
+                if isinstance(risks, str) and risks.strip().startswith('['):
+                    try:
+                        risks = json.loads(risks)
+                    except json.JSONDecodeError:
+                        risks = []
+                
                 plan = {
                     "observation": observation,
                     "analysis": plan_data.get("analysis", "Analysis not provided"),
-                    "subtasks": plan_data.get("subtasks", []),
-                    "risks": plan_data.get("risks", []),
+                    "subtasks": subtasks,
+                    "risks": risks,
                     "approach": plan_data.get("approach", "Approach not specified"),
                     "timestamp": asyncio.get_event_loop().time(),
                     "ai_generated": True
