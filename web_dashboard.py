@@ -113,6 +113,108 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="ZEJZL.NET Dashboard", version="1.0.0")
 
+# Security: Add CORS middleware
+from fastapi.middleware.cors import CORSMiddleware
+
+# Configure allowed origins (restrictive by default)
+allowed_origins = os.getenv("CORS_ORIGINS", "").split(",")
+if not allowed_origins or allowed_origins == [""]:
+    # Default to production origins only
+    allowed_origins = [
+        "https://zejzl-net.vercel.app",
+        "https://zejzl.net",
+    ]
+    # Add localhost for development
+    if os.getenv("ENVIRONMENT", "production") == "development":
+        allowed_origins.extend([
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://127.0.0.1:3000",
+        ])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Content-Type", "Authorization", "X-API-Key"],
+    max_age=3600,
+)
+
+logger.info(f"🔒 CORS configured for origins: {', '.join(allowed_origins)}")
+
+# Security: Import authentication system
+from src.auth import authenticate, optional_authenticate, RequireAuth, OptionalAuth, verify_api_key
+
+# Security: API Authentication Middleware
+@app.middleware("http")
+async def authenticate_api_requests(request: Request, call_next):
+    """
+    Middleware to authenticate all /api/* requests
+    
+    Public endpoints (no auth required):
+    - /api/status
+    - /api/health/*
+    - / (homepage and static assets)
+    """
+    # Public endpoints that don't require authentication
+    public_paths = [
+        "/api/status",
+        "/api/health",
+        "/api/health/detailed",
+        "/docs",
+        "/openapi.json",
+        "/redoc",
+    ]
+    
+    # Check if this is an API request that needs authentication
+    if request.url.path.startswith("/api/"):
+        # Skip authentication for public endpoints
+        if any(request.url.path.startswith(path) for path in public_paths):
+            return await call_next(request)
+        
+        # Require authentication for all other /api/* endpoints
+        api_key = request.headers.get("X-API-Key") or request.headers.get("Authorization", "").replace("Bearer ", "")
+        
+        if not api_key:
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "error": "Authentication required",
+                    "detail": "Include X-API-Key header or Authorization: Bearer token"
+                },
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+        
+        # Verify the API key
+        key_info = verify_api_key(api_key)
+        if not key_info:
+            logger.warning(f"Invalid API key attempted from {request.client.host}")
+            return JSONResponse(
+                status_code=401,
+                content={"error": "Invalid API key"},
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+        
+        # Add key info to request state for use in endpoints
+        request.state.auth_info = key_info
+        request.state.authenticated = True
+        
+        logger.info(f"✓ API request authenticated: {key_info['description']} -> {request.url.path}")
+    
+    # Continue to endpoint
+    response = await call_next(request)
+    
+    # Add security headers to all responses
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    
+    return response
+
+logger.info("🔒 API authentication middleware enabled")
+
 # Templates and static files
 import os
 
