@@ -1,5 +1,6 @@
 # src/agents/validator.py
 import asyncio
+import json
 import logging
 from typing import Any, Dict, Optional
 
@@ -241,9 +242,34 @@ Return ONLY valid JSON with quality assessment:
             )
 
             # Parse AI response
-            import json
             try:
                 quality_data = json.loads(response)
+                
+                # Parse fields that might be stringified JSON arrays
+                critical_issues = quality_data.get("critical_issues", [])
+                if isinstance(critical_issues, str) and critical_issues.strip().startswith('['):
+                    try:
+                        critical_issues = json.loads(critical_issues)
+                    except json.JSONDecodeError:
+                        critical_issues = []
+                
+                improvement_suggestions = quality_data.get("improvement_suggestions", [])
+                if isinstance(improvement_suggestions, str) and improvement_suggestions.strip().startswith('['):
+                    try:
+                        improvement_suggestions = json.loads(improvement_suggestions)
+                    except json.JSONDecodeError:
+                        improvement_suggestions = []
+                
+                subtask_validations = quality_data.get("subtask_validations", [])
+                if isinstance(subtask_validations, str) and subtask_validations.strip().startswith('['):
+                    try:
+                        subtask_validations = json.loads(subtask_validations)
+                    except json.JSONDecodeError:
+                        subtask_validations = []
+                
+                quality_data["critical_issues"] = critical_issues
+                quality_data["improvement_suggestions"] = improvement_suggestions
+                quality_data["subtask_validations"] = subtask_validations
                 quality_data["ai_generated"] = True
                 return quality_data
             except json.JSONDecodeError:
