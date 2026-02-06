@@ -12,29 +12,31 @@ xAI deprecated old Grok models on **September 15, 2025**:
 All API calls were failing with 404 errors, causing the framework to fall back to stub responses.
 
 ## Solution
-Updated all code to use `grok-3` (current model) instead of deprecated models.
+Updated all code to use `grok-4-1-fast-reasoning` (current model with reasoning capabilities) instead of deprecated models.
 
 ## Files Changed
-1. **ai_framework.py** - `GrokProvider.default_model` → `"grok-3"`
-2. **base.py** - `AgentConfig.model` → `"grok-3"`
-3. **pantheon_rlm.py** - CLI `--model` default → `"grok-3"`
-4. **pantheon_swarm.py** - `PantheonSwarm` initialization → `"grok-3"`
-5. **web_dashboard.py** - Swarm + chat endpoint defaults → `"grok-3"` (2 instances)
+1. **ai_framework.py** - `GrokProvider.default_model` → `"grok-4-1-fast-reasoning"`
+2. **base.py** - `AgentConfig.model` → `"grok-4-1-fast-reasoning"`
+3. **pantheon_rlm.py** - CLI `--model` default → `"grok-4-1-fast-reasoning"`
+4. **pantheon_swarm.py** - `PantheonSwarm` initialization → `"grok-4-1-fast-reasoning"`
+5. **web_dashboard.py** - Swarm + chat endpoint defaults → `"grok-4-1-fast-reasoning"` (3 instances)
 
 ## Testing
 
 ### Local Test (Before Deployment)
 ```bash
 $ python test_grok_direct.py
+Model: grok-4-1-fast-reasoning
 Response Status: 200
 Success! Response: Hello from Grok!
-Tokens used: {'prompt_tokens': 17, 'completion_tokens': 5, 'total_tokens': 22}
+Tokens used: {'prompt_tokens': 167, 'completion_tokens': 5, 'reasoning_tokens': 141}
 [PASS] Test passed!
 ```
 
 ### Backend API Test (Local)
 ```bash
 $ python test_backend_api.py
+Response from grok in 0.91s
 [SUCCESS] Response: Backend API working!
 [PASS] Real API response received!
 ```
@@ -53,9 +55,11 @@ Status Code: 200
 
 ## Deployment
 
-**Commit:** `f1876a5` - "Fix: Update Grok model to grok-3 (deprecated models no longer work)"
+**Commits:** 
+- `f1876a5` - "Fix: Update Grok model to grok-3 (deprecated models no longer work)"
+- `549a651` - "Update to grok-4-1-fast-reasoning (correct default model with reasoning)"
 
-**GitHub:** https://github.com/zejzl/zejzlAI/commit/f1876a5
+**GitHub:** https://github.com/zejzl/zejzlAI/commits/main
 
 **Render:** Auto-deployed from main branch
 
@@ -70,9 +74,9 @@ Status Code: 200
 - ❌ Website backend non-functional
 
 ### After Fix
-- ✅ Real AI responses from xAI Grok
-- ✅ Proper token usage tracking
-- ✅ 2-3 second response times
+- ✅ Real AI responses from xAI Grok (with reasoning)
+- ✅ Proper token usage tracking (includes reasoning tokens)
+- ✅ 0.9-1.5 second response times (faster with optimized model)
 - ✅ Full backend functionality restored
 
 ## Next Steps
