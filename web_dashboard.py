@@ -17,6 +17,10 @@ from fastapi import FastAPI, WebSocket, Request, BackgroundTasks, UploadFile, Fi
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.exceptions import RequestValidationError
+from pydantic import BaseModel, Field
+from typing import Optional
+import traceback
 import uvicorn
 from dotenv import load_dotenv
 
@@ -112,6 +116,68 @@ vault = CommunityVault()
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="ZEJZL.NET Dashboard", version="1.0.0")
+
+# --- Pydantic request models for validation ---
+
+class ChatRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=10000)
+    provider: str = Field(default="grok-4-1-fast-reasoning")
+    consensus: bool = Field(default=False)
+    stream: bool = Field(default=False)
+
+class ChatRLMRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=10000)
+    provider: str = Field(default="grok-4-1-fast-reasoning")
+    use_real_agents: bool = Field(default=True)
+
+class ChatSwarmRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=10000)
+    budget: int = Field(default=10000, ge=100, le=1000000)
+    provider: str = Field(default="grok-4-1-fast-reasoning")
+
+class OfflineToggleRequest(BaseModel):
+    enabled: bool = Field(default=False)
+
+# --- Global exception handlers (production-safe) ---
+
+IS_PRODUCTION = os.getenv("ENVIRONMENT", "production") != "development"
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle validation errors without exposing internal details."""
+    logger.warning(f"Validation error on {request.url.path}: {exc.errors()}")
+    # In production, only return field names and error types, not raw input
+    if IS_PRODUCTION:
+        safe_errors = [
+            {"field": ".".join(str(l) for l in e.get("loc", [])), "type": e.get("type", "unknown")}
+            for e in exc.errors()
+        ]
+        return JSONResponse(
+            status_code=422,
+            content={"error": "Validation error", "details": safe_errors},
+        )
+    # In development, return full details
+    return JSONResponse(
+        status_code=422,
+        content={"error": "Validation error", "details": exc.errors()},
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch-all handler: log real error, return generic message."""
+    logger.error(
+        f"Unhandled exception on {request.method} {request.url.path}: {exc}",
+        exc_info=True,
+    )
+    if IS_PRODUCTION:
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Internal server error"},
+        )
+    return JSONResponse(
+        status_code=500,
+        content={"error": "Internal server error", "detail": str(exc)},
+    )
 
 # Security: Add CORS middleware
 from fastapi.middleware.cors import CORSMiddleware
@@ -1304,13 +1370,11 @@ async def chat_endpoint(request: Request, background_tasks: BackgroundTasks):
     """Handle chat requests from the web interface"""
     try:
         data = await request.json()
-        message = data.get("message", "")
-        provider = data.get("provider", "grok-4-1-fast-reasoning")
-        consensus = data.get("consensus", False)
-        stream = data.get("stream", False)
-
-        if not message:
-            return {"error": "No message provided"}
+        chat_req = ChatRequest(**data)
+        message = chat_req.message
+        provider = chat_req.provider
+        consensus = chat_req.consensus
+        stream = chat_req.stream
 
         # Check for magic commands
         magic_commands = {
@@ -1373,8 +1437,8 @@ async def chat_endpoint(request: Request, background_tasks: BackgroundTasks):
         }
 
     except Exception as e:
-        logger.error(f"Chat endpoint error: {e}")
-        return {"error": str(e)}
+        logger.error(f"Chat endpoint error: {e}", exc_info=True)
+        return {"error": "Failed to process chat request" if IS_PRODUCTION else str(e)}
 
 
 @app.post("/api/chat-rlm")
@@ -1382,12 +1446,10 @@ async def chat_rlm_endpoint(request: Request):
     """Handle RLM (Recursive Language Model) chat requests with Pantheon agents"""
     try:
         data = await request.json()
-        message = data.get("message", "")
-        provider = data.get("provider", "grok-4-1-fast-reasoning")
-        use_real_agents = data.get("use_real_agents", True)
-
-        if not message:
-            return {"error": "No message provided"}
+        rlm_req = ChatRLMRequest(**data)
+        message = rlm_req.message
+        provider = rlm_req.provider
+        use_real_agents = rlm_req.use_real_agents
 
         # Initialize Pantheon RLM if not already done
         if not hasattr(dashboard, "_pantheon_rlm"):
@@ -1431,9 +1493,10 @@ async def chat_swarm_endpoint(request: Request):
     """Handle Pantheon Swarm chat requests with budget tracking and permission gates"""
     try:
         data = await request.json()
-        message = data.get("message", "")
-        budget = data.get("budget", 10000)  # Default 10K tokens
-        provider = data.get("provider", "grok-4-1-fast-reasoning")
+        swarm_req = ChatSwarmRequest(**data)
+        message = swarm_req.message
+        budget = swarm_req.budget
+        provider = swarm_req.provider
 
         # Auto-detect required permissions from message
         permissions = []
@@ -1449,9 +1512,6 @@ async def chat_swarm_endpoint(request: Request):
             permissions.append("PAYMENTS")
         if any(kw in message_lower for kw in ["email", "send", "notify", "alert"]):
             permissions.append("EMAIL")
-
-        if not message:
-            return JSONResponse({"error": "No message provided"}, status_code=400)
 
         if not dashboard.swarm:
             return JSONResponse(
