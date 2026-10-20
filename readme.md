@@ -237,6 +237,11 @@ python web_dashboard.py
 # Access at: http://localhost:8000
 ```
 
+**Authentication:** API routes require an API key sent in the `X-API-Key` header. Configure keys in `.env` as
+`ZEJZL_API_KEY_1=your_key:tier:description` (add `_2`, `_3`, ... for more). Without a key most routes return 401.
+For local development, set `ENVIRONMENT=development` to use a built-in insecure test key when no keys are configured.
+CORS origins are set with `CORS_ORIGINS`.
+
 Features:
 - **Live System Monitoring**: Real-time magic system status and AI provider health
 - **Interactive Chat**: Chat with AI agents using single or consensus mode
@@ -245,36 +250,12 @@ Features:
 - **Debug Panel**: System snapshots, logs, performance metrics, and health checks
 - **WebSocket Updates**: Live status updates without page refresh
 
-### Debug CLI Tool
+### Debugging
 
-Command-line interface for advanced debugging and monitoring:
-
-```bash
-# System status overview
-python debug_cli.py status
-
-# View recent debug logs (last 20 entries)
-python debug_cli.py logs
-
-# View performance metrics
-python debug_cli.py performance
-
-# Create system snapshot
-python debug_cli.py snapshot
-
-# Clear debug logs
-python debug_cli.py clear-logs
-
-# Set logging level
-python debug_cli.py set-level --log-level DEBUG
-```
-
-Debug Features:
-- **System Snapshots**: Complete system state captures for analysis
-- **Request Tracing**: Track individual requests through the system
-- **Performance Profiling**: Detailed timing and resource usage metrics
-- **Log Analysis**: Structured logging with search and filtering
-- **Health Monitoring**: Comprehensive system health checks
+The standalone `debug_cli.py` tool was removed in the repository cleanup. Structured logging, request tracing and the
+performance monitor live in `src/logging_debug.py` and `src/performance.py`, and the web dashboard has a debug panel
+(system snapshots, logs, performance metrics, health checks). Logs are written to `ai_framework.log` and stdout;
+set the level with `LOG_LEVEL`.
 
 ### Interactive Menu
 
@@ -288,72 +269,42 @@ Available modes:
 1. **Single Agent** - Simple Observer → Reasoner → Actor loop
 2. **Collaboration Mode** - Grok + Claude dual AI planning
 3. **Swarm Mode** - Multi-agent async coordination
-4. **Pantheon Mode** - Full 9-agent orchestration with personalities
-5. **Consensus Mode** - Multi-provider consensus with fallback logic
-6. **Improver Manual** - Self-improvement on sessions
-7. **Offline Mode** - Cached/local fallback
-8. **Community Vault Sync** - Share evolutions and tools
-9. **Save Game** - Persist session progress
+4. **Pantheon Mode** - Full 9-agent orchestration with validation and learning
+5. **Learning Loop** - Single optimization cycle for system improvement
+6. **Offline Mode** - Cached responses for offline operation
+7. **Community Vault** - Browse and share tools, configs and evolutions
+8. **ORAM Mode** - Observer-Reasoner-Actor + Memory iterative processing
+9. **Quit**
+
+Modes that call an AI provider need at least one API key in `.env`; without one they print
+`[ERROR] No AI providers available` and return. Each mode shuts down the shared provider bus on exit.
 
 ### Running Tests
 
-**Run test suite:**
+The pytest suite and the manual test scripts were removed in the repository cleanup, so there is no `pytest` run to do.
+These checks work on the current tree:
+
 ```bash
-# All tests
-python -m pytest test_basic.py test_integration.py -v
+# 1. Syntax check every file
+python -m compileall -q .
 
-# Specific tests
-python -m pytest test_integration.py::test_full_pantheon_orchestration -v
+# 2. Import every module under src/ (data_science.py is skipped: it needs pandas, which is not in requirements.txt)
+python -c "import importlib, pathlib; [importlib.import_module('.'.join(f.with_suffix('').parts)) for f in pathlib.Path('src').rglob('*.py') if f.name not in ('__init__.py', 'data_science.py')]"
 
-# With coverage
-python -m pytest --cov=. --cov-report=html
+# 3. Dashboard smoke test (pip install httpx first): public pages return 200,
+#    protected API routes 401, and nothing should return 5xx
+python -c "from fastapi.testclient import TestClient; import web_dashboard; print(TestClient(web_dashboard.app).get('/').status_code)"
+
+# 4. Provider connectivity (needs a real key)
+python ai_framework.py chat claude "test"
 ```
 
-**Test Phase 3 enhancements:**
-```bash
-python example_enhanced.py
-python example_enhanced.py --interactive
-```
+To check the Redis fallback, stop Redis and confirm the framework logs one warning and continues with SQLite.
 
-**Debug and monitoring:**
-```bash
-# Debug CLI for system analysis
-python debug_cli.py status              # System status overview
-python debug_cli.py logs                # View recent debug logs
-python debug_cli.py performance         # Performance metrics
-python debug_cli.py snapshot            # Create system snapshot
-python debug_cli.py clear-logs          # Clear debug logs
-python debug_cli.py set-level --log-level DEBUG  # Set log level
-```
-
-**Manual testing:**
-
-**Full 9-agent pantheon test:**
-```bash
-python 9agent_pantheon_test.py
-```
-
-**Single agent with validation:**
-```bash
-python single_session_test_loop.py
-```
-
-**Simple interactive session:**
-```bash
-python interactive_session_example.py
-```
-
-**Run MCP integration tests:**
-```bash
-python test_mcp_integration.py
-```
+`.github/workflows/tests.yml` still references test scripts that no longer exist (`9agent_pantheon_test.py`,
+`single_session_test_loop.py`, `interactive_session_example.py`) and needs updating before CI can pass.
 
 ### Running MCP Servers
-
-**Test MCP Server (for development/testing):**
-```bash
-python src/mcp_servers/test_server.py --stdio
-```
 
 **Code Analysis MCP Server:**
 ```bash
@@ -392,7 +343,19 @@ SQLITE_PATH=~/.ai_framework.db
 # Runtime Settings
 DEFAULT_PROVIDER=chatgpt
 LOG_LEVEL=INFO
+ENVIRONMENT=production      # 'development' enables the insecure dev API key
+CORS_ORIGINS=http://localhost:8000
+
+# Web dashboard authentication (one per key: key:tier:description)
+ZEJZL_API_KEY_1=change-me:pro:Admin key
+
+# Stripe payments (optional)
+STRIPE_API_KEY=
+STRIPE_PUBLISHABLE_KEY=
+STRIPE_WEBHOOK_SECRET=
 ```
+
+`ANTHROPIC_API_KEY` is an Anthropic API key from console.anthropic.com; a claude.ai Pro/Max subscription cannot be used.
 
 ### Supported AI Providers
 
@@ -409,74 +372,45 @@ LOG_LEVEL=INFO
 ## Project Structure
 
 ```
-zejzl_net/
-├── ai_framework.py              # Core framework with AI providers + magic + consensus
+zejzlAI/
+├── ai_framework.py              # Core: message bus, persistence, AI providers, CLI
+├── base.py                      # PantheonAgent base class + shared AI provider bus
+├── main.py                      # Interactive menu entry point
+├── startup.py                   # Production entry point (Procfile)
+├── web_dashboard.py             # FastAPI web dashboard
 ├── messagebus.py                # Inter-agent message bus
-├── base.py                      # PantheonAgent base class
-├── web_dashboard.py             # FastAPI web dashboard (Phase 5)
-├── debug_cli.py                 # Debug CLI tool (Phase 6)
-├── rate_limiter.py              # Rate limiting system (Phase 3)
-├── telemetry.py                 # Performance tracking (Phase 3)
-├── main.py                      # Interactive CLI entry point
-├── example_enhanced.py          # Phase 3 feature demos
-├── token_haze.py                # Interactive onboarding tool (Phase 4)
-├── 9agent_pantheon_test.py      # Full orchestration test
-├── single_session_test_loop.py  # Single agent test
-├── interactive_session_example.py # Basic example
-├── test_basic.py                # Unit tests
-├── test_integration.py          # Integration tests
-├── test_magic_integration.py    # Magic system tests (Phase 4)
-├── test_mcp_integration.py      # MCP integration tests (Phase 10)
-├── orchestrate.sh               # Master orchestration script (Phase 4)
-├── start.sh                     # Quick start script (Phase 4)
-├── Dockerfile                   # Docker containerization (Phase 5)
-├── docker-compose.yml           # Docker orchestration (Phase 5)
-├── docker-entrypoint.sh         # Docker entrypoint script (Phase 5)
-├── ARCHITECTURE.md              # System architecture docs
-├── REDIS_SETUP.md               # Redis installation guide
-├── CLAUDE.md                    # Claude Code documentation
-├── AGENTS.md                    # Agent system + magic docs
-├── DOCKER_README.md             # Docker deployment guide (Phase 5)
-├── PHASE2_COMPLETE.md           # Phase 2 summary
-├── PHASE3_COMPLETE.md           # Phase 3 summary
-├── PHASE4_COMPLETE.md           # Phase 4 summary
-├── PHASE6_DEBUG_COMPLETE.md     # Phase 6 debugging summary (coming soon)
-├── pyproject.toml               # Build configuration
-├── requirements.txt             # Python dependencies
-├── .env.example                 # Environment template
-├── .dockerignore                # Docker ignore patterns (Phase 5)
+├── pantheon_swarm.py            # Swarm orchestration (budgets, permissions, blackboard)
+├── pantheon_rlm.py              # Pantheon RLM
+├── pantheon_rlm_integration.py  # RLM integration
+├── pantheon_config.json         # Swarm configuration
+├── offline_cache.py             # SQLite response cache (offline mode)
+├── community_vault.py           # Community vault
+├── rate_limiter.py              # Rate limiting
+├── telemetry.py                 # Performance tracking
+├── token_haze.py                # Interactive onboarding tool
+├── orchestrate.sh, start.sh     # Orchestration and quick-start scripts
+├── Dockerfile, docker-compose.yml, docker-entrypoint.sh
+├── Procfile, render.yaml, railway.json, runtime.txt   # Deployment config
+├── pyproject.toml, requirements.txt, .env.example
+├── *.md                         # Guides: REDIS_SETUP, DOCKER_README, DEPLOY_RENDER, MCP_*, PHASE*_COMPLETE, ...
+├── config/                      # mcp_servers.json
+├── docs/  blog/  skills/  scripts/
+├── templates/  static/          # Dashboard HTML and billing/blackboard/onboarding pages
+├── web/                         # Dashboard templates and static JS/CSS
 └── src/
-    ├── magic.py                 # Fairy magic self-healing system (Phase 4)
-    ├── agent_personality.py     # Agent personality framework (Phase 5)
-    ├── logging_debug.py         # Enhanced logging and debugging system (Phase 6)
-    ├── mcp_client.py            # MCP protocol client (Phase 9)
-    ├── mcp_types.py             # MCP type definitions (Phase 9)
-    ├── mcp_registry.py          # Multi-server registry (Phase 9)
-    ├── mcp_agent_integration.py # Agent MCP interface (Phase 9)
-    ├── mcp_agent_mixin.py       # MCP capabilities mixin (Phase 9)
-    ├── agents/                  # 9 agent implementations with personalities
-    │   ├── observer.py          # Enhanced with analytical personality
-    │   ├── observer_mcp.py      # MCP-enhanced observer (Phase 9)
-    │   ├── reasoner.py          # Enhanced with logical personality
-    │   ├── actor.py             # Enhanced with direct personality
-    │   ├── validator.py         # Enhanced with analytical personality
-    │   ├── memory.py
-    │   ├── executor.py
-    │   ├── analyzer.py          # Enhanced with technical personality
-    │   ├── learner.py           # Enhanced with learning loop (Phase 4)
-    │   └── improver.py          # Enhanced with creative personality (Phase 4)
-    ├── mcp_servers/             # MCP servers (Phase 9-10)
-    │   ├── base_server.py       # Abstract base server with JSON-RPC 2.0
-    │   ├── filesystem.py        # Filesystem operations (7 tools)
-    │   ├── database.py          # SQLite database access (6 tools)
-    │   ├── websearch.py         # DuckDuckGo search (3 tools)
-    │   ├── github.py            # GitHub API integration (8 tools)
-    │   ├── test_server.py      # Test server for MCP integration testing
-    │   ├── code_analysis.py     # Code analysis server (6 tools) - Phase 10
-    │   └── data_science.py      # Data science server (6 tools) - Phase 10
-    └── web/                     # Web dashboard templates (Phase 5)
-        └── templates/
-            └── dashboard.html   # Real-time monitoring interface
+    ├── magic.py                 # Fairy magic self-healing system
+    ├── auth.py                  # API key authentication and rate limiting
+    ├── payments.py              # Stripe integration (optional)
+    ├── agent_personality.py     # Agent personality framework
+    ├── logging_debug.py         # Structured logging and debug monitor
+    ├── mcp_client.py, mcp_types.py, mcp_registry.py, mcp_security.py
+    ├── mcp_agent_integration.py, mcp_agent_mixin.py
+    ├── task_manager.py, user_management.py, budget_alerts.py
+    ├── business_analytics.py, insight_engine.py, predictive_analytics.py
+    ├── agents/                  # observer, reasoner, actor, validator, memory, executor,
+    │                            # analyzer, learner, improver, consensus, observer_mcp, protocols
+    └── mcp_servers/             # base_server, filesystem, database, websearch, github,
+                                 # code_analysis, data_science
 ```
 
 ## Development
@@ -485,7 +419,7 @@ zejzl_net/
 
 1. Create agent file in `src/agents/{agent_name}.py`
 2. Implement async method with structured input/output
-3. Add to pantheon flow in `9agent_pantheon_test.py`
+3. Add to the pantheon flow in `run_pantheon_mode()` in `main.py`
 
 ### Adding a New AI Provider
 
@@ -618,7 +552,7 @@ docker-compose logs -f zejzl_net
 # 1. Install dependencies
 pip install -r requirements.txt
 
-# 2. Configure API keys (optional - works with stubs)
+# 2. Configure API keys (required for any mode that calls an AI provider)
 cp .env.example .env
 # Edit .env and add your API keys
 
@@ -626,13 +560,11 @@ cp .env.example .env
 ./start.sh                        # Quick start (bash)
 python main.py                    # Interactive menu
 python web_dashboard.py           # Web dashboard (port 8000)
-python example_enhanced.py        # Feature demos
 python token_haze.py              # Interactive onboarding
 python ai_framework.py status     # Check status
 
-# 4. Run tests
-python -m pytest test_basic.py test_integration.py -v
-python test_magic_integration.py  # Test magic system
+# 4. Check the install
+python -m compileall -q .         # Syntax check (see 'Running Tests' for more)
 ```
 
 ## Performance
