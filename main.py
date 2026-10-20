@@ -31,6 +31,19 @@ def select_provider():
 
     return provider_map.get(choice, "grok")
 
+
+async def run_with_cleanup(coro):
+    """Run a mode coroutine, then always stop the shared AI provider bus.
+
+    Without this the bus's SQLite connection thread stays alive and the
+    process never exits after a mode returns.
+    """
+    try:
+        await coro
+    finally:
+        from base import cleanup_ai_provider_bus
+        await cleanup_ai_provider_bus()
+
 # =============================================================================
 # COLLABORATION MODE IMPLEMENTATION PLAN
 # =============================================================================
@@ -899,28 +912,28 @@ def run_interactive_menu(debug: bool = True, max_iterations: int = 10, max_round
 
     if choice == "1":
         print("\n[Starting Single Agent Mode...]")
-        asyncio.run(run_single_agent_mode())
+        asyncio.run(run_with_cleanup(run_single_agent_mode()))
     elif choice == "2":
         print("\n[Starting Collaboration Mode...]")
-        asyncio.run(run_collaboration_mode())
+        asyncio.run(run_with_cleanup(run_collaboration_mode()))
     elif choice == "3":
         print("\n[Starting Swarm Mode...]")
-        asyncio.run(run_swarm_mode())
+        asyncio.run(run_with_cleanup(run_swarm_mode()))
     elif choice == "4":
         print("\n[Starting Pantheon Mode...]")
-        asyncio.run(run_pantheon_mode())
+        asyncio.run(run_with_cleanup(run_pantheon_mode()))
     elif choice == "5":
         print("\n[Starting Learning Loop Mode...]")
-        asyncio.run(run_learning_loop_mode())
+        asyncio.run(run_with_cleanup(run_learning_loop_mode()))
     elif choice == "6":
         print("\n[Starting Offline Mode...]")
-        asyncio.run(run_offline_mode())
+        asyncio.run(run_with_cleanup(run_offline_mode()))
     elif choice == "7":
         print("\n[Starting Community Vault Mode...]")
-        asyncio.run(run_vault_mode())
+        asyncio.run(run_with_cleanup(run_vault_mode()))
     elif choice == "8":
         print("\n[Starting ORAM Mode...]")
-        asyncio.run(run_oram_mode())
+        asyncio.run(run_with_cleanup(run_oram_mode()))
     elif choice == "9":
         print("\n        Goodbye! :)\n")
         input("        Press Enter to exit...")

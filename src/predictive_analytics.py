@@ -8,6 +8,7 @@ import asyncio
 import logging
 import json
 import os
+import sys
 import statistics
 import math
 from datetime import datetime, timedelta
@@ -871,7 +872,7 @@ predictive_engine = PredictiveAnalyticsEngine()
 
 async def main():
     """Main predictive analytics function"""
-    logger.info("🔮 Starting ZEJZL.NET Predictive Analytics Engine")
+    logger.info("Starting ZEJZL.NET Predictive Analytics Engine")
 
     # Sample data for demonstration
     revenue_data = [
@@ -923,7 +924,7 @@ async def main():
     for alert in all_alerts:
         await predictive_engine.save_alert(alert)
 
-    logger.info(f"✅ Generated 3 forecasts and {len(all_alerts)} alerts")
+    logger.info(f"[OK] Generated 3 forecasts and {len(all_alerts)} alerts")
 
 
 if __name__ == "__main__":

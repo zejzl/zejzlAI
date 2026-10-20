@@ -37,8 +37,13 @@ try:
     from toon_format import encode as toon_encode, decode as toon_decode
     TOON_AVAILABLE = True
 except ImportError:
-    TOON_AVAILABLE = False
-    print("Warning: toon_format not available. Install with: pip install toon_format")
+    try:
+        # python-toon (the package listed in requirements.txt) exposes module "toon"
+        from toon import encode as toon_encode, decode as toon_decode
+        TOON_AVAILABLE = True
+    except ImportError:
+        TOON_AVAILABLE = False
+        print("Warning: TOON library not available. Install with: pip install python-toon")
 
 import redis.asyncio as aioredis
 import aiosqlite

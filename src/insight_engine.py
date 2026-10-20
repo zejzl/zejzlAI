@@ -8,6 +8,7 @@ import asyncio
 import logging
 import json
 import os
+import sys
 import re
 import hashlib
 from datetime import datetime, timedelta
@@ -870,7 +871,7 @@ memory_engine = MemoryConsolidationEngine()
 
 async def main():
     """Main insight extraction and memory consolidation function"""
-    logger.info("🧠 Starting ZEJZL.NET Insight Extraction and Memory Consolidation")
+    logger.info("Starting ZEJZL.NET Insight Extraction and Memory Consolidation")
 
     # Sample data for demonstration
     performance_data = {
@@ -904,7 +905,7 @@ async def main():
     memories = await memory_engine.consolidate_insights(all_insights)
 
     logger.info(
-        f"✅ Extracted {len(all_insights)} insights and consolidated into {len(memories)} memories"
+        f"[OK] Extracted {len(all_insights)} insights and consolidated into {len(memories)} memories"
     )
 
 

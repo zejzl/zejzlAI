@@ -26,7 +26,8 @@ from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
-logger_env = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
+logger_env = logger
 logger_env.info(
     f"Environment loaded - GROK_API_KEY present: {bool(os.environ.get('GROK_API_KEY'))}"
 )
@@ -207,7 +208,7 @@ app.add_middleware(
     max_age=3600,
 )
 
-logger.info(f"🔒 CORS configured for origins: {', '.join(allowed_origins)}")
+logger.info(f"[SECURE] CORS configured for origins: {', '.join(allowed_origins)}")
 
 # Security: Import authentication system
 from src.auth import authenticate, optional_authenticate, RequireAuth, OptionalAuth, verify_api_key
@@ -266,7 +267,7 @@ async def authenticate_api_requests(request: Request, call_next):
         request.state.auth_info = key_info
         request.state.authenticated = True
         
-        logger.info(f"✓ API request authenticated: {key_info['description']} -> {request.url.path}")
+        logger.info(f"[OK] API request authenticated: {key_info['description']} -> {request.url.path}")
     
     # Continue to endpoint
     response = await call_next(request)
@@ -279,7 +280,7 @@ async def authenticate_api_requests(request: Request, call_next):
     
     return response
 
-logger.info("🔒 API authentication middleware enabled")
+logger.info("[SECURE] API authentication middleware enabled")
 
 # Templates and static files
 import os
@@ -659,7 +660,7 @@ class DashboardServer:
                     verbose=False,  # Set True for debugging
                 )
                 logger.info(
-                    "✓ Pantheon Swarm initialized with budget tracking & permission gates"
+                    "[OK] Pantheon Swarm initialized with budget tracking & permission gates"
                 )
             else:
                 logger.warning(
@@ -783,7 +784,7 @@ async def startup_event():
 @app.get("/", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
     """Main dashboard page"""
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    return templates.TemplateResponse(request, "dashboard.html")
 
 
 @app.get("/blackboard", response_class=HTMLResponse)

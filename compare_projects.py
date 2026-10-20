@@ -103,7 +103,7 @@ def compare_messagebus():
         print("     [OK] Pickle serialization")
         print("     [STATS] Performance: ~1-3K msg/sec, ~5-10ms latency")
     
-    print("\n💡 Recommendation:")
+    print("\n[INFO] Recommendation:")
     print("   Replace zejzl_net's MessageBus with grokputer's version")
     print("   Expected improvement: 5-15x throughput, 50-100x latency reduction")
 
@@ -132,7 +132,7 @@ def compare_memory():
         print("     [OK] Agent-specific namespaces")
     
     print(f"\n[ZEJZL] zejzl_net Memory: None (using basic Redis in ai_framework.py)")
-    print("\n💡 Recommendation:")
+    print("\n[INFO] Recommendation:")
     print("   Extract grokputer's memory/ module for structured memory management")
 
 
@@ -158,7 +158,7 @@ def compare_observability():
         print("     [OK] Real-time metrics")
     
     print(f"\n[ZEJZL] zejzl_net Observability: None")
-    print("\n💡 Recommendation:")
+    print("\n[INFO] Recommendation:")
     print("   Critical gap - extract performance_monitor.py and deadlock_detector.py")
 
 
@@ -191,7 +191,7 @@ def main():
     print(f"   Async files:  {len(zejzl_stats['async_files'])}/{zejzl_stats['python_files']}")
     
     # Large files
-    print(f"\n📄 LARGE FILES (>500 lines)")
+    print(f"\nLARGE FILES (>500 lines)")
     print("="*70)
     
     print("\n[GROKPUTER] Grokputer:")
@@ -216,7 +216,7 @@ def main():
     print("   2. src/exceptions.py             - Custom error hierarchy")
     print("   3. src/core/logging_config.py    - Structured logging")
     
-    print("\n⭐ HIGH PRIORITY:")
+    print("\nHIGH PRIORITY:")
     print("   4. src/memory/backends/redis_store.py - Redis memory backend")
     print("   5. src/observability/performance_monitor.py - Metrics")
     print("   6. src/observability/deadlock_detector.py - Debugging")

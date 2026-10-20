@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 import stripe
-from fastapi import HTTPException, APIRouter
+from fastapi import HTTPException, APIRouter, Request
 from pydantic import BaseModel
 
 # Configure logging

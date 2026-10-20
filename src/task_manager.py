@@ -13,6 +13,7 @@ from dataclasses import dataclass, asdict, field
 from enum import Enum
 import uuid
 import os
+import sys
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -153,7 +154,7 @@ class TaskManager:
                 id="proj-main",
                 name="ZEJZL.NET Development",
                 description="Main development project for zejzl.net AI framework",
-                target_date=datetime.now() + timedelta(days=90)
+                target_date=datetime.now() + timedelta(days=90),
                 milestones=["Phase 1: Revenue System", "Phase 2: Dev Velocity", "Phase 3: Intelligence Layer"]
             )
             self.projects[project.id] = project
@@ -462,28 +463,28 @@ task_manager = TaskManager()
 
 async def main():
     """Main function for task management system"""
-    logger.info("🚀 Starting ZEJZL.NET Task Management System")
+    logger.info("[START] Starting ZEJZL.NET Task Management System")
     
     await task_manager.initialize()
     
     # Display current status
     if "proj-main" in task_manager.projects:
         status = task_manager.get_project_status("proj-main")
-        logger.info(f"📊 Project Status: {json.dumps(status, indent=2)}")
+        logger.info(f"Project Status: {json.dumps(status, indent=2)}")
     
     # Display critical path
     critical_path = task_manager.calculate_critical_path()
     if critical_path:
-        logger.info(f"🔥 Critical Path: {' -> '.join(critical_path)}")
+        logger.info(f"Critical Path: {' -> '.join(critical_path)}")
     
     # Display resource allocation
     resources = task_manager.get_resource_allocation()
-    logger.info(f"⚖️  Resource Allocation: {json.dumps(resources, indent=2)}")
+    logger.info(f" Resource Allocation: {json.dumps(resources, indent=2)}")
     
     # Save current state
     await task_manager.save_data()
     
-    logger.info("✅ Task management system operational")
+    logger.info("[OK] Task management system operational")
 
 if __name__ == "__main__":
     asyncio.run(main())

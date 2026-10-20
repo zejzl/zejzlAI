@@ -11,7 +11,7 @@ from .multimodal_ai import (
     MultiModalMessage, MultiModalContent, MultiModalProvider,
     ModalityType, create_multimodal_message, combine_responses
 )
-from .ai_framework import Message, TokenUsage
+from ai_framework import Message, TokenUsage
 
 logger = logging.getLogger("MultiModalProcessing")
 

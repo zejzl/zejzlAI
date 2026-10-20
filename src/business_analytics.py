@@ -8,6 +8,7 @@ import asyncio
 import logging
 import json
 import os
+import sys
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Any, Optional, Union
 from dataclasses import dataclass, asdict, field
@@ -827,7 +828,7 @@ business_analytics = BusinessAnalyticsEngine()
 
 async def main():
     """Main business analytics function"""
-    logger.info("📊 Starting ZEJZL.NET Business Analytics Engine")
+    logger.info("Starting ZEJZL.NET Business Analytics Engine")
 
     await business_analytics.generate_business_intelligence_report()
 
@@ -848,7 +849,7 @@ async def main():
         "user_002", EventType.SUBSCRIPTION_START, {"tier": "pro", "revenue": 29.0}
     )
 
-    logger.info("✅ Business analytics engine operational")
+    logger.info("[OK] Business analytics engine operational")
 
 
 if __name__ == "__main__":

@@ -116,7 +116,7 @@ def get_valid_api_keys() -> Dict[str, Dict[str, str]]:
     # If no keys configured, log warning
     if not keys:
         logger.warning(
-            "⚠️ No API keys configured! "
+            "[WARNING] No API keys configured! "
             "Set ZEJZL_API_KEY_1=your_key:tier:description in .env"
         )
         
@@ -129,7 +129,7 @@ def get_valid_api_keys() -> Dict[str, Dict[str, str]]:
                 "tier": "pro",
                 "description": "Development Test Key"
             }
-            logger.info("🔓 Development mode: Using insecure test key")
+            logger.info("[UNSECURED] Development mode: Using insecure test key")
     
     return keys
 
@@ -219,7 +219,7 @@ async def authenticate(
     
     # Log successful authentication
     logger.info(
-        f"✓ Authenticated: {key_info['description']} "
+        f"[OK] Authenticated: {key_info['description']} "
         f"(tier: {key_info['tier']}) from {request.client.host}"
     )
     
@@ -260,7 +260,7 @@ def optional_authenticate(
             logger.warning(f"Rate limit exceeded for optional auth: {key_info['description']}")
             return None
         
-        logger.info(f"✓ Optional auth: {key_info['description']}")
+        logger.info(f"[OK] Optional auth: {key_info['description']}")
         return key_info
     
     return None

@@ -139,7 +139,7 @@ class PantheonSwarm:
                         )
                     
                     if self.verbose:
-                        print(f"[PERMISSION CHECK] ✓ Access granted to {resource}")
+                        print(f"[PERMISSION CHECK] [OK] Access granted to {resource}")
             
             # Execute task with Pantheon RLM
             if self.verbose:
@@ -281,10 +281,10 @@ async def example_usage():
     )
     
     if result1['success']:
-        print(f"\n✓ Result: {result1['result'][:200]}...")
-        print(f"✓ Budget used: {result1['estimated_tokens']:,} / 5,000 tokens")
+        print(f"\n[OK] Result: {result1['result'][:200]}...")
+        print(f"[OK] Budget used: {result1['estimated_tokens']:,} / 5,000 tokens")
     else:
-        print(f"\n✗ Failed: {result1.get('message', 'Unknown error')}")
+        print(f"\n[FAIL] Failed: {result1.get('message', 'Unknown error')}")
     
     # Example 2: Deployment task (requires DATABASE permission)
     print("\n[EXAMPLE 2] Deployment task (DATABASE permission required)")
@@ -295,10 +295,10 @@ async def example_usage():
     )
     
     if result2['success']:
-        print(f"\n✓ Result: {result2['result'][:200]}...")
-        print(f"✓ Budget used: {result2['estimated_tokens']:,} / 10,000 tokens")
+        print(f"\n[OK] Result: {result2['result'][:200]}...")
+        print(f"[OK] Budget used: {result2['estimated_tokens']:,} / 10,000 tokens")
     else:
-        print(f"\n✗ Failed: {result2.get('message', 'Unknown error')}")
+        print(f"\n[FAIL] Failed: {result2.get('message', 'Unknown error')}")
     
     # Example 3: Budget exhaustion test
     print("\n[EXAMPLE 3] Budget exhaustion test (very small budget)")
@@ -308,9 +308,9 @@ async def example_usage():
     )
     
     if result3['success']:
-        print(f"\n✓ Result: {result3['result'][:200]}...")
+        print(f"\n[OK] Result: {result3['result'][:200]}...")
     else:
-        print(f"\n✗ Failed (expected): {result3.get('message', 'Unknown error')}")
+        print(f"\n[FAIL] Failed (expected): {result3.get('message', 'Unknown error')}")
         print(f"   Error type: {result3.get('error', 'unknown')}")
 
 

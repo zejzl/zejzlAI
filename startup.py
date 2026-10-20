@@ -35,41 +35,41 @@ async def check_dependencies():
         import stripe
 
         dependencies["stripe"] = True
-        logger.info("✅ Stripe available")
+        logger.info("[OK] Stripe available")
     except ImportError:
-        logger.warning("⚠️ Stripe not available - payment system disabled")
+        logger.warning("[WARNING] Stripe not available - payment system disabled")
 
     try:
         import aiosqlite
 
         dependencies["aiosqlite"] = True
-        logger.info("✅ aiosqlite available")
+        logger.info("[OK] aiosqlite available")
     except ImportError:
-        logger.warning("⚠️ aiosqlite not available - user management disabled")
+        logger.warning("[WARNING] aiosqlite not available - user management disabled")
 
     try:
         import jwt
 
         dependencies["jwt"] = True
-        logger.info("✅ JWT available")
+        logger.info("[OK] JWT available")
     except ImportError:
-        logger.warning("⚠️ JWT not available - authentication disabled")
+        logger.warning("[WARNING] JWT not available - authentication disabled")
 
     try:
         from passlib.context import CryptContext
 
         dependencies["passlib"] = True
-        logger.info("✅ Passlib available")
+        logger.info("[OK] Passlib available")
     except ImportError:
-        logger.warning("⚠️ Passlib not available - password hashing disabled")
+        logger.warning("[WARNING] Passlib not available - password hashing disabled")
 
     try:
         import email_validator
 
         dependencies["email_validator"] = True
-        logger.info("✅ Email validator available")
+        logger.info("[OK] Email validator available")
     except ImportError:
-        logger.warning("⚠️ Email validator not available")
+        logger.warning("[WARNING] Email validator not available")
 
     return dependencies
 
@@ -109,25 +109,25 @@ async def create_minimal_app():
 
 async def main():
     """Main startup function"""
-    logger.info("🚀 Starting ZEJZL.NET Dashboard")
+    logger.info("[START] Starting ZEJZL.NET Dashboard")
 
     # Check dependencies
     deps = await check_dependencies()
 
     # Create app based on available dependencies
     if deps.get("stripe") and deps.get("aiosqlite"):
-        logger.info("🎯 Full features available - starting complete app")
+        logger.info("Full features available - starting complete app")
         # Import and start full app
         try:
             from web_dashboard import app
 
-            logger.info("✅ Full app loaded successfully")
+            logger.info("[OK] Full app loaded successfully")
         except Exception as e:
-            logger.error(f"❌ Failed to load full app: {e}")
-            logger.info("🔄 Falling back to minimal app")
+            logger.error(f"[ERROR] Failed to load full app: {e}")
+            logger.info("Falling back to minimal app")
             app = await create_minimal_app()
     else:
-        logger.info("🔄 Some dependencies missing - starting minimal app")
+        logger.info("Some dependencies missing - starting minimal app")
         app = await create_minimal_app()
 
     # Start server
@@ -135,7 +135,7 @@ async def main():
 
     port = int(os.environ.get("PORT", 8000))
 
-    logger.info(f"🌐 Server starting on port {port}")
+    logger.info(f"Server starting on port {port}")
     config = uvicorn.Config(app=app, host="0.0.0.0", port=port, log_level="info")
 
     server = uvicorn.Server(config)

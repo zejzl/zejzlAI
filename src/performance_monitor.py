@@ -306,7 +306,7 @@ class PerformanceMonitor:
                 # Log bottlenecks if any
                 if bottlenecks:
                     logger.warning(
-                        f"⚠️ Performance bottlenecks detected: {'; '.join(bottlenecks)}"
+                        f"[WARNING] Performance bottlenecks detected: {'; '.join(bottlenecks)}"
                     )
 
                 # Save metrics to file
@@ -474,7 +474,7 @@ performance_monitor = PerformanceMonitor()
 
 async def main():
     """Main performance monitoring function"""
-    logger.info("🔍 Starting ZEJZL.NET Performance Monitoring")
+    logger.info("Starting ZEJZL.NET Performance Monitoring")
 
     # Start monitoring in background
     monitor_task = asyncio.create_task(
@@ -489,14 +489,14 @@ async def main():
             # Log performance report
             report = performance_monitor.get_performance_report()
             logger.info(
-                f"📊 Performance Report: Uptime {report.get('summary', {}).get('uptime_percentage', 0)}%"
+                f"Performance Report: Uptime {report.get('summary', {}).get('uptime_percentage', 0)}%"
             )
 
             # Log recommendations if any issues
             recommendations = report.get("recommendations", [])
             if recommendations and recommendations != ["System performance is optimal"]:
                 for rec in recommendations:
-                    logger.warning(f"💡 Recommendation: {rec}")
+                    logger.warning(f"[INFO] Recommendation: {rec}")
 
     except KeyboardInterrupt:
         logger.info("Performance monitoring stopped by user")

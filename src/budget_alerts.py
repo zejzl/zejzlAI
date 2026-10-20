@@ -150,9 +150,9 @@ class BudgetAlertManager:
         
         # Determine emoji and color based on alert level
         emoji_map = {
-            "WARNING": "⚠️",
-            "CRITICAL": "🚨",
-            "EXHAUSTED": "🛑"
+            "WARNING": "[WARNING] ",
+            "CRITICAL": "[ALERT] ",
+            "EXHAUSTED": "[STOP] "
         }
         
         color_map = {
@@ -161,7 +161,7 @@ class BudgetAlertManager:
             "EXHAUSTED": 0         # Black
         }
         
-        emoji = emoji_map.get(alert_level, "⚠️")
+        emoji = emoji_map.get(alert_level, "[WARNING] ")
         color = color_map.get(alert_level, 16776960)
         
         # Create Discord embed
@@ -210,13 +210,13 @@ class BudgetAlertManager:
         # Add action recommendation
         if alert_level == "EXHAUSTED":
             embed["fields"].append({
-                "name": "⚠️ Action Required",
+                "name": "[WARNING] Action Required",
                 "value": "Budget exhausted - new requests will be blocked until budget is increased",
                 "inline": False
             })
         elif alert_level == "CRITICAL":
             embed["fields"].append({
-                "name": "⚠️ Action Recommended",
+                "name": "[WARNING] Action Recommended",
                 "value": "Budget nearly exhausted - consider increasing limit or optimizing task",
                 "inline": False
             })

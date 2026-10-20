@@ -166,7 +166,7 @@ deployment_pipeline() {
     run_cmd "docker-compose ps" "Checking container status"
     run_cmd "sleep 5 && curl -s http://localhost:8000/api/status | head -c 100" "Testing web dashboard"
 
-    echo -e "${GREEN}✓ Deployment to $env completed!${NC}"
+    echo -e "${GREEN}[OK] Deployment to $env completed!${NC}"
 }
 
 # Function for maintenance tasks
@@ -207,7 +207,7 @@ zejzl_demo() {
     run_cmd "sleep 5" "Waiting for services to initialize"
 
     # Test the AI framework
-    run_cmd "python -c 'import asyncio; from ai_framework import AsyncMessageBus; bus = AsyncMessageBus(); asyncio.run(bus.start()); asyncio.run(bus.stop()); print(\"✓ AI Framework operational\")'" "Testing AI framework"
+    run_cmd "python -c 'import asyncio; from ai_framework import AsyncMessageBus; bus = AsyncMessageBus(); asyncio.run(bus.start()); asyncio.run(bus.stop()); print(\"[OK] AI Framework operational\")'" "Testing AI framework"
 
     # Test the web dashboard
     run_cmd "curl -s http://localhost:8000/api/status | head -c 100" "Testing web dashboard API"
@@ -542,7 +542,7 @@ debug_operations() {
         *) echo -e "${RED}Invalid debug operation${NC}" ;;
     esac
 
-    echo -e "${GREEN}✓ Debug operation completed!${NC}"
+    echo -e "${GREEN}[OK] Debug operation completed!${NC}"
 }
 
 # Interactive mode

@@ -546,7 +546,7 @@ class ConversionAutomation:
         # TODO: Implement email service integration
         email_templates = {
             "high_usage": {
-                "subject": "⚠️ Running Low on API Calls - Upgrade to Pro",
+                "subject": "[WARNING] Running Low on API Calls - Upgrade to Pro",
                 "body": f"Hi {user.name}, you've used {user.api_calls_used} of your trial API calls. Upgrade to Pro for unlimited access!",
             },
             "time_expiring": {
@@ -554,7 +554,7 @@ class ConversionAutomation:
                 "body": f"Hi {user.name}, your trial expires in {(user.trial_end - datetime.now()).days} days. Upgrade now to maintain access!",
             },
             "trial_expired": {
-                "subject": "🔒 Trial Expired - Reactivate Your Account",
+                "subject": "[SECURE] Trial Expired - Reactivate Your Account",
                 "body": f"Hi {user.name}, your trial has expired. Subscribe to Pro to continue using zejzl.net!",
             },
         }

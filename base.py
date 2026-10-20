@@ -106,7 +106,7 @@ class PantheonAgent(ABC):
         await asyncio.gather(*self._tasks, return_exceptions=True)
         self._tasks.clear()
         
-        logger.info(f"✗ {self.config.name} stopped")
+        logger.info(f"[FAIL] {self.config.name} stopped")
     
     async def _listen(self, channel: str, queue: asyncio.Queue):
         """Listen to a channel and process messages"""
