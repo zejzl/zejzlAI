@@ -22,7 +22,7 @@ class ZejzlPantheonRLM:
     def __init__(
         self,
         pantheon_config_path: str = "pantheon_config.json",
-        model: str = "grok-3",
+        model: str = "grok-4.3",
         api_key: Optional[str] = None,
         max_iterations: int = 10,
         verbose: bool = True,
@@ -334,7 +334,7 @@ def test_zejzl_rlm():
     
     parser = argparse.ArgumentParser(description="Test Zejzl Pantheon RLM")
     parser.add_argument("--config", default="pantheon_config.json")
-    parser.add_argument("--model", default="grok-3")
+    parser.add_argument("--model", default="grok-4.3")
     parser.add_argument("--task", default="Analyze zejzl.net scaling strategy")
     parser.add_argument("--no-real-agents", action="store_true", help="Use generic sub-calls only")
     args = parser.parse_args()

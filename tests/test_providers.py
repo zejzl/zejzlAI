@@ -1,4 +1,4 @@
-"""ClaudeProvider response parsing with current models (thinking blocks first)."""
+"""Provider defaults and response parsing with current models (thinking parts, refusals)."""
 
 import asyncio
 
@@ -71,3 +71,21 @@ def test_refusal_raises():
     })
     with pytest.raises(Exception, match="declined"):
         asyncio.run(provider.generate_response("hi"))
+
+
+def test_gemini_skips_thought_parts():
+    provider = ai_framework.GeminiProvider(api_key="test-key")
+    provider.session = _FakeSession({
+        "candidates": [{"content": {"parts": [
+            {"text": "planning...", "thought": True},
+            {"text": "Answer"},
+        ]}}],
+        "usageMetadata": {"promptTokenCount": 2, "candidatesTokenCount": 1},
+    })
+    text, _ = asyncio.run(provider.generate_response("hi"))
+    assert text == "Answer"
+    assert provider.default_model == "gemini-3.5-flash-lite"
+
+
+def test_grok_default_is_current():
+    assert ai_framework.GrokProvider(api_key="test-key").default_model == "grok-4.3"

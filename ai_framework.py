@@ -312,9 +312,9 @@ class RedisPersistence(PersistenceLayer):
             "providers": {
                 "chatgpt": {"api_key": os.environ.get("OPENAI_API_KEY", ""), "model": "gpt-5-mini"},
                 "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-sonnet-5-5"},
-                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-2.5-flash-lite"},
+                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-3.5-flash-lite"},
                 "zai": {"api_key": os.environ.get("ZAI_API_KEY", ""), "model": "zai-1"},
-                "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-4-1-fast-reasoning"},
+                "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-4.3"},
                 "deepseek": {"api_key": os.environ.get("DEEPSEEK_API_KEY", ""), "model": "deepseek-coder"},
                 "qwen": {"api_key": os.environ.get("QWEN_API_KEY", ""), "model": "qwen-turbo"}
             },
@@ -584,9 +584,9 @@ class SQLitePersistence(PersistenceLayer):
             "providers": {
                 "chatgpt": {"api_key": os.environ.get("OPENAI_API_KEY", ""), "model": "gpt-5-mini"},
                 "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-sonnet-5-5"},
-                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-2.5-flash-lite"},
+                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-3.5-flash-lite"},
                 "zai": {"api_key": os.environ.get("ZAI_API_KEY", ""), "model": "zai-1"},
-                "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-4-1-fast-reasoning"},
+                "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-4.3"},
                 "deepseek": {"api_key": os.environ.get("DEEPSEEK_API_KEY", ""), "model": "deepseek-coder"},
                 "qwen": {"api_key": os.environ.get("QWEN_API_KEY", ""), "model": "qwen-turbo"}
             },
@@ -1093,7 +1093,7 @@ class GeminiProvider(AIProvider):
     
     @property
     def default_model(self) -> str:
-        return "gemini-2.5-flash-lite"
+        return "gemini-3.5-flash-lite"
     
     async def initialize(self):
         self.session = aiohttp.ClientSession()
@@ -1118,7 +1118,11 @@ class GeminiProvider(AIProvider):
             async with self.session.post(url, json=data) as response:
                 if response.status == 200:
                     result = await response.json()
-                    response_content = result["candidates"][0]["content"]["parts"][0]["text"]
+                    # Gemini 3 models can return thought parts; keep only the answer text
+                    response_content = "".join(
+                        part.get("text", "") for part in result["candidates"][0]["content"].get("parts", [])
+                        if not part.get("thought")
+                    )
 
                     # Gemini doesn't provide detailed token usage, create basic tracking
                     # Estimate tokens roughly (this is approximate)
@@ -1184,7 +1188,7 @@ class GrokProvider(AIProvider):
     
     @property
     def default_model(self) -> str:
-        return "grok-4-1-fast-reasoning"  # Updated: old models deprecated, using grok-4-1-fast-reasoning
+        return "grok-4.3"  # grok-4-1-fast-reasoning was retired 2026-05-15 and redirects here
     
     async def initialize(self):
         self.session = aiohttp.ClientSession(

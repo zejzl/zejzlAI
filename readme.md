@@ -363,8 +363,8 @@ STRIPE_WEBHOOK_SECRET=
 |----------|-------|--------------|
 | ChatGPT | gpt-3.5-turbo | OpenAI API |
 | Claude | claude-3-opus-20240229 | Anthropic API |
-| Gemini | gemini-2.5-flash | Google AI API |
-| Grok | grok-1 | xAI API |
+| Gemini | gemini-3.5-flash-lite | Google AI API |
+| Grok | grok-4.3 | xAI API |
 | DeepSeek | deepseek-coder | DeepSeek API |
 | Qwen | qwen-turbo | Alibaba Cloud API |
 | Zai | zai-1 | Custom API |
