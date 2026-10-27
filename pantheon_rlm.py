@@ -33,7 +33,7 @@ class PantheonRLM:
     def __init__(
         self,
         pantheon_config_path: str,
-        model: str = "claude-sonnet-4-5",
+        model: str = "claude-sonnet-5-5",
         api_key: Optional[str] = None,
         max_iterations: int = 10,
         verbose: bool = True
@@ -43,7 +43,7 @@ class PantheonRLM:
         
         Args:
             pantheon_config_path: Path to Pantheon configuration JSON
-            model: LLM model to use (claude-sonnet-4-5, gpt-4o, etc.)
+            model: LLM model to use (claude-sonnet-5-5, gpt-5-mini, etc.)
             api_key: API key (if None, reads from environment)
             max_iterations: Maximum RLM iterations
             verbose: Print debug output
@@ -295,7 +295,8 @@ Write Python code to solve the task:
                 messages=user_messages,
                 **kwargs
             )
-            return response.content[0].text
+            # Thinking blocks come before the answer, so join only the text blocks
+            return "".join(b.text for b in response.content if b.type == "text")
             
         elif self.provider == "openai" or self.provider == "xai":
             response = self.client.chat.completions.create(
