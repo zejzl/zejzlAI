@@ -136,6 +136,29 @@ def decode_from_llm(text: str, use_toon: bool = True) -> Any:
         # If both fail, return raw text
         return text
 
+
+def config_to_storage(config: Dict) -> str:
+    """Serialize a provider config for storage, without API keys.
+
+    Keys come from the environment at load time (see config_from_storage), so
+    they never sit in plaintext in Redis or on disk.
+    """
+    safe = json.loads(json.dumps(config))
+    for provider in (safe.get("providers") or {}).values():
+        if isinstance(provider, dict):
+            provider.pop("api_key", None)
+    return json.dumps(safe, sort_keys=True)
+
+
+def config_from_storage(raw: str, defaults: Dict) -> Dict:
+    """Parse a stored config and fill each provider's API key from the defaults (environment)."""
+    config = json.loads(raw)
+    default_providers = defaults.get("providers") or {}
+    for name, provider in (config.get("providers") or {}).items():
+        if isinstance(provider, dict) and not provider.get("api_key"):
+            provider["api_key"] = (default_providers.get(name) or {}).get("api_key", "")
+    return config
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
@@ -255,8 +278,7 @@ class RedisPersistence(PersistenceLayer):
         if not self.redis:
             raise RuntimeError("Redis not initialized")
 
-        config_str = toon.dumps(config)
-        await self.redis.set(self.config_key, config_str)
+        await self.redis.set(self.config_key, config_to_storage(config))
     
     async def load_config(self) -> Dict:
         if not self.redis:
@@ -264,7 +286,7 @@ class RedisPersistence(PersistenceLayer):
 
         config_str = await self.redis.get(self.config_key)
         if config_str:
-            return toon.loads(config_str)
+            return config_from_storage(config_str, self.get_default_config())
         return self.get_default_config()
 
     async def save_magic_state(self, magic_state: Dict):
@@ -405,7 +427,7 @@ class SQLitePersistence(PersistenceLayer):
     def __init__(self, db_path: str = None):
         self.db_path = db_path or str(Path.home() / ".ai_framework.db")
         self.conn = None
-        self.config_path = Path.home() / ".ai_framework_config.toon"
+        self.config_path = Path.home() / ".ai_framework_config.json"
     
     async def initialize(self):
         self.conn = await aiosqlite.connect(self.db_path)
@@ -569,14 +591,13 @@ class SQLitePersistence(PersistenceLayer):
         return history
     
     async def save_config(self, config: Dict):
-        config_str = toon.dumps(config)
         with open(self.config_path, "w") as f:
-            f.write(config_str)
+            f.write(config_to_storage(config))
     
     async def load_config(self) -> Dict:
         if self.config_path.exists():
             with open(self.config_path, "r") as f:
-                return toon.load(f)
+                return config_from_storage(f.read(), self.get_default_config())
         return self.get_default_config()
     
     def get_default_config(self) -> Dict:

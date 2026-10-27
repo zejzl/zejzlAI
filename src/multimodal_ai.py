@@ -370,7 +370,7 @@ class GPT4VisionProvider(MultiModalProvider):
     """OpenAI GPT-4 Vision provider for images and text"""
 
     def __init__(self, api_key: str):
-        super().__init__(api_key, "gpt-4-vision-preview")
+        super().__init__(api_key, "gpt-5-mini")
         self.supported_modalities = [ModalityType.TEXT, ModalityType.IMAGE]
 
     @property
@@ -379,7 +379,8 @@ class GPT4VisionProvider(MultiModalProvider):
 
     @property
     def default_model(self) -> str:
-        return "gpt-4-vision-preview"
+        # gpt-4-vision-preview is retired; GPT-5 models take images directly
+        return "gpt-5-mini"
 
     async def initialize(self):
         from aiohttp import ClientSession
@@ -398,7 +399,8 @@ class GPT4VisionProvider(MultiModalProvider):
         data = {
             "model": self.model,
             "messages": messages,
-            "max_tokens": 1000
+            # GPT-5 models reject max_tokens, and reasoning tokens count toward this limit
+            "max_completion_tokens": 16000
         }
 
         try:
