@@ -32,6 +32,14 @@ logger = logging.getLogger(__name__)
 #     TOON_AVAILABLE = True
 # except ImportError:
 TOON_AVAILABLE = False
+
+
+class ToonDecodeError(Exception):
+    """Placeholder while TOON is disabled; send_toon/receive_toon raise before using it."""
+
+
+estimate_savings = None
+decode_from_swarm = None
 # logger.warning("TOON utils not available - install python-toon for token efficiency")
 
 
