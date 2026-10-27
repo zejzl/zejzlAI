@@ -287,11 +287,13 @@ Write Python code to solve the task:
                 else:
                     user_messages.append(msg)
             
+            # anthropic is only imported inside __init__, so omit system instead of NOT_GIVEN
+            kwargs = {"system": system} if system else {}
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=4096,
                 messages=user_messages,
-                system=system if system else anthropic.NOT_GIVEN
+                **kwargs
             )
             return response.content[0].text
             

@@ -27,6 +27,49 @@ sys.path.insert(0, str(Path(__file__).parent))
 from ai_framework import SQLitePersistence
 
 
+def build_config(db_path):
+    """Provider configuration as saved by --all and --config."""
+    return {
+        "providers": {
+            "chatgpt": {"api_key": os.environ.get("OPENAI_API_KEY", ""), "model": "gpt-3.5-turbo"},
+            "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-3-opus-20240229"},
+            "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-2.5-flash"},
+            "zai": {"api_key": os.environ.get("ZAI_API_KEY", ""), "model": "zai-1"},
+            "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-1"},
+            "deepseek": {"api_key": os.environ.get("DEEPSEEK_API_KEY", ""), "model": "deepseek-coder"},
+            "qwen": {"api_key": os.environ.get("QWEN_API_KEY", ""), "model": "qwen-turbo"}
+        },
+        "default_provider": "chatgpt",
+        "redis_url": "redis://localhost:6379",
+        "sqlite_path": db_path
+    }
+
+
+async def save_config_only(db_path=None, verbose=False):
+    """Save only the provider configuration (the --config option)"""
+    if not db_path:
+        db_path = str(Path.home() / ".ai_framework.db")
+
+    print(f"Saving configuration to SQLite: {db_path}")
+
+    persistence = SQLitePersistence(db_path)
+    await persistence.initialize()
+
+    try:
+        config = build_config(db_path)
+        await persistence.save_config(config)
+        if verbose:
+            print(f"[OK] Configuration saved: {len(config['providers'])} providers")
+        else:
+            print("[SUCCESS] Configuration saved successfully!")
+        return True
+    except Exception as e:
+        print(f"[ERROR] Error saving configuration: {e}")
+        return False
+    finally:
+        await persistence.cleanup()
+
+
 async def save_all_state(db_path=None, verbose=False):
     """Save all system state to SQLite"""
     if not db_path:
@@ -41,20 +84,7 @@ async def save_all_state(db_path=None, verbose=False):
         # Save configuration
         if verbose:
             print("Saving provider configuration...")
-        config = {
-            "providers": {
-                "chatgpt": {"api_key": os.environ.get("OPENAI_API_KEY", ""), "model": "gpt-3.5-turbo"},
-                "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-3-opus-20240229"},
-                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-2.5-flash"},
-                "zai": {"api_key": os.environ.get("ZAI_API_KEY", ""), "model": "zai-1"},
-                "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-1"},
-                "deepseek": {"api_key": os.environ.get("DEEPSEEK_API_KEY", ""), "model": "deepseek-coder"},
-                "qwen": {"api_key": os.environ.get("QWEN_API_KEY", ""), "model": "qwen-turbo"}
-            },
-            "default_provider": "chatgpt",
-            "redis_url": "redis://localhost:6379",
-            "sqlite_path": db_path
-        }
+        config = build_config(db_path)
         await persistence.save_config(config)
         if verbose:
             print(f"[OK] Configuration saved: {len(config.get('providers', {}))} providers")

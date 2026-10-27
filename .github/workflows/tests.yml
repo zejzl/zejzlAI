@@ -66,10 +66,7 @@ jobs:
 
     - name: Lint with flake8
       run: |
-        # Fatal: syntax errors and other hard errors. F821 (undefined names)
-        # is reported but non-fatal until the fix-undefined-names branch lands;
-        # then add F821 back to the fatal list.
-        flake8 . --count --select=E9,F63,F7,F822,F823 --show-source --statistics
-        flake8 . --count --exit-zero --select=F821 --show-source --statistics
+        # Fatal: syntax errors and undefined names.
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # Style report only
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics

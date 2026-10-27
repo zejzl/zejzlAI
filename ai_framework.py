@@ -80,6 +80,12 @@ from src.agents.validator import ValidatorAgent
 
 # etc...
 
+def run_interactive_menu() -> str:
+    """Show the interactive menu and return the chosen option as a string."""
+    print("\n[1] Observe a task   [9] Exit")
+    return input("Choose an option: ").strip()
+
+
 async def run_interactive_session():
     observer = ObserverAgent()
 

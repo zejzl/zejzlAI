@@ -43,12 +43,14 @@ try:
     from src.multimodal_ai import (
         create_multimodal_message,
         MultiModalContent,
+        MultiModalMessage,
         ModalityType,
     )
 except ImportError:
     multimodal_processor = None
     create_multimodal_message = None
     MultiModalContent = None
+    MultiModalMessage = None
     ModalityType = None
 
 # Import MCP components
