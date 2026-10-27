@@ -49,7 +49,7 @@ class PantheonSwarm:
     def __init__(
         self,
         pantheon_config_path: str = "pantheon_config.json",
-        model: str = "claude-sonnet-4-5",
+        model: str = "claude-sonnet-5-5",
         api_key: Optional[str] = None,
         max_iterations: int = 10,
         verbose: bool = True
@@ -269,7 +269,7 @@ async def example_usage():
     # Initialize swarm
     swarm = PantheonSwarm(
         pantheon_config_path="pantheon_config.json",
-        model="grok-4-1-fast-reasoning",  # Use Grok (fast + reasoning)
+        model="grok-4.3",  # Use Grok (fast + reasoning)
         verbose=True
     )
     

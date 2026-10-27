@@ -528,7 +528,7 @@ class SwarmCoordinator:
         # Simulate token usage
         token_usage = TokenUsage(
             provider="Grok",
-            model="grok-4-fast-reasoning",
+            model="grok-4.3",
             prompt_tokens=len(task_description) * 4,
             completion_tokens=100,
             total_tokens=len(task_description) * 4 + 100

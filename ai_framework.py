@@ -310,11 +310,11 @@ class RedisPersistence(PersistenceLayer):
     def get_default_config(self) -> Dict:
         return {
             "providers": {
-                "chatgpt": {"api_key": os.environ.get("OPENAI_API_KEY", ""), "model": "gpt-3.5-turbo"},
-                "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-sonnet-4-5-20250929"},
-                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-2.5-flash-lite"},
+                "chatgpt": {"api_key": os.environ.get("OPENAI_API_KEY", ""), "model": "gpt-5-mini"},
+                "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-sonnet-5-5"},
+                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-3.5-flash-lite"},
                 "zai": {"api_key": os.environ.get("ZAI_API_KEY", ""), "model": "zai-1"},
-                "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-4-1-fast-reasoning"},
+                "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-4.3"},
                 "deepseek": {"api_key": os.environ.get("DEEPSEEK_API_KEY", ""), "model": "deepseek-coder"},
                 "qwen": {"api_key": os.environ.get("QWEN_API_KEY", ""), "model": "qwen-turbo"}
             },
@@ -582,11 +582,11 @@ class SQLitePersistence(PersistenceLayer):
     def get_default_config(self) -> Dict:
         return {
             "providers": {
-                "chatgpt": {"api_key": os.environ.get("OPENAI_API_KEY", ""), "model": "gpt-3.5-turbo"},
-                "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-sonnet-4-5-20250929"},
-                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-2.5-flash-lite"},
+                "chatgpt": {"api_key": os.environ.get("OPENAI_API_KEY", ""), "model": "gpt-5-mini"},
+                "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-sonnet-5-5"},
+                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-3.5-flash-lite"},
                 "zai": {"api_key": os.environ.get("ZAI_API_KEY", ""), "model": "zai-1"},
-                "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-4-1-fast-reasoning"},
+                "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-4.3"},
                 "deepseek": {"api_key": os.environ.get("DEEPSEEK_API_KEY", ""), "model": "deepseek-coder"},
                 "qwen": {"api_key": os.environ.get("QWEN_API_KEY", ""), "model": "qwen-turbo"}
             },
@@ -924,7 +924,7 @@ class ChatGPTProvider(AIProvider):
     
     @property
     def default_model(self) -> str:
-        return "gpt-3.5-turbo"
+        return "gpt-5-mini"
     
     async def initialize(self):
         self.session = aiohttp.ClientSession(
@@ -945,7 +945,6 @@ class ChatGPTProvider(AIProvider):
         data = {
             "model": self.model,
             "messages": messages,
-            "temperature": 0.7
         }
 
         try:
@@ -986,7 +985,6 @@ class ChatGPTProvider(AIProvider):
         data = {
             "model": self.model,
             "messages": messages,
-            "temperature": 0.7,
             "stream": True
         }
 
@@ -1027,7 +1025,7 @@ class ClaudeProvider(AIProvider):
     
     @property
     def default_model(self) -> str:
-        return "claude-sonnet-4-5-20250929"
+        return "claude-sonnet-5-5"
     
     async def initialize(self):
         self.session = aiohttp.ClientSession(
@@ -1048,7 +1046,8 @@ class ClaudeProvider(AIProvider):
         url = "https://api.anthropic.com/v1/messages"
         data = {
             "model": self.model,
-            "max_tokens": 1000,
+            # Room for adaptive thinking, which is on by default on current Claude models
+            "max_tokens": 16000,
             "messages": messages
         }
 
@@ -1056,7 +1055,13 @@ class ClaudeProvider(AIProvider):
             async with self.session.post(url, json=data) as response:
                 if response.status == 200:
                     result = await response.json()
-                    response_content = result["content"][0]["text"]
+                    if result.get("stop_reason") == "refusal":
+                        raise Exception(f"Claude declined the request ({(result.get('stop_details') or {}).get('category')})")
+                    # Thinking blocks come before the answer, so join only the text blocks
+                    response_content = "".join(
+                        block.get("text", "") for block in result.get("content", [])
+                        if block.get("type") == "text"
+                    )
 
                     # Extract token usage from Claude response
                     usage = result.get("usage", {})
@@ -1088,7 +1093,7 @@ class GeminiProvider(AIProvider):
     
     @property
     def default_model(self) -> str:
-        return "gemini-2.5-flash-lite"
+        return "gemini-3.5-flash-lite"
     
     async def initialize(self):
         self.session = aiohttp.ClientSession()
@@ -1113,7 +1118,11 @@ class GeminiProvider(AIProvider):
             async with self.session.post(url, json=data) as response:
                 if response.status == 200:
                     result = await response.json()
-                    response_content = result["candidates"][0]["content"]["parts"][0]["text"]
+                    # Gemini 3 models can return thought parts; keep only the answer text
+                    response_content = "".join(
+                        part.get("text", "") for part in result["candidates"][0]["content"].get("parts", [])
+                        if not part.get("thought")
+                    )
 
                     # Gemini doesn't provide detailed token usage, create basic tracking
                     # Estimate tokens roughly (this is approximate)
@@ -1179,7 +1188,7 @@ class GrokProvider(AIProvider):
     
     @property
     def default_model(self) -> str:
-        return "grok-4-1-fast-reasoning"  # Updated: old models deprecated, using grok-4-1-fast-reasoning
+        return "grok-4.3"  # grok-4-1-fast-reasoning was retired 2026-05-15 and redirects here
     
     async def initialize(self):
         self.session = aiohttp.ClientSession(
@@ -1197,7 +1206,6 @@ class GrokProvider(AIProvider):
         data = {
             "model": self.model,
             "messages": messages,
-            "temperature": 0.7
         }
 
         try:
@@ -1235,7 +1243,6 @@ class GrokProvider(AIProvider):
         data = {
             "model": self.model,
             "messages": messages,
-            "temperature": 0.7,
             "stream": True
         }
 

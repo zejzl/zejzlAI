@@ -31,23 +31,26 @@ class CostCalculator:
     # Pricing data (USD per 1K tokens) - Update these with current rates
     PRICING = {
         "chatgpt": {
+            "gpt-5-mini": {"input": 0.00025, "output": 0.002},           # $0.25/$2.00 per 1M tokens (launch price, verify)
             "gpt-3.5-turbo": {"input": 0.0015, "output": 0.002},  # $1.50/$2.00 per 1K tokens
             "gpt-4": {"input": 0.03, "output": 0.06},            # $30/$60 per 1K tokens
             "gpt-4-turbo": {"input": 0.01, "output": 0.03},      # $10/$30 per 1K tokens
         },
         "claude": {
+            "claude-sonnet-5-5": {"input": 0.002, "output": 0.01},          # $2/$10 per 1M tokens
             "claude-3-opus-20240229": {"input": 0.015, "output": 0.075},     # $15/$75 per 1K tokens
-            "claude-3-opus-20240229": {"input": 0.003, "output": 0.015},  # $3/$15 per 1K tokens
             "claude-3-haiku-20240307": {"input": 0.00025, "output": 0.00125}, # $0.25/$1.25 per 1K tokens
-            "claude-3-opus-20240229": {"input": 0.003, "output": 0.015}, # $3/$15 per 1K tokens
         },
         "gemini": {
             "gemini-2.5-flash": {"input": 0.00015, "output": 0.0006},    # $0.15/$0.60 per 1K tokens (actually per 1M)
             "gemini-2.5-pro": {"input": 0.00125, "output": 0.005},       # $1.25/$5.00 per 1K tokens (actually per 1M)
-            "gemini-3-pro-preview": {"input": 0.0025, "output": 0.01},   # Estimated pricing
+            "gemini-3.5-flash-lite": {"input": 0.0003, "output": 0.0025},  # $0.30/$2.50 per 1M
+            "gemini-3.8-flash": {"input": 0.00075, "output": 0.00375},    # $0.75/$3.75 per 1M until 2026-12-31, then $1.50/$7.50
+            "gemini-3.1-pro-preview": {"input": 0.002, "output": 0.012},  # $2/$12 per 1M (prompts <=200k)
         },
         "grok": {
-            "grok-1": {"input": 0.005, "output": 0.015},  # Estimated pricing
+            "grok-4.3": {"input": 0.00125, "output": 0.0025},  # $1.25/$2.50 per 1M (prompts <200k)
+            "grok-4.7": {"input": 0.002, "output": 0.006},     # $2/$6 per 1M (prompts <200k)
         },
         # Placeholder pricing for other providers
         "zai": {"zai-1": {"input": 0.01, "output": 0.02}},

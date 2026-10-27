@@ -124,19 +124,19 @@ app = FastAPI(title="ZEJZL.NET Dashboard", version="1.0.0")
 
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=10000)
-    provider: str = Field(default="grok-4-1-fast-reasoning")
+    provider: str = Field(default="grok-4.3")
     consensus: bool = Field(default=False)
     stream: bool = Field(default=False)
 
 class ChatRLMRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=10000)
-    provider: str = Field(default="grok-4-1-fast-reasoning")
+    provider: str = Field(default="grok-4.3")
     use_real_agents: bool = Field(default=True)
 
 class ChatSwarmRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=10000)
     budget: int = Field(default=10000, ge=100, le=1000000)
-    provider: str = Field(default="grok-4-1-fast-reasoning")
+    provider: str = Field(default="grok-4.3")
 
 class OfflineToggleRequest(BaseModel):
     enabled: bool = Field(default=False)
@@ -658,7 +658,7 @@ class DashboardServer:
             if PantheonSwarm:
                 self.swarm = PantheonSwarm(
                     pantheon_config_path="pantheon_config.json",
-                    model="grok-4-1-fast-reasoning",
+                    model="grok-4.3",
                     verbose=False,  # Set True for debugging
                 )
                 logger.info(

@@ -39,11 +39,11 @@ async def save_all_state(verbose=False):
             print("Saving provider configuration...")
         config = {
             "providers": {
-                "chatgpt": {"api_key": os.environ.get("OPENAI_API_KEY", ""), "model": "gpt-3.5-turbo"},
-                "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-3-opus-20240229"},
-                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-2.5-flash"},
+                "chatgpt": {"api_key": os.environ.get("OPENAI_API_KEY", ""), "model": "gpt-5-mini"},
+                "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-sonnet-5-5"},
+                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-3.8-flash"},
                 "zai": {"api_key": os.environ.get("ZAI_API_KEY", ""), "model": "zai-1"},
-                "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-1"},
+                "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-4.3"},
                 "deepseek": {"api_key": os.environ.get("DEEPSEEK_API_KEY", ""), "model": "deepseek-coder"},
                 "qwen": {"api_key": os.environ.get("QWEN_API_KEY", ""), "model": "qwen-turbo"}
             },
@@ -119,11 +119,11 @@ async def save_config_only(verbose=False):
     try:
         config = {
             "providers": {
-                "chatgpt": {"api_key": os.environ.get("OPENAI_API_KEY", ""), "model": "gpt-3.5-turbo"},
-                "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-3-opus-20240229"},
-                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-2.5-flash"},
+                "chatgpt": {"api_key": os.environ.get("OPENAI_API_KEY", ""), "model": "gpt-5-mini"},
+                "claude": {"api_key": os.environ.get("ANTHROPIC_API_KEY", ""), "model": "claude-sonnet-5-5"},
+                "gemini": {"api_key": os.environ.get("GEMINI_API_KEY", ""), "model": "gemini-3.8-flash"},
                 "zai": {"api_key": os.environ.get("ZAI_API_KEY", ""), "model": "zai-1"},
-                "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-1"},
+                "grok": {"api_key": os.environ.get("GROK_API_KEY", ""), "model": "grok-4.3"},
                 "deepseek": {"api_key": os.environ.get("DEEPSEEK_API_KEY", ""), "model": "deepseek-coder"},
                 "qwen": {"api_key": os.environ.get("QWEN_API_KEY", ""), "model": "qwen-turbo"}
             },
