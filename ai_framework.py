@@ -77,6 +77,7 @@ from src.agents.learner import LearnerAgent
 from src.agents.memory import MemoryAgent
 from src.agents.reasoner import ReasonerAgent
 from src.agents.validator import ValidatorAgent
+from src.decision_gate import DecisionGate
 
 # etc...
 
@@ -1347,6 +1348,9 @@ class AsyncMessageBus:
         self.connectivity_checker = None
         self.connectivity_status = "unknown"  # "online", "offline", "unknown"
 
+        # Optional local decision gate (off unless ZEJZLAI_DECISION_GATE=1)
+        self.decision_gate = DecisionGate.from_env()
+
     async def enable_offline_mode(self, enabled: bool = True):
         """Enable or disable offline mode"""
         self.offline_mode = enabled
@@ -1468,6 +1472,13 @@ class AsyncMessageBus:
             del self.providers[provider_name]
             logger.info(f"Unregistered provider: {provider_name}")
     
+    async def _route_with_decision_gate(self, content: str) -> Optional[str]:
+        """Ask the local decision gate for a provider. None means use the default."""
+        gate = getattr(self, "decision_gate", None)
+        if gate is None or not gate.enabled:
+            return None
+        return await gate.route(content, self.providers.keys())
+
     @log_execution("debug")
     async def send_message(self, content: str, provider_name: str = None,
                           conversation_id: str = "default", stream: bool = False,
@@ -1475,6 +1486,9 @@ class AsyncMessageBus:
         """Send a message to a specific provider and return the response"""
         logger.debug("Starting message send", content_length=len(content),
                     provider=provider_name, consensus=consensus, stream=stream)
+
+        if provider_name is None and not consensus:
+            provider_name = await self._route_with_decision_gate(content)
 
         provider_name = provider_name or self.config.get("default_provider", "chatgpt")
         provider_name = provider_name.lower()
