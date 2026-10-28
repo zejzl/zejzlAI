@@ -37,29 +37,45 @@ class ORAMIteration:
 
 class ORAMConfig:
     """Configuration for ORAM iterations."""
-    
+
     def __init__(self):
-        self.max_iterations: int = 5
+        self._max_iterations: int = 5
+        self._max_iterations_explicit = False
         self.convergence_threshold: float = 0.85
         self.insight_threshold: float = 0.7
         self.memory_retention_limit: int = 100
         self.adaptive_iterations: bool = True
         self.learning_enabled: bool = True
-        
+
+    @property
+    def max_iterations(self) -> int:
+        return self._max_iterations
+
+    @max_iterations.setter
+    def max_iterations(self, value: int) -> None:
+        # A value set by the caller (menu prompt, execute_oram) wins over the iteration type's default.
+        self._max_iterations = value
+        self._max_iterations_explicit = True
+
     def set_iteration_type(self, iteration_type: ORAMIterationType):
         """Configure settings for specific iteration type."""
         if iteration_type == ORAMIterationType.DEEP_ANALYSIS:
-            self.max_iterations = 7
+            self._apply_default_max(7)
             self.convergence_threshold = 0.9
         elif iteration_type == ORAMIterationType.CREATIVE:
-            self.max_iterations = 6
+            self._apply_default_max(6)
             self.convergence_threshold = 0.8
         elif iteration_type == ORAMIterationType.PROBLEM_SOLVING:
-            self.max_iterations = 8
+            self._apply_default_max(8)
             self.convergence_threshold = 0.85
         elif iteration_type == ORAMIterationType.OPTIMIZATION:
-            self.max_iterations = 5
+            self._apply_default_max(5)
             self.convergence_threshold = 0.9
+
+    def _apply_default_max(self, value: int) -> None:
+        """Set the iteration type's default count, unless the caller already chose one."""
+        if not self._max_iterations_explicit:
+            self._max_iterations = value
 
 
 class ORAMSystem:
@@ -269,16 +285,16 @@ class ORAMSystem:
         try:
             quality_factors = []
             
-            # Check for errors in any phase
-            has_errors = any(
-                "error" in phase.get("data", {}) 
-                for phase in [
-                    iteration.observation, 
-                    iteration.reasoning, 
-                    iteration.action
-                ]
-            )
-            
+            # Check for errors in any phase. Agents report a failure as a top-level "error" key (or one inside
+            # "data"); the old check only looked inside "data", so a failed AI call still scored as clean.
+            def _failed(phase) -> bool:
+                if not isinstance(phase, dict):
+                    return False
+                data = phase.get("data")
+                return "error" in phase or (isinstance(data, dict) and "error" in data)
+
+            has_errors = any(_failed(p) for p in (iteration.observation, iteration.reasoning, iteration.action))
+
             if has_errors:
                 quality_factors.append(0.3)  # Penalty for errors
             else:
@@ -355,8 +371,8 @@ class ORAMSystem:
     
     async def _check_convergence(self, iteration: ORAMIteration) -> bool:
         """Determine if more iterations are needed."""
-        # Stop if max iterations reached
-        if len(self.iteration_history) >= self.config.max_iterations:
+        # Stop if max iterations reached. The current iteration is not in the history yet, so count it.
+        if len(self.iteration_history) + 1 >= self.config.max_iterations:
             return False
         
         # Stop if convergence threshold reached
