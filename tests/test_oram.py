@@ -10,7 +10,7 @@ import asyncio
 
 import pytest
 
-from src.oram import ORAMConfig, ORAMIterationType, ORAMSystem
+from src.oram import ORAMConfig, ORAMIterationType, ORAMSystem, execute_oram
 
 
 class StubObserver:
@@ -204,3 +204,21 @@ def test_clear_history_resets_state():
     system.clear_history()
     assert system.get_status()["iterations_executed"] == 0 and system.get_insights() == []
     assert system.get_convergence_metrics() == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind,expected", [(ORAMIterationType.PROBLEM_SOLVING, 8), (ORAMIterationType.DEEP_ANALYSIS, 7),
+                                           (ORAMIterationType.BASIC, 5)])
+async def test_execute_oram_without_a_limit_uses_the_iteration_types_own_count(monkeypatch, kind, expected):
+    seen = {}
+
+    async def fake_loop(self, task, iteration_type, context=None):
+        self.config.set_iteration_type(iteration_type)
+        seen["limit"] = self.config.max_iterations
+        return []
+
+    monkeypatch.setattr(ORAMSystem, "execute_oram_loop", fake_loop)
+    await execute_oram("task", kind)
+    assert seen["limit"] == expected
+    await execute_oram("task", kind, max_iterations=3)
+    assert seen["limit"] == 3

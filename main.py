@@ -821,10 +821,11 @@ async def run_oram_mode():
         
         # Configure ORAM system
         config = ORAMConfig()
-        max_iter = input("Max iterations (default 5): ").strip()
+        max_iter = input("Max iterations (blank = this type's default): ").strip()
         if max_iter.isdigit():
             config.max_iterations = int(max_iter)
         
+        config.set_iteration_type(iteration_type)   # applies the type's default unless a number was typed above
         print(f"\n[Starting ORAM: {iteration_type.value}, max {config.max_iterations} iterations]")
         
         # Create ORAM system

@@ -279,30 +279,35 @@ Available modes:
 Modes that call an AI provider need at least one API key in `.env`; without one they print
 `[ERROR] No AI providers available` and return. Each mode shuts down the shared provider bus on exit.
 
+### ORAM mode in short (`src/oram.py`)
+
+Each iteration runs Observe, Reason, Act, then stores the result in Memory, scores it (0 to 1) and extracts up to three insights.
+The loop stops when the score reaches the convergence threshold, when the quality trend declines, or at `max_iterations`.
+Iteration types set defaults: basic 5 iterations at 0.85, deep analysis 7 at 0.9, creative 6 at 0.8, problem solving 8 at 0.85,
+optimization 5 at 0.9. A `max_iterations` you set yourself (menu prompt, or the `max_iterations` argument of `execute_oram`) wins
+over the type's default. If a provider fails, the agents fall back to rule-based output (`ai_generated: False` with a
+`fallback_reason` or `error`); such an iteration scores lower instead of counting as clean.
+
 ### Running Tests
 
-The pytest suite and the manual test scripts were removed in the repository cleanup, so there is no `pytest` run to do.
-These checks work on the current tree:
-
 ```bash
-# 1. Syntax check every file
-python -m compileall -q .
-
-# 2. Import every module under src/ (data_science.py is skipped: it needs pandas, which is not in requirements.txt)
-python -c "import importlib, pathlib; [importlib.import_module('.'.join(f.with_suffix('').parts)) for f in pathlib.Path('src').rglob('*.py') if f.name not in ('__init__.py', 'data_science.py')]"
-
-# 3. Dashboard smoke test (pip install httpx first): public pages return 200,
-#    protected API routes 401, and nothing should return 5xx
-python -c "from fastapi.testclient import TestClient; import web_dashboard; print(TestClient(web_dashboard.app).get('/').status_code)"
-
-# 4. Provider connectivity (needs a real key)
-python ai_framework.py chat claude "test"
+python -m pytest -q                       # offline suite: no network, no API keys needed
+flake8 . --count --select=E9,F63,F7,F82   # the fatal lint gate: syntax errors and undefined names
 ```
 
-To check the Redis fallback, stop Redis and confirm the framework logs one warning and continues with SQLite.
+`tests/conftest.py` blocks outbound connections, ignores any local `.env` and sets dummy provider keys, so a test can never reach a
+real provider, Redis or webhook. GitHub Actions (`.github/workflows/`) runs the suite on Python 3.11, 3.12 and 3.13 plus the lint gate.
+The wider flake8 style report is informational and not clean.
 
-`.github/workflows/tests.yml` still references test scripts that no longer exist (`9agent_pantheon_test.py`,
-`single_session_test_loop.py`, `interactive_session_example.py`) and needs updating before CI can pass.
+Two checks need real services and are manual:
+
+```bash
+# Dashboard smoke test (pip install httpx first): public pages return 200, protected API routes 401, nothing 5xx
+python -c "from fastapi.testclient import TestClient; import web_dashboard; print(TestClient(web_dashboard.app).get('/').status_code)"
+
+# Provider connectivity (needs a real key)
+python ai_framework.py chat claude "test"
+```
 
 ### Running MCP Servers
 

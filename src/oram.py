@@ -506,7 +506,7 @@ class ORAMSystem:
 async def execute_oram(
     task: str, 
     iteration_type: ORAMIterationType = ORAMIterationType.BASIC,
-    max_iterations: int = 5,
+    max_iterations: Optional[int] = None,
     context: Optional[Dict[str, Any]] = None
 ) -> List[ORAMIteration]:
     """
@@ -515,14 +515,16 @@ async def execute_oram(
     Args:
         task: The task to process
         iteration_type: Type of iteration strategy
-        max_iterations: Maximum iterations to execute
+        max_iterations: Maximum iterations to execute. None (the default) uses the iteration type's own count
+            (basic 5, deep analysis 7, creative 6, problem solving 8, optimization 5); a number overrides it.
         context: Additional context for processing
         
     Returns:
         List of executed iterations
     """
     config = ORAMConfig()
-    config.max_iterations = max_iterations
+    if max_iterations is not None:
+        config.max_iterations = max_iterations
     
     oram = ORAMSystem(config)
     return await oram.execute_oram_loop(task, iteration_type, context)
