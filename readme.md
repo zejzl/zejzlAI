@@ -300,6 +300,15 @@ optimization 5 at 0.9. A `max_iterations` you set yourself (menu prompt, or the 
 over the type's default. If a provider fails, the agents fall back to rule-based output (`ai_generated: False` with a
 `fallback_reason` or `error`); such an iteration scores lower instead of counting as clean.
 
+**File memory (off by default).** Set `ORAM_MEMORY_DIR=/some/dir` and the Memory agent also keeps completed runs on disk: one
+JSONL file per task (`<slug>-<hash>.jsonl`, the key is the task text normalised) with one JSON object per run: `ts` (UTC), `task`,
+`iteration_type`, `iterations`, `calls` (3 per iteration), `average_quality`, `best_quality`, `convergence_achieved`,
+`total_insights`, `insights`, `summary` and `result` (the final action's results; text fields capped at 2000 characters, key- and
+token-shaped strings replaced by `[REDACTED]`). The Reason step reads up to 5 earlier runs of the same task back and passes them to
+the Reasoner as `prior_runs` (a few short lines in its prompt). With the backend on, `execute_oram(task)` without a `max_iterations`
+caps a run at 3 iterations (9 provider calls); from the menu, type 3 at the iterations prompt. Unset, nothing is written or read and
+the loop behaves exactly as above. Turning a stored run into a brain log line is a separate step, not part of ORAM.
+
 ### Running Tests
 
 ```bash

@@ -1,11 +1,16 @@
 # src/oram.py
 import asyncio
+import json
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
 
 logger = logging.getLogger("ORAM")
+
+CALLS_PER_ITERATION = 3          # Observer, Reasoner and Actor each make one provider call per iteration
+PRIOR_RUNS_LIMIT = 5             # earlier runs of the same task shown to the Reasoner (file backend only)
+FILE_MEMORY_MAX_ITERATIONS = 3   # execute_oram's default when ORAM_MEMORY_DIR is set and no limit is given
 
 
 class ORAMIterationType(Enum):
@@ -149,7 +154,7 @@ class ORAMSystem:
         observation = await self._observe_task(task, context, iteration_id)
         
         # 2. REASON: Analyze and reason about observations
-        reasoning = await self._reason_about_observation(observation, iteration_id)
+        reasoning = await self._reason_about_observation(observation, iteration_id, task=task)
         
         # 3. ACT: Determine actions based on reasoning
         action = await self._determine_action(reasoning, iteration_id)
@@ -203,14 +208,23 @@ class ORAMSystem:
             logger.warning(f"[ORAM] Observation failed for iteration {iteration_id}: {e}")
             return {"error": str(e), "iteration_id": iteration_id, "fallback": True}
     
-    async def _reason_about_observation(self, observation: Dict[str, Any], iteration_id: int) -> Dict[str, Any]:
+    async def _reason_about_observation(
+        self, observation: Dict[str, Any], iteration_id: int, task: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Execute reasoning phase."""
         try:
+            # Earlier runs of the same task from the file memory backend (ORAM_MEMORY_DIR); empty when it is off.
+            prior_runs = self._recall_prior_runs(task) if task else []
+            if prior_runs:
+                observation["prior_runs"] = prior_runs
+
             reasoning = await self.reasoner.reason(observation)
             
             # Add iteration context
             reasoning["iteration_id"] = iteration_id
             reasoning["oram_iteration"] = True
+            if prior_runs:
+                reasoning["prior_runs"] = prior_runs
             
             # Include learning from previous iterations if available
             if self.iteration_history:
@@ -428,11 +442,54 @@ class ORAMSystem:
         logger.info(f"[ORAM] Loop complete: {len(iterations)} iterations executed")
         
         # Generate summary
-        await self._generate_loop_summary(iterations)
+        await self._generate_loop_summary(iterations, task=task)
         
         return iterations
     
-    async def _generate_loop_summary(self, iterations: List[ORAMIteration]):
+    def _recall_prior_runs(self, task: str) -> List[str]:
+        """Earlier runs of `task` as short lines for the reasoning prompt. Empty unless the file backend is on."""
+        recall_runs = getattr(self.memory, "recall_runs", None)
+        if recall_runs is None or not getattr(self.memory, "file_backend_enabled", False):
+            return []
+        try:
+            from src.agents.memory import format_prior_runs
+            return format_prior_runs(recall_runs(task, limit=PRIOR_RUNS_LIMIT))
+        except Exception as e:
+            logger.warning(f"[ORAM] Recall of prior runs failed: {e}")
+            return []
+
+    def _store_run(self, task: Optional[str], iterations: List[ORAMIteration], summary: Dict[str, Any]) -> None:
+        """Write one result line for this run to the file backend. No-op when it is off or the task is unknown."""
+        store_run = getattr(self.memory, "store_run", None)
+        if store_run is None or not getattr(self.memory, "file_backend_enabled", False) or not task:
+            return
+        try:
+            last = iterations[-1]
+            insights = [insight for iteration in iterations for insight in (iteration.insights or [])]
+            final_action = last.action.get("results", last.action) if isinstance(last.action, dict) else last.action
+            summary_text = (
+                f"{summary['total_iterations']} iterations, average quality {summary['average_quality']:.2f}, "
+                f"best {summary['best_quality']:.2f}, converged={summary['convergence_achieved']}, "
+                f"{summary['total_insights']} insights"
+            )
+            if insights:
+                summary_text += f"; {insights[0]}"
+            store_run(task, {
+                "iteration_type": summary["iteration_type"],
+                "iterations": summary["total_iterations"],
+                "calls": CALLS_PER_ITERATION * summary["total_iterations"],
+                "average_quality": round(summary["average_quality"], 4),
+                "best_quality": round(summary["best_quality"], 4),
+                "convergence_achieved": summary["convergence_achieved"],
+                "total_insights": summary["total_insights"],
+                "insights": insights[:6],
+                "summary": summary_text,
+                "result": json.dumps(final_action, ensure_ascii=False, default=str),
+            })
+        except Exception as e:
+            logger.warning(f"[ORAM] Storing the run failed: {e}")
+
+    async def _generate_loop_summary(self, iterations: List[ORAMIteration], task: Optional[str] = None):
         """Generate summary of the ORAM loop."""
         try:
             if not iterations:
@@ -464,6 +521,7 @@ class ORAMSystem:
                     "summary": summary,
                     "timestamp": asyncio.get_event_loop().time()
                 })
+                self._store_run(task, iterations, summary)
             
         except Exception as e:
             logger.warning(f"[ORAM] Summary generation failed: {e}")
@@ -517,6 +575,7 @@ async def execute_oram(
         iteration_type: Type of iteration strategy
         max_iterations: Maximum iterations to execute. None (the default) uses the iteration type's own count
             (basic 5, deep analysis 7, creative 6, problem solving 8, optimization 5); a number overrides it.
+            With the file memory backend on (ORAM_MEMORY_DIR set) None means 3, the agreed cap per run.
         context: Additional context for processing
         
     Returns:
@@ -525,6 +584,10 @@ async def execute_oram(
     config = ORAMConfig()
     if max_iterations is not None:
         config.max_iterations = max_iterations
+    else:
+        from src.agents.memory import memory_dir
+        if memory_dir() is not None:
+            config.max_iterations = FILE_MEMORY_MAX_ITERATIONS
     
     oram = ORAMSystem(config)
     return await oram.execute_oram_loop(task, iteration_type, context)
