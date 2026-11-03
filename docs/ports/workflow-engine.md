@@ -1,6 +1,10 @@
 # Port: GG workflow engine from grokputer
 
-Part of [the grokputer ports plan](../plans/2026-11-03-grokputer-ports.md). Status: design, nothing built. Read on 2026-11-03.
+Part of [the grokputer ports plan](../plans/2026-11-03-grokputer-ports.md). Status: built 2026-11-04 as zejzlAI PRs #13 (core), #14 (wiring) and #15 (bus); each waits for Zejzl's merge. Differences from
+this design: the core PR got its own runner (`python -m src.workflow.run`, exit 0/1/2) because the seven ported CLI tests needed
+one; menu item 9 is Workflow Mode and Quit moved to 10; `grokputer`'s `messagebus_adapter.py` was not copied but rewritten against
+the real bus API (see bus-send-and-wait.md); `pantheon_integration.py` stays out (its agents do not exist here; `AgentNode` covers
+Pantheon steps); the API route is not built. Design text below as written on 2026-11-03.
 
 ## What grokputer has (verified)
 

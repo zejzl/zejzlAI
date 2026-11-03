@@ -1,7 +1,9 @@
 # Plan: what to take from grokputer into zejzlAI (2026-11-03)
 
 Author: Claude, on Zejzl's ask ("is there anything in grokputer that can be used in zejzlAI?" then "make a plan & docs for all 3").
-Status: plan, nothing built. Facts below were read from both checkouts on 2026-11-03 evening; "unverified" marks what was not run.
+Status: Zejzl said yes to all five defaults on 2026-11-04 and asked for the "async messagebus implementation" too; built the same
+night as PRs #13 (engine core), #14 (AgentNode, ORAMNode, menu, examples) and #15 (bus: send_and_wait, BusAgent,
+ProviderBusAgent, MessageBusAdapter and node type `bus`, src/workflows.py removed). Memory tiers still wait for Hermes's step 2. Facts below were read from both checkouts on 2026-11-03 evening; "unverified" marks what was not run.
 
 ## Result of the comparison
 
@@ -32,8 +34,8 @@ tools, the "flash attention" cognitive module, blockchain, vault sync.
 4. **Memory tiers.** Decide after Hermes's ORAM step 2 (three real runs filed in brain) shows whether runs are worth remembering.
    If yes: port `MemoryEntry`, `ShortTermMemory`, `ContextMemory` (227 lines) under Hermes's file backend, opt-in. Hermes's lane; agree
    with him first.
-5. **Bus `send_and_wait`.** Backport only when something in zejzlAI waits for an agent's reply on the in-process bus: the workflow bus
-   adapter if PR 3 brings it in, or Hermes's option A. Alone it adds a method nobody calls.
+5. **Bus `send_and_wait`.** Done in #15 together with its first consumers: the workflow bus adapter (node type `bus`) and the
+   `provider` bus agent. Zejzl's "async messagebus implementation" (2026-11-04) made the consumer part of PR 3 instead of a later step.
 
 ## Rules that apply
 

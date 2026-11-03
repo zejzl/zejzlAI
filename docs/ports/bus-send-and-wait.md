@@ -1,6 +1,11 @@
 # Port: `send_and_wait` for the in-process message bus
 
-Part of [the grokputer ports plan](../plans/2026-11-03-grokputer-ports.md). Status: design, **only with a consumer**. Read on 2026-11-03.
+Part of [the grokputer ports plan](../plans/2026-11-03-grokputer-ports.md). Status: built 2026-11-04 in zejzlAI PR #15, with its consumers in the same PR (Zejzl: "async messagebus implementation"):
+`send_and_wait` ported with 7 tests; `src/core/bus_agent.py` adds `BusAgent` (the receive-process-reply loop that puts the
+request's `correlation_id` on replies, after grokputer's `BaseAgent.run`) and `ProviderBusAgent` (answers prompt requests through
+the provider bus); `src/workflow/messagebus_adapter.py` gives workflows `publish`, `request`, `broadcast` and node type `bus`.
+grokputer's adapter was not copied: it used a Message shape and a `bus.publish` the bus never had, and simulated subscriptions.
+`base.PantheonAgent` is left as it was (its bus calls target an API this bus does not have). Design text below as written.
 
 ## The two buses today (verified)
 
