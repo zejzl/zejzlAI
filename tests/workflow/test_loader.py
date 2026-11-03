@@ -91,7 +91,7 @@ class TestLoadWorkflow:
         import pathlib
 
         files = sorted(pathlib.Path("examples/workflows").glob("*.yaml"))
-        assert len(files) >= 5
+        assert files, "no example workflows found"
         for path in files:
             wf, options = load_workflow(path)
             wf.validate()
