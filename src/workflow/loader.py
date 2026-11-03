@@ -17,7 +17,8 @@ Example (YAML):
       - [pick, shout]
       - {from: pick, to: shout, condition: "true"}   # same as above, with an edge condition
 
-Node types: http, conditional, transform, noop, agent (a Pantheon agent step or a prompt), oram (one ORAM loop).
+Node types: http, conditional, transform, noop, agent (a Pantheon agent step or a prompt), oram (one ORAM loop),
+bus (publish, request or broadcast on the in-process message bus).
 String values in node configs may reference environment variables as ${VAR}, so tokens
 need not be stored in the file. The engine's own {{variable}} templates are left untouched.
 
@@ -39,6 +40,7 @@ from typing import Any, Dict, Tuple, Union
 import yaml
 
 from .flow import Workflow
+from .messagebus_adapter import MessageBusNode
 from .nodes import AgentNode, ConditionalNode, HTTPNode, NoOpNode, ORAMNode, TransformNode
 
 NODE_TYPES = {
@@ -48,6 +50,7 @@ NODE_TYPES = {
     "noop": NoOpNode,
     "agent": AgentNode,
     "oram": ORAMNode,
+    "bus": MessageBusNode,
 }
 
 _ENV_REF = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")

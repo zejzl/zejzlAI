@@ -321,7 +321,11 @@ Node types: `http` (GET/POST/... via aiohttp), `conditional`, `transform` (`oper
 `noop`, `agent` and `oram`. `agent` has two forms: `{agent: observer|reasoner|actor, input: <key>}` runs one Pantheon agent step
 (the agents degrade to their rule-based answer without a provider, `ai_generated: false`; set `require_ai: true` to fail instead),
 and `{prompt: "... {{var}} ...", provider: grok, output_format: text|json|decision}` sends one prompt through the provider bus.
-`oram` runs one `execute_oram` loop on `task`, capped at 3 iterations by default. Each node writes its result under its own id
+`oram` runs one `execute_oram` loop on `task`, capped at 3 iterations by default. `bus` talks to agents on the in-process
+message bus (`src/core/message_bus.py`): `{operation: request, to: provider, content: {prompt: ...}}` asks the built-in
+`provider` bus agent (`src/core/bus_agent.py`, answers through the provider bus) and waits for the reply with
+`MessageBus.send_and_wait`; `publish` and `broadcast` are fire-and-forget. The runner starts the built-in bus agents when a
+file has a `bus` node. Each node writes its result under its own id
 (or `output`). `${VAR}` in a config string reads the environment, so tokens stay out of files. State snapshots go to
 `$WORKFLOW_STATE_DIR` (default `./workflow_states`, gitignored). Ported from grokputer's GG framework; plan and what was left out:
 `docs/ports/workflow-engine.md`.

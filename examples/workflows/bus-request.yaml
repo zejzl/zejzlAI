@@ -1,0 +1,19 @@
+# Ask a model over the in-process message bus: the runner starts the built-in `provider` bus agent,
+# the `bus` node sends a request and waits for its reply (MessageBus.send_and_wait).
+# Run: python -m src.workflow.run examples/workflows/bus-request.yaml --input '{"question": "What is a DAG?"}'
+name: bus-request
+input:
+  question: In one sentence, what does this repository do?
+nodes:
+  - id: ask
+    type: bus
+    config:
+      operation: request
+      to: provider
+      content: {prompt: "{{question}}", provider: grok}
+      timeout: 60
+  - id: tell
+    type: bus
+    config: {operation: broadcast, content: {status: asked, question: "{{question}}"}}
+edges:
+  - [ask, tell]
