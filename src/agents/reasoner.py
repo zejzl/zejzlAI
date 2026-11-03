@@ -71,8 +71,16 @@ class ReasonerAgent:
             task = observation.get('task', 'Unknown task')
             context = observation.get('context', '')
 
-            prompt = f"""Analyze this task and create a JSON plan: {task}
+            # Earlier ORAM runs of the same task (file memory backend, ORAM_MEMORY_DIR); absent when it is off.
+            prior_runs = observation.get("prior_runs") or []
+            prior_block = ""
+            if prior_runs:
+                prior_block = "\nEarlier runs of this task, newest first (improve on them, do not repeat them):\n" + "\n".join(
+                    f"- {line}" for line in prior_runs[:5]
+                ) + "\n"
 
+            prompt = f"""Analyze this task and create a JSON plan: {task}
+{prior_block}
 Return ONLY valid JSON:
 {{
     "analysis": "task analysis",
