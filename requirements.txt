@@ -6,6 +6,7 @@ aiohttp>=3.9.0
 # Configuration management
 python-toon>=0.1.0
 toml>=0.10.2
+PyYAML>=6.0
 python-dotenv>=1.0.0
 
 # Async Redis client (optional)

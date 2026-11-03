@@ -1,0 +1,160 @@
+# Ported from grokputer src/workflow/flow.py at d7a14b8 (2026-11-04). Both repos keep their own copy.
+"""
+Flow Definition DSL for GG Framework
+
+Provides a Pythonic way to define workflows.
+
+Author: Grokputer Team
+Date: 2025-11-14
+"""
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional
+
+from .engine import WorkflowEngine
+from .nodes.base import BaseNode, NodeContext
+
+
+class Workflow:
+    """
+    High-level workflow builder using Python DSL.
+
+    Example:
+        workflow = Workflow("my_workflow")
+        workflow.add_node(http_node)
+        workflow.add_node(transform_node)
+        workflow.add_edge(http_node, transform_node)
+        result = await workflow.run({"url": "https://api.example.com"})
+    """
+
+    def __init__(self, name: str, config: Optional[Dict] = None):
+        """
+        Initialize workflow.
+
+        Args:
+            name: Workflow name
+            config: Configuration options
+        """
+        self.name = name
+        self.config = config or {}
+        self.engine = WorkflowEngine(name, config)
+
+    def add_node(self, node: BaseNode) -> "Workflow":
+        """
+        Add a node to the workflow.
+
+        Args:
+            node: Node to add
+
+        Returns:
+            Self for chaining
+        """
+        self.engine.add_node(node)
+        return self
+
+    def add_edge(
+        self,
+        from_node: BaseNode,
+        to_node: BaseNode,
+        condition: Optional[str] = None,
+    ) -> "Workflow":
+        """
+        Connect two nodes.
+
+        Args:
+            from_node: Source node
+            to_node: Target node
+            condition: Optional branch label. With a ConditionalNode as `from_node` use "true" or
+                "false": `to_node` is skipped unless the conditional took that branch. Any node can
+                route by setting the state key "<its node_id>_branch" to a label.
+
+        Returns:
+            Self for chaining
+
+        Raises:
+            ValueError: If either node has not been added to this workflow
+        """
+        missing = [n.node_id for n in (from_node, to_node) if self.engine.nodes.get(n.node_id) is not n]
+        if missing:
+            raise ValueError(f"Cannot add edge: node(s) not in workflow '{self.name}': {', '.join(missing)}")
+
+        from_node.connect_to(to_node)
+
+        # Store condition if provided (for conditional nodes)
+        if condition:
+            # The engine runs `to_node` only when `from_node` took the branch named by `condition`
+            to_node.input_conditions[from_node.node_id] = str(condition)
+            # Legacy lookup: condition -> target (holds only the last target per condition)
+            if not hasattr(from_node, "conditions"):
+                from_node.conditions = {}
+            from_node.conditions[condition] = to_node
+
+        return self
+
+    def validate(self) -> None:
+        """
+        Check that the workflow can be executed.
+
+        Raises:
+            ValueError: If the workflow contains a cycle
+        """
+        self.engine.get_execution_order()
+
+    def remove_node(self, node_id: str) -> "Workflow":
+        """Remove a node."""
+        self.engine.remove_node(node_id)
+        return self
+
+    async def run(
+        self,
+        initial_data: Optional[Dict] = None,
+        parallel: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Execute the workflow.
+
+        Args:
+            initial_data: Initial data
+            parallel: Use parallel execution
+
+        Returns:
+            Final context data
+        """
+        return await self.engine.run(initial_data, parallel)
+
+    def get_status(self) -> Dict:
+        """Get workflow status."""
+        return self.engine.get_status()
+
+    def reset(self) -> None:
+        """Reset workflow for re-execution."""
+        self.engine.reset()
+
+    # Hooks
+    def on_start(self, callback):
+        """Set start callback."""
+        self.engine.on_start = callback
+        return self
+
+    def on_complete(self, callback):
+        """Set completion callback."""
+        self.engine.on_complete = callback
+        return self
+
+    def on_node_start(self, callback):
+        """Set node start callback."""
+        self.engine.on_node_start = callback
+        return self
+
+    def on_node_complete(self, callback):
+        """Set node complete callback."""
+        self.engine.on_node_complete = callback
+        return self
+
+    def on_error(self, callback):
+        """Set error callback."""
+        self.engine.on_error = callback
+        return self
+
+    def __repr__(self) -> str:
+        return f"Workflow(name='{self.name}', nodes={len(self.engine.nodes)})"
