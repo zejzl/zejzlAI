@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Any
 from pathlib import Path
 from dataclasses import asdict
-from fastapi import FastAPI, WebSocket, Request, BackgroundTasks, UploadFile, File
+from fastapi import FastAPI, WebSocket, Request, BackgroundTasks, UploadFile, File, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -213,7 +213,7 @@ app.add_middleware(
 logger.info(f"[SECURE] CORS configured for origins: {', '.join(allowed_origins)}")
 
 # Security: Import authentication system
-from src.auth import authenticate, optional_authenticate, RequireAuth, OptionalAuth, verify_api_key
+from src.auth import authenticate, optional_authenticate, RequireAuth, OptionalAuth, verify_api_key, is_admin_key
 
 # Security: API Authentication Middleware
 @app.middleware("http")
@@ -283,6 +283,66 @@ async def authenticate_api_requests(request: Request, call_next):
     return response
 
 logger.info("[SECURE] API authentication middleware enabled")
+
+
+def require_admin(request: Request) -> Dict[str, str]:
+    """Return the middleware's auth info for an admin-tier key, else raise 403.
+
+    Call this BEFORE an endpoint's try/except so the HTTPException reaches
+    the client as a real 403 instead of being swallowed into a 200 error body.
+    Administrative identity (approver, token issuer) is always taken from
+    this value, never from the request body.
+    """
+    auth_info = getattr(request.state, "auth_info", None)
+    if not is_admin_key(auth_info):
+        logger.warning(
+            f"[SECURITY] Admin endpoint {request.url.path} refused for "
+            f"non-admin key {auth_info.get('key_id') if auth_info else None}"
+        )
+        raise HTTPException(status_code=403, detail="Admin API key required")
+    return auth_info
+
+
+async def authenticate_websocket(websocket: WebSocket) -> Optional[Dict[str, str]]:
+    """Require the same API key as /api/* before accepting a WebSocket.
+
+    The key is read from the ``api_key`` query parameter (what browsers can
+    send), the ``X-API-Key`` header or ``Authorization: Bearer``. On failure
+    the handshake is closed with policy-violation code 1008 and None is
+    returned; the caller must then return without accept().
+    """
+    api_key = (
+        websocket.query_params.get("api_key")
+        or websocket.headers.get("x-api-key")
+        or websocket.headers.get("authorization", "").replace("Bearer ", "")
+    )
+    key_info = verify_api_key(api_key) if api_key else None
+    if not key_info:
+        client = websocket.client.host if websocket.client else "unknown"
+        logger.warning(f"[SECURITY] WebSocket {websocket.url.path} refused from {client}: missing or invalid API key")
+        await websocket.close(code=1008)
+        return None
+    websocket.state.auth_info = key_info
+    return key_info
+
+
+def _parse_enum(enum_cls, raw: str):
+    """Convert a user-supplied enum string by value or name, case-insensitively.
+
+    Returns None for unknown values. The enums in src.mcp_security use
+    lowercase values ("user", "read_tools"); names are uppercase.
+    """
+    if not isinstance(raw, str):
+        return None
+    text = raw.strip()
+    try:
+        return enum_cls(text.lower())
+    except ValueError:
+        pass
+    try:
+        return enum_cls[text.upper()]
+    except KeyError:
+        return None
 
 # Templates and static files
 import os
@@ -841,8 +901,11 @@ async def blackboard_websocket(websocket: WebSocket):
     - Budget status
     - Audit log
 
-    Replaces HTTP polling for instant updates
+    Replaces HTTP polling for instant updates. Needs the same API key as
+    /api/* (``?api_key=`` or ``X-API-Key``); closes with 1008 otherwise.
     """
+    if not await authenticate_websocket(websocket):
+        return
     await websocket.accept()
     logger.info("WebSocket connection established for blackboard")
 
@@ -1351,7 +1414,9 @@ async def magic_action(action: str, background_tasks: BackgroundTasks):
 
 @app.websocket("/ws/live")
 async def websocket_endpoint(websocket: WebSocket):
-    """WebSocket endpoint for real-time updates"""
+    """WebSocket endpoint for real-time updates (same API key as /api/*)"""
+    if not await authenticate_websocket(websocket):
+        return
     await websocket.accept()
     dashboard.connected_clients.add(websocket)
 
@@ -2170,7 +2235,8 @@ async def get_mcp_security_principals():
 
 @app.post("/api/mcp/security/principals")
 async def create_mcp_security_principal(request: Request):
-    """Create a new security principal"""
+    """Create a new security principal (admin API key required)"""
+    admin = require_admin(request)
     try:
         if not dashboard.mcp_security_manager:
             return {"success": False, "error": "MCP Security not available"}
@@ -2179,7 +2245,7 @@ async def create_mcp_security_principal(request: Request):
         principal_id = data.get("id")
         name = data.get("name")
         principal_type = data.get("type", "user")
-        security_level = data.get("security_level", "USER")
+        security_level = data.get("security_level", "user")
         permissions = data.get("permissions", [])
 
         if not principal_id or not name:
@@ -2187,23 +2253,25 @@ async def create_mcp_security_principal(request: Request):
 
         from src.mcp_security import SecurityLevel, Permission
 
-        # Convert string to enum
-        try:
-            level = SecurityLevel(security_level.upper())
-        except ValueError:
-            return {
-                "success": False,
-                "error": f"Invalid security level: {security_level}",
-            }
+        # Enum values are lowercase ("user"); accept value or name, any case
+        level = _parse_enum(SecurityLevel, security_level)
+        if level is None:
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "error": f"Invalid security level: {security_level}"},
+            )
 
-        # Convert permissions
         permission_enums = []
         for perm in permissions:
-            try:
-                permission_enums.append(Permission(perm.upper()))
-            except ValueError:
-                return {"success": False, "error": f"Invalid permission: {perm}"}
+            permission = _parse_enum(Permission, perm)
+            if permission is None:
+                return JSONResponse(
+                    status_code=400,
+                    content={"success": False, "error": f"Invalid permission: {perm}"},
+                )
+            permission_enums.append(permission)
 
+        logger.info(f"[SECURITY] Principal {principal_id} created by admin key {admin['key_id']}")
         principal = await dashboard.mcp_security_manager.create_principal(
             principal_id, name, principal_type, level, set(permission_enums)
         )
@@ -2252,7 +2320,12 @@ async def get_mcp_security_tokens():
 
 @app.post("/api/mcp/security/tokens")
 async def create_mcp_security_token(request: Request):
-    """Create a new access token"""
+    """Create a new access token for a principal (admin API key required).
+
+    Minting a token for any principal is an administrative act: the acting
+    identity is the authenticated admin key, not anything in the body.
+    """
+    admin = require_admin(request)
     try:
         if not dashboard.mcp_security_manager:
             return {"success": False, "error": "MCP Security not available"}
@@ -2265,16 +2338,19 @@ async def create_mcp_security_token(request: Request):
         if not principal_id:
             return {"success": False, "error": "Principal ID is required"}
 
-        # Convert permissions
+        from src.mcp_security import Permission
+
         permission_enums = []
         for perm in permissions:
-            try:
-                from src.mcp_security import Permission
+            permission = _parse_enum(Permission, perm)
+            if permission is None:
+                return JSONResponse(
+                    status_code=400,
+                    content={"success": False, "error": f"Invalid permission: {perm}"},
+                )
+            permission_enums.append(permission)
 
-                permission_enums.append(Permission(perm.upper()))
-            except ValueError:
-                return {"success": False, "error": f"Invalid permission: {perm}"}
-
+        logger.info(f"[SECURITY] Token for principal {principal_id} requested by admin key {admin['key_id']}")
         token = await dashboard.mcp_security_manager.create_token(
             principal_id,
             expires_in,
@@ -2624,14 +2700,19 @@ async def get_pending_approvals(user_id: str = None):
 
 @app.post("/api/security/approve")
 async def approve_operation(request: Request):
-    """Approve or deny a pending operation"""
+    """Approve or deny a pending operation (admin API key required).
+
+    The approver is the authenticated admin key's id; a body ``admin_user``
+    field is ignored so a caller cannot approve as someone else.
+    """
+    admin = require_admin(request)
     try:
         from src.security_validator import security_validator
 
         data = await request.json()
         approval_id = data.get("approval_id")
         approved = data.get("approved", False)
-        admin_user = data.get("admin_user")
+        admin_user = admin["key_id"]
 
         if not approval_id:
             return {"success": False, "error": "Approval ID required"}
