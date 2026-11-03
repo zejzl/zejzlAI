@@ -1,0 +1,23 @@
+# Fetch a JSON document, pick one field, ask a provider to summarise it.
+# Needs network and a provider key; the loader test only checks that the file is valid.
+# Run: python -m src.workflow.run examples/workflows/http-summarise.yaml
+name: http-summarise
+timeout: 60
+input:
+  url: https://api.github.com/repos/zejzl/zejzlAI
+nodes:
+  - id: fetch
+    type: http
+    config: {method: GET, url: "{{url}}", headers: {Accept: application/vnd.github+json}}
+  - id: pick
+    type: transform
+    config: {operation: jq, expression: ".response.description"}
+  - id: summarise
+    type: agent
+    config:
+      prompt: "In one sentence, what is this project about? Description: {{result}}"
+      provider: grok
+      output_format: text
+edges:
+  - [fetch, pick]
+  - [pick, summarise]

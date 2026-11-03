@@ -873,6 +873,23 @@ async def run_oram_mode():
             print("[INFO] If this persists, please check the system logs.")
 
 
+async def run_workflow_mode():
+    """Run a workflow file (YAML or JSON) with the engine in src/workflow. Exit codes as in src/workflow/run.py."""
+    from src.workflow.run import run as run_workflow  # run_with_cleanup stops the provider bus afterwards
+
+    print("\n[Workflow Mode]")
+    print("Examples in examples/workflows/: hello.yaml, branch.yaml, observe-reason-act.yaml, oram-task.yaml, http-summarise.yaml")
+    path = input("Workflow file [examples/workflows/hello.yaml]: ").strip() or "examples/workflows/hello.yaml"
+    input_text = input("Initial data as a JSON object (Enter to use the file's own): ").strip() or None
+    code = await run_workflow(path, input_text)
+    if code == 0:
+        print("[OK] Workflow finished")
+    elif code == 2:
+        print("[ERROR] The workflow file or the input is invalid")
+    else:
+        print("[ERROR] A node failed; see the statuses above")
+
+
 # Future Menu Options (for reference):
 #         1. Single Agent - Observe-Reason-Act loop
 #         2. Collaboration Mode (Grok + Claude) - Dual AI planning [IMPLEMENTED]
@@ -882,7 +899,8 @@ async def run_oram_mode():
 #         6. Offline Mode - Cached/local fallback (no API, uses vault/KB)
 #         7. Community Vault Sync - Pull/push evolutions and tools
 #         8. ORAM Mode - Observer-Reasoner-Actor + Memory iterative processing [IMPLEMENTED]
-#         9. Quit
+#         9. Workflow Mode - Run a workflow file through the agents [IMPLEMENTED]
+#         10. Quit
 
 def run_interactive_menu(debug: bool = True, max_iterations: int = 10, max_rounds: int = 5, skip_boot: bool = False):
     """
@@ -906,10 +924,11 @@ def run_interactive_menu(debug: bool = True, max_iterations: int = 10, max_round
         6. Offline Mode - Cached responses for offline operation
 7. Community Vault - Browse and share tools, configs, and evolutions
         8. ORAM Mode - Observer-Reasoner-Actor + Memory iterative processing
-        9. Quit
+        9. Workflow Mode - Run a workflow file (YAML/JSON) through the agents
+        10. Quit
     """)
 
-    choice = input("        Choose mode (1, 2, 3, 4, 5, 6, 7, 8, or 9): ").strip()
+    choice = input("        Choose mode (1-9, or 10): ").strip()
 
     if choice == "1":
         print("\n[Starting Single Agent Mode...]")
@@ -936,11 +955,14 @@ def run_interactive_menu(debug: bool = True, max_iterations: int = 10, max_round
         print("\n[Starting ORAM Mode...]")
         asyncio.run(run_with_cleanup(run_oram_mode()))
     elif choice == "9":
+        print("\n[Starting Workflow Mode...]")
+        asyncio.run(run_with_cleanup(run_workflow_mode()))
+    elif choice == "10":
         print("\n        Goodbye! :)\n")
         input("        Press Enter to exit...")
         sys.exit(0)
     else:
-        print(f"\n        Mode {choice} is not yet implemented. Please choose 1-8, or 9.\n")
+        print(f"\n        Mode {choice} is not yet implemented. Please choose 1-9, or 10.\n")
 
     return choice
 
@@ -949,7 +971,7 @@ if __name__ == "__main__":
     try:
         while True:
             choice = run_interactive_menu()
-            if choice == "9":
+            if choice == "10":
                 break
 
             # Ask if user wants to continue
