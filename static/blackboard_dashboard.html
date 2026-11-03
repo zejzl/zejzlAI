@@ -402,6 +402,36 @@
 
     <script>
         const API_BASE = '/api';
+        // /api/* and /ws/* need a ZEJZL_API_KEY_* key (readme: Web Dashboard / Authentication).
+        // The key is kept in localStorage; it is sent as the X-API-Key header on fetch()
+        // and as the ?api_key= query parameter on the WebSocket (browsers cannot set
+        // headers on a WebSocket handshake).
+        const API_KEY_STORAGE = 'zejzl_api_key';
+
+        function getApiKey() {
+            let key = localStorage.getItem(API_KEY_STORAGE);
+            if (!key) {
+                key = window.prompt('ZEJZL API key (X-API-Key) for the dashboard:') || '';
+                key = key.trim();
+                if (key) localStorage.setItem(API_KEY_STORAGE, key);
+            }
+            return key;
+        }
+
+        function forgetApiKey() {
+            localStorage.removeItem(API_KEY_STORAGE);
+        }
+
+        async function apiFetch(url, options = {}) {
+            const headers = Object.assign({}, options.headers || {}, { 'X-API-Key': getApiKey() });
+            const response = await fetch(url, Object.assign({}, options, { headers }));
+            if (response.status === 401 || response.status === 403) {
+                // Wrong or stale key: forget it so the next load prompts again
+                forgetApiKey();
+            }
+            return response;
+        }
+
         let ws = null;
         let reconnectInterval = null;
         let autoRefreshEnabled = true;
@@ -410,9 +440,16 @@
         // WebSocket connection
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/ws/blackboard`;
+            const apiKey = getApiKey();
+            if (!apiKey) {
+                console.warn('No API key; WebSocket not connected');
+                connectionStatus = 'error';
+                updateConnectionIndicator();
+                return;
+            }
+            const wsUrl = `${protocol}//${window.location.host}/ws/blackboard?api_key=${encodeURIComponent(apiKey)}`;
             
-            console.log('Connecting to WebSocket:', wsUrl);
+            console.log('Connecting to WebSocket:', wsUrl.split('?')[0]);  // never log the key
             ws = new WebSocket(wsUrl);
             
             ws.onopen = () => {
@@ -463,8 +500,12 @@
                 updateConnectionIndicator();
             };
             
-            ws.onclose = () => {
-                console.log('WebSocket disconnected');
+            ws.onclose = (event) => {
+                console.log('WebSocket disconnected', event.code);
+                if (event.code === 1008) {
+                    // Server refused the key (policy violation): forget it so the next attempt prompts
+                    forgetApiKey();
+                }
                 connectionStatus = 'disconnected';
                 updateConnectionIndicator();
                 
@@ -587,7 +628,7 @@
         // Fallback HTTP polling functions (keep for compatibility)
         async function loadBlackboard() {
             try {
-                const response = await fetch(`${API_BASE}/swarm/blackboard`);
+                const response = await apiFetch(`${API_BASE}/swarm/blackboard`);
                 const data = await response.json();
                 
                 const container = document.getElementById('blackboardContent');
@@ -614,7 +655,7 @@
 
         async function loadBudgetStatus() {
             try {
-                const response = await fetch(`${API_BASE}/swarm/budget/global`);
+                const response = await apiFetch(`${API_BASE}/swarm/budget/global`);
                 const data = await response.json();
                 
                 const container = document.getElementById('budgetContent');
@@ -698,7 +739,7 @@
 
         async function loadAuditLog() {
             try {
-                const response = await fetch(`${API_BASE}/swarm/audit`);
+                const response = await apiFetch(`${API_BASE}/swarm/audit`);
                 const data = await response.json();
                 
                 const container = document.getElementById('auditContent');

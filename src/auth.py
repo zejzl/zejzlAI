@@ -28,6 +28,17 @@ class AuthenticationError(Exception):
     pass
 
 
+# Keys configured with this tier may call administrative endpoints
+# (MCP principal/token management, approving pending operations).
+# Example: ZEJZL_API_KEY_2=some-long-random-key:admin:Zejzl admin
+ADMIN_TIER = "admin"
+
+
+def is_admin_key(key_info: Optional[Dict[str, str]]) -> bool:
+    """True when the verified key info belongs to an admin-tier key."""
+    return bool(key_info) and key_info.get("tier") == ADMIN_TIER
+
+
 class RateLimiter:
     """Simple in-memory rate limiter"""
     def __init__(self):
@@ -36,6 +47,7 @@ class RateLimiter:
             "free": 10,  # 10 requests per minute
             "pro": 100,  # 100 requests per minute
             "enterprise": 1000,  # 1000 requests per minute
+            ADMIN_TIER: 1000,  # administrative keys (same ceiling as enterprise)
         }
     
     def check_rate_limit(self, api_key: str, tier: str = "free") -> bool:
@@ -107,6 +119,7 @@ def get_valid_api_keys() -> Dict[str, Dict[str, str]]:
                     
                     keys[key_hash] = {
                         "key": api_key,
+                        "key_id": env_key,
                         "tier": tier,
                         "description": description
                     }
@@ -126,6 +139,7 @@ def get_valid_api_keys() -> Dict[str, Dict[str, str]]:
             key_hash = hashlib.sha256(dev_key.encode()).hexdigest()
             keys[key_hash] = {
                 "key": dev_key,
+                "key_id": "dev_test_key",
                 "tier": "pro",
                 "description": "Development Test Key"
             }
@@ -138,7 +152,8 @@ def verify_api_key(api_key: str) -> Optional[Dict[str, str]]:
     """
     Verify API key and return key info
     
-    Returns None if invalid, or dict with {tier, description}
+    Returns None if invalid, or dict with {key_id, tier, description}.
+    key_id is the name of the env variable the key came from (never the key).
     """
     if not api_key:
         return None
@@ -149,6 +164,7 @@ def verify_api_key(api_key: str) -> Optional[Dict[str, str]]:
     if key_hash in valid_keys:
         key_info = valid_keys[key_hash]
         return {
+            "key_id": key_info["key_id"],
             "tier": key_info["tier"],
             "description": key_info["description"]
         }

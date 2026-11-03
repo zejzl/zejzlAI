@@ -242,6 +242,18 @@ python web_dashboard.py
 For local development, set `ENVIRONMENT=development` to use a built-in insecure test key when no keys are configured.
 CORS origins are set with `CORS_ORIGINS`.
 
+- **WebSockets** (`/ws/blackboard`, `/ws/live`) need the same API key as `/api/*`: send it as `?api_key=...` (what
+  browsers can do), the `X-API-Key` header or `Authorization: Bearer`. Without a valid key the handshake is closed with
+  code 1008. The bundled `static/blackboard_dashboard.html` asks for the key once, keeps it in `localStorage`, sends
+  `X-API-Key` on its `fetch()` calls and `?api_key=` on the socket. A key passed as a query parameter can end up in
+  access logs; prefer the header from non-browser clients.
+- **Admin tier**: keys whose tier is `admin` (`ZEJZL_API_KEY_2=another_key:admin:Zejzl`) may call the administrative
+  endpoints: `POST /api/mcp/security/principals`, `POST /api/mcp/security/tokens` and `POST /api/security/approve`.
+  Any other tier gets 403 there. The approver / issuer recorded for these actions is the key's env variable name
+  (for example `ZEJZL_API_KEY_2`), taken from the authenticated key, never from the request body (`admin_user` in the
+  approve body is ignored). Security levels and permissions are accepted case-insensitively (`user`, `read_tools`,
+  `ADMIN`); unknown values return 400.
+
 Features:
 - **Live System Monitoring**: Real-time magic system status and AI provider health
 - **Interactive Chat**: Chat with AI agents using single or consensus mode
@@ -352,7 +364,8 @@ ENVIRONMENT=production      # 'development' enables the insecure dev API key
 CORS_ORIGINS=http://localhost:8000
 
 # Web dashboard authentication (one per key: key:tier:description)
-ZEJZL_API_KEY_1=change-me:pro:Admin key
+ZEJZL_API_KEY_1=change-me:pro:Main key
+ZEJZL_API_KEY_2=change-me-too:admin:Admin key   # tier admin unlocks the admin endpoints
 
 # Stripe payments (optional)
 STRIPE_API_KEY=
