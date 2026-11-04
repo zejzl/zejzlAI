@@ -310,6 +310,12 @@ the Reasoner as `prior_runs` (a few short lines in its prompt). With the backend
 caps a run at 3 iterations (9 provider calls); from the menu, type 3 at the iterations prompt. Unset, nothing is written or read and
 the loop behaves exactly as above. Turning a stored run into a brain log line is a separate step, not part of ORAM.
 
+**Ranked recall (on trial, off by default).** With the backend on, `ORAM_MEMORY_RANKED=1` makes the Reason step read the 5
+best-matching earlier runs of *any* task instead of only the same task: runs are scored by word overlap with the current task
+(stored task text counts 0.7, its insights/summary/result 0.3), with recency as the tie-breaker (half-life 7 days); a run that
+shares no word is never shown. Runs of another task are prefixed `[task: ...]` in the prompt. The stored quality score is not used
+for ranking while every run scores the same. Unset, recall is the exact task only, as before.
+
 ### Workflows (`src/workflow/`)
 
 A workflow is a YAML or JSON file with `nodes` (id, type, config) and `edges` (pairs, or `{from, to, condition}` for a branch).

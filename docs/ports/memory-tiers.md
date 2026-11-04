@@ -1,6 +1,6 @@
 # Port: hierarchical memory tiers from grokputer
 
-Part of [the grokputer ports plan](../plans/2026-11-03-grokputer-ports.md). Status: design, **waiting** on Hermes's ORAM step 2.
+Part of [the grokputer ports plan](../plans/2026-11-03-grokputer-ports.md). Status: ranked recall **built** (PR after #17, `ORAM_MEMORY_RANKED=1`, no tier classes ported: the scorer is ~40 lines in `src/agents/memory.py`, so grokputer's `MemoryEntry`/`ShortTermMemory`/`ContextMemory` were not needed). Hermes's step 2 ran 2026-11-04 on Gemini (PR #16, #17 fixed the parser and insights). Next: MemoryBusAgent.
 Read on 2026-11-03. Owner of the zejzlAI memory lane today: Hermes (PR #11 merged 2026-11-03, `f511630`).
 
 ## What grokputer has (verified)

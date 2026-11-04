@@ -464,13 +464,16 @@ class ORAMSystem:
         return iterations
     
     def _recall_prior_runs(self, task: str) -> List[str]:
-        """Earlier runs of `task` as short lines for the reasoning prompt. Empty unless the file backend is on."""
-        recall_runs = getattr(self.memory, "recall_runs", None)
-        if recall_runs is None or not getattr(self.memory, "file_backend_enabled", False):
+        """Earlier runs as short lines for the reasoning prompt. Empty unless the file backend is on.
+
+        Same task only, or (ORAM_MEMORY_RANKED=1) the best-matching runs of any task, see MemoryAgent.recall_prior.
+        """
+        recall = getattr(self.memory, "recall_prior", None) or getattr(self.memory, "recall_runs", None)
+        if recall is None or not getattr(self.memory, "file_backend_enabled", False):
             return []
         try:
             from src.agents.memory import format_prior_runs
-            return format_prior_runs(recall_runs(task, limit=PRIOR_RUNS_LIMIT))
+            return format_prior_runs(recall(task, limit=PRIOR_RUNS_LIMIT), task=task)
         except Exception as e:
             logger.warning(f"[ORAM] Recall of prior runs failed: {e}")
             return []
