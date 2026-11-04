@@ -7,11 +7,14 @@ All agents inherit from this
 import asyncio
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
 from datetime import datetime
 
-from src.core.message_bus import MessageBus, Message
+# The inter-agent bus PantheonAgent was written for: channels, `subscribe(channel)` returning a queue,
+# `publish(channel, message)` and `Message.create(...)` live in messagebus.py (the Redis-backed bus),
+# not in src.core.message_bus (the in-process agent bus, whose consumers are src/core/bus_agent.py).
+from messagebus import AsyncMessageBus as AgentMessageBus, Message
 
 logger = logging.getLogger("PantheonAgent")
 
@@ -68,11 +71,11 @@ class PantheonAgent(ABC):
     9. Improver - Optimizes and refines
     """
     
-    def __init__(self, config: AgentConfig, message_bus: MessageBus):
+    def __init__(self, config: AgentConfig, message_bus: AgentMessageBus):
         self.config = config
         self.bus = message_bus
         self.running = False
-        self.subscriptions: List[asyncio.Queue] = []
+        self.subscriptions: List[Tuple[str, asyncio.Queue]] = []
         self._tasks: List[asyncio.Task] = []
     
     async def start(self):
@@ -86,7 +89,7 @@ class PantheonAgent(ABC):
         # Subscribe to channels
         for channel in self.config.channels:
             queue = await self.bus.subscribe(channel)
-            self.subscriptions.append(queue)
+            self.subscriptions.append((channel, queue))
             
             # Create listener task for each channel
             task = asyncio.create_task(self._listen(channel, queue))
@@ -105,8 +108,13 @@ class PantheonAgent(ABC):
         # Wait for cancellation
         await asyncio.gather(*self._tasks, return_exceptions=True)
         self._tasks.clear()
-        
-        logger.info(f"[FAIL] {self.config.name} stopped")
+
+        # Leave the channels, so the bus stops filling queues nobody reads
+        for channel, queue in self.subscriptions:
+            await self.bus.unsubscribe(channel, queue)
+        self.subscriptions.clear()
+
+        logger.info(f"[OK] {self.config.name} stopped")
     
     async def _listen(self, channel: str, queue: asyncio.Queue):
         """Listen to a channel and process messages"""
