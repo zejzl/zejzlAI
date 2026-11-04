@@ -5,6 +5,7 @@ import logging
 from typing import Any, Dict, Optional
 
 from src.security_validator import security_validator, ValidationResult, RiskLevel, ApprovalRequirement
+from src.agents.provider_defaults import default_provider_name
 
 logger = logging.getLogger("ValidatorAgent")
 
@@ -237,7 +238,7 @@ Return ONLY valid JSON with quality assessment:
             # Call AI for quality assessment
             response = await ai_bus.send_message(
                 content=prompt,
-                provider_name=provider or "grok",
+                provider_name=provider or default_provider_name(),
                 conversation_id=f"quality_validator_{hash(str(execution_summary))}"
             )
 

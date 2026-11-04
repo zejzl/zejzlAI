@@ -4,6 +4,8 @@ import json
 import logging
 from typing import Any, Dict, Optional
 
+from src.agents.provider_defaults import default_provider_name
+
 logger = logging.getLogger("ImproverAgent")
 
 
@@ -117,7 +119,7 @@ Provide your response as a JSON object with this structure:
             # Call AI
             response = await ai_bus.send_message(
                 content=prompt,
-                provider_name=provider or "grok",  # Use specified provider or default to Grok
+                provider_name=provider or default_provider_name(),
                 conversation_id=f"improver_{hash(str(analysis) + str(learned_patterns))}"
             )
 
