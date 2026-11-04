@@ -17,6 +17,7 @@ from typing import List, Optional
 
 from .engine import WorkflowEngine
 from .loader import WorkflowDefinitionError, load_workflow
+from .messagebus_adapter import MessageBusNode, start_default_agents, stop_agents
 
 
 async def run(path: str, input_text: Optional[str] = None) -> int:
@@ -35,6 +36,10 @@ async def run(path: str, input_text: Optional[str] = None) -> int:
 
     print(f"[WORKFLOW] Running '{workflow.name}' ({len(workflow.engine.nodes)} nodes)")
     engine = WorkflowEngine(workflow.name, timeout=options.get("timeout"))
+    agents = []
+    if any(isinstance(node, MessageBusNode) for node in workflow.engine.nodes.values()):
+        agents = await start_default_agents()
+        print(f"[WORKFLOW] Bus agents started: {', '.join(a.agent_id for a in agents)}")
     try:
         result = await engine.execute(workflow, initial)
     except Exception as e:
@@ -42,6 +47,8 @@ async def run(path: str, input_text: Optional[str] = None) -> int:
         for node_id, status in workflow.get_status()["nodes"].items():
             print(f"[WORKFLOW]   {node_id}: {status}")
         return 1
+    finally:
+        await stop_agents(agents)
 
     skipped = [node_id for node_id, status in workflow.get_status()["nodes"].items() if status == "skipped"]
     summary = f"[WORKFLOW] {result['status']}: {result['nodes_executed']} nodes"
