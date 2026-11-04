@@ -5,6 +5,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from src.agents.provider_defaults import default_provider_name
+from src.agents.json_parsing import parse_json_response
 
 logger = logging.getLogger("AnalyzerAgent")
 
@@ -117,7 +118,7 @@ Provide your response as a JSON object with this structure:
 
             # Parse JSON response
             try:
-                analysis_data = json.loads(response)
+                analysis_data = parse_json_response(response)
                 
                 # Parse fields that might be stringified JSON arrays
                 recommendations = analysis_data.get("recommendations", [])

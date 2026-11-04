@@ -198,6 +198,41 @@ def test_insights_are_collected_and_limited_to_three_per_iteration():
     assert any(x.startswith("Reasoning:") for x in system.get_insights())
 
 
+def test_action_insight_surfaces_the_expected_outcome_not_just_a_count():
+    """A later run reads these back (format_prior_runs); a bare item count
+    tells it nothing about what was decided. The real Actor shape is a list
+    of dicts with expected_outcome/execution_plan, not bare strings."""
+    actor = StubActor([{
+        "expected_outcome": "A working login form that redirects to /dashboard on success.",
+        "execution_plan": ["Read the existing form component", "Add the redirect"],
+    }])
+    system = make_system(reasoner=StubReasoner("a" * 80), actor=actor)
+    iteration, _ = run(system.execute_oram_iteration("task"))
+    action_insights = [x for x in iteration.insights if x.startswith("Action:")]
+    assert action_insights
+    assert "working login form" in action_insights[0]
+    assert "1 item(s)" in action_insights[0]
+
+
+def test_action_insight_falls_back_to_the_first_step_without_an_outcome():
+    actor = StubActor([{
+        "expected_outcome": "Outcome not specified",
+        "execution_plan": ["Inspect the failing test first"],
+    }])
+    system = make_system(reasoner=StubReasoner("a" * 80), actor=actor)
+    iteration, _ = run(system.execute_oram_iteration("task"))
+    action_insights = [x for x in iteration.insights if x.startswith("Action:")]
+    assert action_insights
+    assert "Inspect the failing test first" in action_insights[0]
+
+
+def test_action_insight_falls_back_to_a_count_with_nothing_substantive():
+    actor = StubActor([{"expected_outcome": "", "execution_plan": []}])
+    system = make_system(reasoner=StubReasoner("a" * 80), actor=actor)
+    iteration, _ = run(system.execute_oram_iteration("task"))
+    assert "Action: Generated 1 execution items" in iteration.insights
+
+
 def test_clear_history_resets_state():
     system = good_system()
     run(system.execute_oram_loop("task"))

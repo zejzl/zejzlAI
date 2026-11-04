@@ -5,6 +5,7 @@ import logging
 from typing import Any, Dict, Optional
 
 from src.agents.provider_defaults import default_provider_name
+from src.agents.json_parsing import parse_json_response
 
 logger = logging.getLogger("ImproverAgent")
 
@@ -125,7 +126,7 @@ Provide your response as a JSON object with this structure:
 
             # Parse JSON response
             try:
-                improvement_data = json.loads(response)
+                improvement_data = parse_json_response(response)
                 
                 # Parse fields that might be stringified JSON arrays
                 magic_improvements = improvement_data.get("magic_improvements", [])

@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 
 from src.security_validator import security_validator, ValidationResult, RiskLevel, ApprovalRequirement
 from src.agents.provider_defaults import default_provider_name
+from src.agents.json_parsing import parse_json_response
 
 logger = logging.getLogger("ValidatorAgent")
 
@@ -244,7 +245,7 @@ Return ONLY valid JSON with quality assessment:
 
             # Parse AI response
             try:
-                quality_data = json.loads(response)
+                quality_data = parse_json_response(response)
                 
                 # Parse fields that might be stringified JSON arrays
                 critical_issues = quality_data.get("critical_issues", [])
