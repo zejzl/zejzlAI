@@ -61,6 +61,7 @@ def _guarded_connect(self, address):
 def _isolated_env(monkeypatch):
     for name in PROVIDER_ENV_VARS:
         monkeypatch.delenv(name, raising=False)
+    monkeypatch.delenv("ORAM_DEFAULT_PROVIDER", raising=False)
     for name in list(os.environ):
         if name.startswith("ZEJZL_API_KEY_"):
             monkeypatch.delenv(name, raising=False)
