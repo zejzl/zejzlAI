@@ -2,7 +2,6 @@
 import asyncio
 import json
 import logging
-import re
 from typing import Any, Dict, Optional
 
 from src.agents.json_parsing import parse_json_response, strip_code_fence
