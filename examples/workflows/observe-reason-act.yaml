@@ -1,0 +1,26 @@
+# Observer -> Reasoner -> Actor as a workflow, then pull the action's results out.
+# Each agent step goes through the shared provider bus; without a provider key the agents
+# answer with their rule-based fallback (ai_generated: false), so the file also runs offline.
+# Run: python -m src.workflow.run examples/workflows/observe-reason-act.yaml
+#      python -m src.workflow.run examples/workflows/observe-reason-act.yaml --input '{"task": "write a README summary"}'
+name: observe-reason-act
+timeout: 120
+input:
+  task: tidy the downloads folder
+nodes:
+  - id: observe
+    type: agent
+    config: {agent: observer}            # reads `task`, writes `observe`
+  - id: reason
+    type: agent
+    config: {agent: reasoner, input: observe}
+  - id: act
+    type: agent
+    config: {agent: actor, input: reason}
+  - id: results
+    type: transform
+    config: {operation: jq, expression: ".act.results"}
+edges:
+  - [observe, reason]
+  - [reason, act]
+  - [act, results]

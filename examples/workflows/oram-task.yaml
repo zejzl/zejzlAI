@@ -1,0 +1,13 @@
+# One ORAM loop (Observe, Reason, Act, Memory) on a task, capped at 3 iterations.
+# Run: python -m src.workflow.run examples/workflows/oram-task.yaml --input '{"task": "plan a blog post about agents"}'
+name: oram-task
+input:
+  task: summarise what this repository does
+nodes:
+  - id: oram
+    type: oram
+    config: {iteration_type: basic, max_iterations: 3}   # reads `task`, writes `oram`
+  - id: done
+    type: noop
+edges:
+  - [oram, done]

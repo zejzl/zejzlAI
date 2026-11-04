@@ -52,12 +52,25 @@ async def run(path: str, input_text: Optional[str] = None) -> int:
     return 0
 
 
+async def run_and_cleanup(path: str, input_text: Optional[str] = None) -> int:
+    """run(), then stop the shared provider bus if an agent node started it (its tasks keep the loop alive)."""
+    try:
+        return await run(path, input_text)
+    finally:
+        try:
+            from base import cleanup_ai_provider_bus
+
+            await cleanup_ai_provider_bus()
+        except Exception as e:  # cleanup must never hide the workflow's own result
+            print(f"[WARNING] provider bus cleanup failed: {e}")
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m src.workflow.run", description="Run a workflow from a YAML or JSON file.")
     parser.add_argument("path", help="workflow file (YAML or JSON)")
     parser.add_argument("--input", dest="input_text", help="initial data as a JSON object, merged over the file's `input`")
     args = parser.parse_args(argv)
-    return asyncio.run(run(args.path, args.input_text))
+    return asyncio.run(run_and_cleanup(args.path, args.input_text))
 
 
 if __name__ == "__main__":

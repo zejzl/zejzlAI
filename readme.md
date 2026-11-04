@@ -286,7 +286,8 @@ Available modes:
 6. **Offline Mode** - Cached responses for offline operation
 7. **Community Vault** - Browse and share tools, configs and evolutions
 8. **ORAM Mode** - Observer-Reasoner-Actor + Memory iterative processing
-9. **Quit**
+9. **Workflow Mode** - Run a workflow file (YAML/JSON) through the agents, see below
+10. **Quit**
 
 Modes that call an AI provider need at least one API key in `.env`; without one they print
 `[ERROR] No AI providers available` and return. Each mode shuts down the shared provider bus on exit.
@@ -308,6 +309,22 @@ token-shaped strings replaced by `[REDACTED]`). The Reason step reads up to 5 ea
 the Reasoner as `prior_runs` (a few short lines in its prompt). With the backend on, `execute_oram(task)` without a `max_iterations`
 caps a run at 3 iterations (9 provider calls); from the menu, type 3 at the iterations prompt. Unset, nothing is written or read and
 the loop behaves exactly as above. Turning a stored run into a brain log line is a separate step, not part of ORAM.
+
+### Workflows (`src/workflow/`)
+
+A workflow is a YAML or JSON file with `nodes` (id, type, config) and `edges` (pairs, or `{from, to, condition}` for a branch).
+The engine runs it as a DAG: independent nodes run in parallel, a conditional node's `"true"`/`"false"` edges skip the other
+branch, failures retry through the healer. Run a file with `python -m src.workflow.run <file> [--input '{...}']` (exit 0 success,
+1 a node failed, 2 invalid file or input) or from the menu (mode 9). Examples in `examples/workflows/`.
+
+Node types: `http` (GET/POST/... via aiohttp), `conditional`, `transform` (`operation: jq` with a path such as `.user.name`),
+`noop`, `agent` and `oram`. `agent` has two forms: `{agent: observer|reasoner|actor, input: <key>}` runs one Pantheon agent step
+(the agents degrade to their rule-based answer without a provider, `ai_generated: false`; set `require_ai: true` to fail instead),
+and `{prompt: "... {{var}} ...", provider: grok, output_format: text|json|decision}` sends one prompt through the provider bus.
+`oram` runs one `execute_oram` loop on `task`, capped at 3 iterations by default. Each node writes its result under its own id
+(or `output`). `${VAR}` in a config string reads the environment, so tokens stay out of files. State snapshots go to
+`$WORKFLOW_STATE_DIR` (default `./workflow_states`, gitignored). Ported from grokputer's GG framework; plan and what was left out:
+`docs/ports/workflow-engine.md`.
 
 ### Running Tests
 
