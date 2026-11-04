@@ -10,14 +10,15 @@ method the bus never had, and simulated subscriptions).
 
 The other end of a request is a BusAgent (src/core/bus_agent.py). `start_default_agents` starts the
 ProviderBusAgent as `provider`, so `{operation: request, to: provider, content: {prompt: ...}}` asks a
-model through the shared provider bus.
+model through the shared provider bus, and the MemoryBusAgent as `memory`, so `{operation: request,
+to: memory, content: {op: recall, task: ...}}` reads the ORAM file memory (empty unless ORAM_MEMORY_DIR).
 """
 from __future__ import annotations
 
 import asyncio
 from typing import Any, Dict, List, Optional
 
-from src.core.bus_agent import BusAgent, ProviderBusAgent
+from src.core.bus_agent import BusAgent, MemoryBusAgent, ProviderBusAgent
 from src.core.message_bus import Message, MessageBus, MessagePriority
 
 from .nodes.agent_node import interpolate
@@ -25,7 +26,7 @@ from .nodes.base import BaseNode, NodeContext
 
 PRIORITIES = {"high": MessagePriority.HIGH, "normal": MessagePriority.NORMAL, "low": MessagePriority.LOW}
 OPERATIONS = ("publish", "request", "broadcast")
-DEFAULT_AGENTS = ("provider",)
+DEFAULT_AGENTS = ("provider", "memory")
 
 _default_bus: Optional[MessageBus] = None
 _adapters: Dict[str, "MessageBusAdapter"] = {}
@@ -120,12 +121,14 @@ def get_message_bus_adapter(workflow_id: str, bus: Optional[MessageBus] = None) 
 
 
 async def start_default_agents(bus: Optional[MessageBus] = None, names=DEFAULT_AGENTS) -> List[BusAgent]:
-    """Start the built-in bus agents (today: `provider`). Returns them; stop with stop_agents()."""
+    """Start the built-in bus agents (`provider`, `memory`). Returns them; stop with stop_agents()."""
     bus = bus or get_default_bus()
     agents: List[BusAgent] = []
     for name in names:
         if name == "provider":
             agent = ProviderBusAgent(name, bus)
+        elif name == "memory":
+            agent = MemoryBusAgent(name, bus)
         else:
             raise ValueError(f"unknown built-in bus agent {name!r}")
         agent.start()

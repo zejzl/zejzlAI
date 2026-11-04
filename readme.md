@@ -296,6 +296,11 @@ Modes that call an AI provider need at least one API key in `.env`; without one 
 
 Each iteration runs Observe, Reason, Act, then stores the result in Memory, scores it (0 to 1) and extracts up to three insights.
 The loop stops when the score reaches the convergence threshold, when the quality trend declines, or at `max_iterations`.
+The score is three weighted factors, each 0 to 1, kept on the iteration as `quality_factors` and in the stored run: *provenance*
+(0.4: each phase a model answer 1.0, a rule-based fallback or an unparsed model answer 0.4, a failure 0), *reasoning* (0.3: analysis
+length, full credit at 300 characters, plus subtasks) and *action* (0.3: per result a real expected outcome, full credit at 60
+characters, plus plan steps). The agents' placeholder strings ("Outcome not specified" and the like) score 0, so a thin run keeps
+iterating up to the cap instead of converging on the first pass.
 Iteration types set defaults: basic 5 iterations at 0.85, deep analysis 7 at 0.9, creative 6 at 0.8, problem solving 8 at 0.85,
 optimization 5 at 0.9. A `max_iterations` you set yourself (menu prompt, or the `max_iterations` argument of `execute_oram`) wins
 over the type's default. If a provider fails, the agents fall back to rule-based output (`ai_generated: False` with a
@@ -330,8 +335,11 @@ and `{prompt: "... {{var}} ...", provider: grok, output_format: text|json|decisi
 `oram` runs one `execute_oram` loop on `task`, capped at 3 iterations by default. `bus` talks to agents on the in-process
 message bus (`src/core/message_bus.py`): `{operation: request, to: provider, content: {prompt: ...}}` asks the built-in
 `provider` bus agent (`src/core/bus_agent.py`, answers through the provider bus) and waits for the reply with
-`MessageBus.send_and_wait`; `publish` and `broadcast` are fire-and-forget. The runner starts the built-in bus agents when a
-file has a `bus` node. Each node writes its result under its own id
+`MessageBus.send_and_wait`; `publish` and `broadcast` are fire-and-forget. `{operation: request, to: memory, content: {op: recall,
+task: ...}}` asks the built-in `memory` bus agent for earlier ORAM runs of that task (`runs` and prompt-ready `lines`; ranked
+across tasks with `ORAM_MEMORY_RANKED=1` or `ranked: true`), `{op: store, task, record}` appends one, `{op: status}` says whether
+the backend is on; it is the same file memory as ORAM's (`ORAM_MEMORY_DIR`), so ORAM runs and workflows remember each other.
+Example: `examples/workflows/memory-recall.yaml`. The runner starts the built-in bus agents when a file has a `bus` node. Each node writes its result under its own id
 (or `output`). `${VAR}` in a config string reads the environment, so tokens stay out of files. State snapshots go to
 `$WORKFLOW_STATE_DIR` (default `./workflow_states`, gitignored). Ported from grokputer's GG framework; plan and what was left out:
 `docs/ports/workflow-engine.md`.

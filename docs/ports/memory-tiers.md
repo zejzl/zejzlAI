@@ -66,3 +66,6 @@ encryption at rest (the redaction in `store_run` is the agreed protection), a kn
 Nothing shows yet that ORAM runs are worth recalling: the quality score is structural (Hermes's note, brain `inbox/2026-11-03-oram-messagebus-room-integration.md`),
 the loop usually stops after one iteration, and no run has been filed in brain. Hermes's step 2 produces the first three real runs.
 If their insights are empty, better recall ranks empty things; the port would be waste. If they are useful, this doc is ready.
+
+
+Update 2026-11-04: the quality scorer was replaced (provenance, reasoning, action factors, PR after #19), so `best_quality` and the stored `quality_factors` now vary between runs. Ranked recall still ignores them; adding quality as a small third term in `score_run` is the obvious next step once a few real runs show the spread.

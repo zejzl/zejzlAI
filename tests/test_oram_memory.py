@@ -14,7 +14,7 @@ import base
 from src.agents.memory import MemoryAgent, format_prior_runs, scrub_secrets, task_key
 from src.agents.reasoner import ReasonerAgent
 from src.oram import ORAMConfig, ORAMIterationType, ORAMSystem, execute_oram
-from tests.test_oram import StubActor, StubObserver, StubReasoner, make_system
+from tests.test_oram import GOOD_PLAN, GOOD_RESULTS, StubActor, StubObserver, StubReasoner, make_system
 
 
 def run(coro):
@@ -23,7 +23,7 @@ def run(coro):
 
 def real_memory_system(**kw):
     """Stub agents, but the real MemoryAgent (which reads ORAM_MEMORY_DIR at construction)."""
-    system = make_system(reasoner=StubReasoner("a" * 80), actor=StubActor(["step"]), **kw)
+    system = make_system(reasoner=StubReasoner("a" * 300, **GOOD_PLAN), actor=StubActor(GOOD_RESULTS), **kw)
     system.memory = MemoryAgent()
     return system
 
@@ -88,9 +88,10 @@ def test_a_run_writes_one_line_per_task_file(memory_dir):
     assert record["task"] == "Summarise the board"
     assert record["iterations"] == 1 and record["calls"] == 3
     assert record["iteration_type"] == "deep_analysis"
-    assert record["best_quality"] == pytest.approx(0.95) and record["convergence_achieved"] is True
+    assert record["best_quality"] == pytest.approx(1.0) and record["convergence_achieved"] is True
     assert record["ts"].endswith("+00:00")
-    assert "1 iterations" in record["summary"] and "step" in record["result"]
+    assert "1 iterations" in record["summary"] and "write the summary" in record["result"]
+    assert record["quality_factors"] == {"provenance": 1.0, "reasoning": 1.0, "action": 1.0, "total": 1.0}
     assert any(i.startswith("Reasoning:") for i in record["insights"])
 
 
@@ -98,7 +99,7 @@ def test_a_second_run_of_the_same_task_sees_the_first_as_prior_runs(memory_dir):
     run(real_memory_system().execute_oram_loop("same task"))
     second = run(real_memory_system().execute_oram_loop("same task"))
     prior = second[0].reasoning["prior_runs"]
-    assert len(prior) == 1 and "quality 0.95" in prior[0] and "1 iterations" in prior[0]
+    assert len(prior) == 1 and "quality 1.00" in prior[0] and "1 iterations" in prior[0]
     assert second[0].observation["prior_runs"] == prior
     assert len(next(memory_dir.glob("*.jsonl")).read_text().splitlines()) == 2
 
@@ -181,7 +182,7 @@ def test_execute_oram_defaults_to_three_iterations_with_the_backend_on(memory_di
 
 def test_a_stub_memory_without_the_backend_is_tolerated(memory_dir):
     # tests/test_oram.py's StubMemory has no store_run/recall_runs; the hooks must stay no-ops for it.
-    system = make_system(reasoner=StubReasoner("a" * 80), actor=StubActor(["step"]))
+    system = make_system(reasoner=StubReasoner("a" * 300, **GOOD_PLAN), actor=StubActor(GOOD_RESULTS))
     iterations = run(system.execute_oram_loop("task"))
     assert len(iterations) == 1 and "prior_runs" not in iterations[0].reasoning
     assert not memory_dir.exists() or list(memory_dir.glob("*.jsonl")) == []

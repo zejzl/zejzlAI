@@ -1,0 +1,36 @@
+# Shared memory over the in-process message bus: recall related earlier ORAM runs from the built-in
+# `memory` bus agent, put them in a prompt for the `provider` agent, then store the answer as a run.
+# Needs ORAM_MEMORY_DIR in .env (otherwise recall is empty and store is a no-op, and the workflow still
+# completes); ORAM_MEMORY_RANKED=1 makes the recall cross-task.
+# Run: python -m src.workflow.run examples/workflows/memory-recall.yaml --input '{"task": "..."}'
+name: memory-recall
+input:
+  task: Summarise the zejzlAI README in 3 bullet points
+nodes:
+  - id: remember
+    type: bus
+    config:
+      operation: request
+      to: memory
+      content: {op: recall, task: "{{task}}", limit: 3}
+  - id: ask
+    type: bus
+    config:
+      operation: request
+      to: provider
+      content:
+        prompt: "Earlier related runs, as JSON (may be empty):\n{{remember}}\n\nTask: {{task}}"
+        provider: gemini
+      timeout: 60
+  - id: keep
+    type: bus
+    config:
+      operation: request
+      to: memory
+      content:
+        op: store
+        task: "{{task}}"
+        record: {source: workflow, workflow: memory-recall, result: "{{ask}}"}
+edges:
+  - [remember, ask]
+  - [ask, keep]
