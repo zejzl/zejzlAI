@@ -6,7 +6,7 @@ import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 logger = logging.getLogger("MemoryAgent")
 
@@ -15,6 +15,68 @@ logger = logging.getLogger("MemoryAgent")
 MEMORY_DIR_ENV = "ORAM_MEMORY_DIR"
 TEXT_CAP = 2000          # longest stored summary/result text, in characters
 SLUG_LEN = 40            # task key = slug of the task text (this long) + short hash of the full text
+
+# Ranked recall (on trial): with ORAM_MEMORY_RANKED=1 the Reason step sees the best-matching earlier runs of ANY task,
+# not only the same task key. Score = word overlap with the current task (dominant) plus recency (tie-breaker). The
+# stored quality score is deliberately not used: every run scores 0.95 today (structural scorer), so it ranks nothing.
+RANKED_ENV = "ORAM_MEMORY_RANKED"
+RECENCY_HALF_LIFE_DAYS = 7.0
+OVERLAP_WEIGHT, RECENCY_WEIGHT = 0.8, 0.2
+TASK_OVERLAP_WEIGHT, CONTENT_OVERLAP_WEIGHT = 0.7, 0.3
+_TOKEN_RE = re.compile(r"[a-z0-9][a-z0-9_.-]+")
+_STOPWORDS = frozenset("""
+a an the and or of in on at to for from by with as is are was were be been it its this that these those what which
+who how why when where into onto over under about via per each all any some not no do does did done can could
+should would will shall may might must our your their my his her we you they them us me i if then than so such
+up out off only also just very more most less least new old one two three
+""".split())
+
+
+def ranked_enabled() -> bool:
+    """True when ORAM_MEMORY_RANKED is 1/true/yes/on."""
+    return os.environ.get(RANKED_ENV, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def tokens(text: Any) -> frozenset:
+    """Lower-case words of at least two characters, minus stopwords. Punctuation inside words (file.py) is kept."""
+    if not isinstance(text, str):
+        text = "" if text is None else str(text)
+    return frozenset(t for t in _TOKEN_RE.findall(text.lower()) if t not in _STOPWORDS)
+
+
+def _age_days(ts: Any, now: datetime) -> Optional[float]:
+    try:
+        then = datetime.fromisoformat(str(ts))
+    except (TypeError, ValueError):
+        return None
+    if then.tzinfo is None:
+        then = then.replace(tzinfo=timezone.utc)
+    return max((now - then).total_seconds(), 0.0) / 86400.0
+
+
+def score_run(run: Dict[str, Any], query: frozenset, now: Optional[datetime] = None) -> float:
+    """Relevance of a stored run to the tokens of the current task. 0.0 when they share no word at all.
+
+    overlap  = 0.7 * (query words found in the stored task) + 0.3 * (query words found in its insights/summary/result),
+               both as a fraction of the query, so the same task scores 1.0 on the first term;
+    recency  = 0.5 ** (age in days / 7);
+    score    = 0.8 * overlap + 0.2 * recency   (recency only orders runs with the same overlap).
+    """
+    if not query:
+        return 0.0
+    now = now or datetime.now(timezone.utc)
+    task_words = tokens(run.get("task"))
+    content = [run.get("summary"), run.get("result")] + list(run.get("insights") or [])
+    content_words = frozenset().union(*(tokens(c) for c in content)) if content else frozenset()
+    task_overlap = len(query & task_words) / len(query)
+    content_overlap = len(query & content_words) / len(query)
+    overlap = TASK_OVERLAP_WEIGHT * task_overlap + CONTENT_OVERLAP_WEIGHT * content_overlap
+    if overlap == 0.0:
+        return 0.0
+    age = _age_days(run.get("ts"), now)
+    recency = 0.5 ** (age / RECENCY_HALF_LIFE_DAYS) if age is not None else 0.0
+    return OVERLAP_WEIGHT * overlap + RECENCY_WEIGHT * recency
+
 
 # Anything that looks like a provider key or bearer token. The task text and the agents' answers can carry one by
 # accident (a pasted .env line, a URL with a key); the file lives outside the repo but is still plain text.
@@ -96,6 +158,8 @@ class MemoryAgent:
         ]
         self.memory_store: List[Dict[str, Any]] = []
         self.memory_dir: Optional[Path] = memory_dir()
+        # Parsed JSONL files for ranked recall, keyed by path, invalidated when a file's mtime or size changes.
+        self._runs_cache: Dict[Path, Tuple[Tuple[int, int], List[Dict[str, Any]]]] = {}
 
     @property
     def file_backend_enabled(self) -> bool:
@@ -147,11 +211,8 @@ class MemoryAgent:
         logger.info(f"[{self.name}] Stored run for task key {path.stem}")
         return path
 
-    def recall_runs(self, task: str, limit: int = 5) -> List[Dict[str, Any]]:
-        """Earlier runs of `task`, newest first. A corrupt line is skipped; a missing file is an empty list."""
-        path = self._run_file(task)
-        if path is None or limit <= 0 or not path.is_file():
-            return []
+    def _read_runs(self, path: Path) -> List[Dict[str, Any]]:
+        """All runs in one JSONL file, oldest first. A corrupt line is skipped; an unreadable file is an empty list."""
         runs: List[Dict[str, Any]] = []
         try:
             lines = path.read_text(encoding="utf-8").splitlines()
@@ -169,18 +230,83 @@ class MemoryAgent:
                 continue
             if isinstance(parsed, dict):
                 runs.append(parsed)
+        return runs
+
+    def recall_runs(self, task: str, limit: int = 5) -> List[Dict[str, Any]]:
+        """Earlier runs of `task` (exact task key), newest first. A missing file is an empty list."""
+        path = self._run_file(task)
+        if path is None or limit <= 0 or not path.is_file():
+            return []
+        runs = self._read_runs(path)
         runs.reverse()
         return runs[:limit]
 
+    def _all_runs(self) -> List[Dict[str, Any]]:
+        """Every run in every JSONL file of the memory directory, through the per-file cache."""
+        if self.memory_dir is None or not self.memory_dir.is_dir():
+            return []
+        runs: List[Dict[str, Any]] = []
+        seen = set()
+        for path in sorted(self.memory_dir.glob("*.jsonl")):
+            try:
+                stat = path.stat()
+            except OSError:
+                continue
+            stamp = (stat.st_mtime_ns, stat.st_size)
+            cached = self._runs_cache.get(path)
+            if cached is None or cached[0] != stamp:
+                cached = (stamp, self._read_runs(path))
+                self._runs_cache[path] = cached
+            seen.add(path)
+            runs.extend(cached[1])
+        for stale in [p for p in self._runs_cache if p not in seen]:
+            del self._runs_cache[stale]
+        return runs
 
-def format_prior_runs(runs: List[Dict[str, Any]], max_chars: int = 240) -> List[str]:
-    """One short line per earlier run, for the reasoning prompt."""
+    def recall_ranked(self, task: str, limit: int = 5) -> List[Dict[str, Any]]:
+        """The `limit` earlier runs of ANY task that best match `task` (see score_run), best first.
+
+        A run that shares no word with the task is never returned, so an unrelated history yields an empty list
+        just like the exact-match recall does. Empty when the backend is off.
+        """
+        if self.memory_dir is None or limit <= 0:
+            return []
+        query = tokens(task)
+        if not query:
+            return []
+        now = datetime.now(timezone.utc)
+        scored = []
+        for index, run in enumerate(self._all_runs()):
+            score = score_run(run, query, now)
+            if score > 0.0:
+                scored.append((score, str(run.get("ts", "")), index, run))
+        scored.sort(key=lambda item: (item[0], item[1], item[2]), reverse=True)
+        return [item[3] for item in scored[:limit]]
+
+    def recall_prior(self, task: str, limit: int = 5) -> List[Dict[str, Any]]:
+        """What the Reason step gets: ranked cross-task recall when ORAM_MEMORY_RANKED is on, else the exact task."""
+        if ranked_enabled():
+            return self.recall_ranked(task, limit=limit)
+        return self.recall_runs(task, limit=limit)
+
+
+def format_prior_runs(runs: List[Dict[str, Any]], max_chars: int = 240, task: Optional[str] = None) -> List[str]:
+    """One short line per earlier run, for the reasoning prompt.
+
+    With `task` given, a run of a different task (ranked recall) is prefixed with `[task: ...]` so the model knows
+    it is looking at a related run, not an earlier attempt at the same one.
+    """
     lines = []
+    current = task_key(task) if task else None
     for run in runs:
         ts = str(run.get("ts", ""))[:16].replace("T", " ")
         quality = run.get("best_quality", run.get("average_quality"))
         quality_text = f"{quality:.2f}" if isinstance(quality, (int, float)) else "?"
         text = run.get("summary") or run.get("result") or ""
-        line = f"{ts} quality {quality_text}, {run.get('iterations', '?')} iterations: {text}"
+        prefix = ""
+        run_task = run.get("task")
+        if current and isinstance(run_task, str) and task_key(run_task) != current:
+            prefix = f"[task: {' '.join(run_task.split())[:60]}] "
+        line = f"{prefix}{ts} quality {quality_text}, {run.get('iterations', '?')} iterations: {text}"
         lines.append(line[:max_chars])
     return lines
