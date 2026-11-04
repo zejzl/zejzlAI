@@ -5,6 +5,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from src.agents.provider_defaults import default_provider_name
+from src.agents.json_parsing import parse_json_response
 
 logger = logging.getLogger("ReasonerAgent")
 
@@ -100,7 +101,7 @@ Return ONLY valid JSON:
 
             # Parse JSON response
             try:
-                plan_data = json.loads(response)
+                plan_data = parse_json_response(response)
                 
                 # Parse fields that might be stringified JSON arrays
                 subtasks = plan_data.get("subtasks", [])

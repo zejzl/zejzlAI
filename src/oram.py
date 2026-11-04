@@ -347,21 +347,38 @@ class ORAMSystem:
             iteration.insights = ["Evaluation error occurred"]
     
     async def _extract_insights(self, iteration: ORAMIteration) -> List[str]:
-        """Extract insights from iteration results."""
+        """Extract insights from iteration results.
+
+        What ends up here is what a later run of the same task gets to see
+        (src/agents/memory.py format_prior_runs, when ORAM_MEMORY_DIR is
+        set), so this prefers the Reasoner's actual analysis and the
+        Actor's actual expected outcome over a bare item count -- a count
+        tells a future run nothing about what was decided or produced.
+        """
         insights = []
-        
+
         try:
-            # Extract reasoning insights
+            # Extract reasoning insights: the Reasoner's own analysis text.
             if isinstance(iteration.reasoning, dict):
                 analysis = iteration.reasoning.get("analysis", "")
-                if analysis and len(analysis) > 50:
-                    insights.append(f"Reasoning: Key finding - {analysis[:100]}...")
-            
-            # Extract action insights
+                if isinstance(analysis, str) and len(analysis) > 50:
+                    insights.append(f"Reasoning: {analysis[:180]}")
+
+            # Extract action insights: what the Actor actually decided to do
+            # and expects to happen, not just how many items it produced.
             if isinstance(iteration.action, dict):
                 results = iteration.action.get("results", [])
                 if results:
-                    insights.append(f"Action: Generated {len(results)} execution items")
+                    first = results[0] if isinstance(results[0], dict) else {}
+                    outcome = first.get("expected_outcome", "")
+                    plan = first.get("execution_plan", [])
+                    first_step = plan[0] if isinstance(plan, list) and plan else ""
+                    if isinstance(outcome, str) and outcome and outcome != "Outcome not specified":
+                        insights.append(f"Action: {len(results)} item(s); expects {outcome[:150]}")
+                    elif isinstance(first_step, str) and first_step:
+                        insights.append(f"Action: {len(results)} item(s); first step: {first_step[:150]}")
+                    else:
+                        insights.append(f"Action: Generated {len(results)} execution items")
             
             # Extract iterative improvement insights
             if iteration.iteration_id > 1:
