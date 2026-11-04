@@ -5,6 +5,7 @@ import logging
 import re
 from typing import Any, Dict, Optional
 
+from src.agents.json_parsing import parse_json_response, strip_code_fence
 from src.agents.provider_defaults import default_provider_name
 
 logger = logging.getLogger("ObserverAgent")
@@ -87,42 +88,23 @@ estimated_effort: "Medium" """
             # Parse response with TOON support for token efficiency
             from ai_framework import decode_from_llm
 
-            observation_data = decode_from_llm(response, use_toon=TOON_AVAILABLE)
+            # Providers often wrap the answer in a ```toon / ```json fence whatever the prompt says; the TOON
+            # decoder fails on the fence, and TOON has no braces for a JSON extractor to find. Strip it first.
+            observation_data = decode_from_llm(strip_code_fence(response), use_toon=TOON_AVAILABLE)
+            parse_failed = False
 
-            # If TOON/JSON parsing failed, try fallback extraction
             if not isinstance(observation_data, dict):
-                def extract_json_from_text(text):
-                    """Extract JSON from text that might contain extra content"""
-                    # Look for JSON-like content
-                    json_match = re.search(r'\{.*\}', text, re.DOTALL)
-                    if json_match:
-                        try:
-                            return json.loads(json_match.group())
-                        except json.JSONDecodeError:
-                            pass
-
-                    # Try to find JSON between triple backticks
-                    code_block_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
-                    if code_block_match:
-                        try:
-                            return json.loads(code_block_match.group(1))
-                        except json.JSONDecodeError:
-                            pass
-
-                    return None
-
-                observation_data = extract_json_from_text(response)
-
-                # Final fallback
-                if not observation_data:
+                try:
+                    observation_data = parse_json_response(response)
+                except json.JSONDecodeError:
+                    parse_failed = True
+                    logger.warning(f"[{self.name}] Could not parse the AI observation; using a placeholder")
                     observation_data = {
                         "objective": task[:100],
                         "requirements": ["Analysis failed - using fallback"],
                         "complexity_level": "Unknown",
                         "estimated_effort": "Unknown"
                     }
-                if not observation_data:
-                    raise json.JSONDecodeError("Could not parse JSON from AI response", response, 0)
 
             # Parse fields that might be stringified JSON arrays
             requirements = observation_data.get("requirements", [task])
@@ -174,6 +156,9 @@ estimated_effort: "Medium" """
                 "timestamp": asyncio.get_event_loop().time(),
                 "ai_generated": True
             }
+            if parse_failed:
+                # Same marker the other agents use for an unparsed model answer; ORAM's provenance scores it 0.4.
+                observation["raw_response"] = response
 
             logger.info(f"[{self.name}] AI observation complete: {observation['complexity_level']} complexity")
             return observation

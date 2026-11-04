@@ -14,6 +14,7 @@ import base
 from src.agents.actor import ActorAgent
 from src.agents.observer import ObserverAgent
 from src.agents.reasoner import ReasonerAgent
+from src.oram import phase_provenance
 
 
 class FakeBus:
@@ -137,3 +138,32 @@ def test_get_available_provider_prefers_the_requested_one_then_any():
     assert main.get_available_provider(SimpleNamespace(providers={}), "grok") is None
     assert main.get_available_provider(None) is None
     assert main.get_available_provider(SimpleNamespace(), "grok") is None        # no providers attribute
+
+
+# --- observer: fenced answers (TOON or JSON) and unparsable ones ------------------------------------
+
+TOON_REPLY = 'objective: "clean up"\nrequirements: ["list", "sort"]\ncomplexity_level: "Low"\nestimated_effort: "Low"'
+
+
+@pytest.mark.parametrize("reply", [
+    "```toon\n" + TOON_REPLY + "\n```",
+    "```\n" + TOON_REPLY + "\n```",
+    "```json\n" + json.dumps({"objective": "clean up", "requirements": ["list", "sort"], "complexity_level": "Low",
+                              "estimated_effort": "Low"}) + "\n```",
+    "Here you go:\n" + json.dumps({"objective": "clean up", "requirements": ["list", "sort"], "complexity_level": "Low",
+                                   "estimated_effort": "Low"}),
+], ids=["fenced-toon", "bare-fence-toon", "fenced-json", "prose-json"])
+def test_observer_reads_fenced_toon_and_json_answers(monkeypatch, reply):
+    use_bus(monkeypatch, FakeBus(reply=reply))
+    out = run(ObserverAgent().observe("tidy the downloads folder"))
+    assert out["ai_generated"] is True and "raw_response" not in out
+    assert out["objective"] == "clean up" and out["requirements"] == ["list", "sort"] and out["complexity_level"] == "Low"
+    assert phase_provenance(out) == 1.0
+
+
+def test_observer_marks_an_unparsable_answer_so_oram_scores_it_as_a_fallback(monkeypatch):
+    use_bus(monkeypatch, FakeBus(reply="I cannot help with that."))
+    out = run(ObserverAgent().observe("tidy the downloads folder"))
+    assert out["ai_generated"] is True and out["raw_response"] == "I cannot help with that."
+    assert out["requirements"] == ["Analysis failed - using fallback"] and out["objective"] == "tidy the downloads folder"
+    assert phase_provenance(out) == 0.4

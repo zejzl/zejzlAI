@@ -20,6 +20,21 @@ import re
 from typing import Any, Dict, Optional
 
 
+_FENCE_RE = re.compile(r"^\s*```[A-Za-z0-9_-]*[ \t]*\r?\n(.*?)\r?\n?```\s*$", re.DOTALL)
+
+
+def strip_code_fence(text: str) -> str:
+    """The body of a response that is one whole markdown code fence (```json, ```toon, ```), else the text itself.
+
+    Providers wrap non-JSON formats (the Observer's TOON) in a fence too; TOON has no braces, so the JSON
+    extractors below cannot rescue it, and the TOON decoder must see the body without the fence.
+    """
+    if not isinstance(text, str):
+        return text
+    match = _FENCE_RE.match(text)
+    return match.group(1) if match else text
+
+
 def parse_json_response(text: str) -> Dict[str, Any]:
     """Parse a dict out of an LLM response that is supposed to be pure JSON.
 

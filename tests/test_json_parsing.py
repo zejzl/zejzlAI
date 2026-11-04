@@ -10,7 +10,7 @@ import json
 
 import pytest
 
-from src.agents.json_parsing import parse_json_response
+from src.agents.json_parsing import parse_json_response, strip_code_fence
 
 
 def test_parses_plain_json():
@@ -41,3 +41,12 @@ def test_raises_on_non_dict_json():
     # A JSON array or scalar isn't a response object any agent expects.
     with pytest.raises(json.JSONDecodeError):
         parse_json_response("[1, 2, 3]")
+
+
+def test_strip_code_fence_only_unwraps_a_whole_fenced_response():
+    assert strip_code_fence("```toon\na: 1\nb: 2\n```") == "a: 1\nb: 2"
+    assert strip_code_fence("```\na: 1\n```\n") == "a: 1"
+    assert strip_code_fence("```json\r\n{\"a\": 1}\r\n```") == '{"a": 1}'
+    assert strip_code_fence("a: 1") == "a: 1"
+    assert strip_code_fence("text ```x``` more") == "text ```x``` more"
+    assert strip_code_fence(None) is None
