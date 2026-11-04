@@ -1,0 +1,454 @@
+# Ported from grokputer src/workflow/engine.py at d7a14b8 (2026-11-04). Both repos keep their own copy.
+"""
+Workflow Execution Engine for GG Framework
+
+This module provides async execution of workflow graphs with:
+- DAG execution (topological ordering)
+- Parallel execution of independent nodes
+- Error handling and retries
+- State management
+- Event hooks
+
+Author: Grokputer Team
+Date: 2025-11-14
+"""
+from __future__ import annotations
+
+import asyncio
+import logging
+from datetime import datetime
+from typing import Any, Callable, Dict, List, Optional
+
+from .nodes.base import BaseNode, NodeContext, NodeStatus
+
+logger = logging.getLogger(__name__)
+
+
+class WorkflowEngine:
+    """
+    Async workflow execution engine.
+
+    Executes nodes in a workflow graph, handling:
+    - Dependency resolution (topological sort)
+    - Parallel execution where possible
+    - Error handling and retries
+    - State persistence
+    - Progress tracking
+    """
+
+    def __init__(self, workflow_id: str = "workflow", config: Optional[Dict] = None, timeout: Optional[float] = None):
+        """
+        Initialize the engine.
+
+        Args:
+            workflow_id: Unique identifier for this workflow
+            config: Engine configuration
+            timeout: Optional overall time limit in seconds, applied by execute()
+        """
+        self.workflow_id = workflow_id
+        self.config = config or {}
+        self.timeout = timeout
+        self.nodes: Dict[str, BaseNode] = {}
+        self.start_nodes: List[BaseNode] = []
+        self.end_nodes: List[BaseNode] = []
+
+        # Branch label each node reported in its last run (state key "<node_id>_branch")
+        self.branches: Dict[str, str] = {}
+
+        # Execution state
+        self.context: Optional[NodeContext] = None
+        self.execution_order: List[BaseNode] = []
+        self.is_running = False
+        self.start_time: Optional[datetime] = None
+        self.end_time: Optional[datetime] = None
+
+        # Hooks
+        self.on_start: Optional[Callable] = None
+        self.on_complete: Optional[Callable] = None
+        self.on_node_start: Optional[Callable] = None
+        self.on_node_complete: Optional[Callable] = None
+        self.on_error: Optional[Callable] = None
+
+    def add_node(self, node: BaseNode) -> None:
+        """
+        Add a node to the workflow.
+
+        Args:
+            node: Node to add
+        """
+        self.nodes[node.node_id] = node
+        self._update_start_end_nodes()
+
+    def _update_start_end_nodes(self) -> None:
+        """Update start and end node lists based on current connections."""
+        self.start_nodes = [node for node in self.nodes.values() if len(node.inputs) == 0]
+        self.end_nodes = [node for node in self.nodes.values() if len(node.outputs) == 0]
+
+    def remove_node(self, node_id: str) -> None:
+        """Remove a node from the workflow."""
+        if node_id in self.nodes:
+            node = self.nodes[node_id]
+
+            # Disconnect from other nodes
+            for inp in node.inputs:
+                inp.disconnect_from(node)
+            for out in node.outputs:
+                node.disconnect_from(out)
+
+            del self.nodes[node_id]
+            self._update_start_end_nodes()
+
+    def get_execution_order(self) -> List[BaseNode]:
+        """
+        Get topological sort of nodes for execution.
+
+        Returns:
+            List of nodes in execution order
+
+        Raises:
+            ValueError: If workflow has cycles
+        """
+        # Kahn's algorithm for topological sort
+        in_degree = {node.node_id: len(node.inputs) for node in self.nodes.values()}
+
+        queue = [node for node in self.nodes.values() if in_degree[node.node_id] == 0]
+        result = []
+
+        while queue:
+            node = queue.pop(0)
+            result.append(node)
+
+            for output in node.outputs:
+                in_degree[output.node_id] -= 1
+                if in_degree[output.node_id] == 0:
+                    queue.append(output)
+
+        if len(result) != len(self.nodes):
+            # Debug info
+            logger.error(f"Result: {len(result)} nodes, Expected: {len(self.nodes)} nodes")
+            logger.error(f"In-degrees: {in_degree}")
+            raise ValueError("Workflow has cycles - cannot execute")
+
+        return result
+
+    def get_parallel_batches(self) -> List[List[BaseNode]]:
+        """
+        Group nodes into batches that can execute in parallel.
+
+        Returns:
+            List of batches (each batch can run in parallel)
+        """
+        execution_order = self.get_execution_order()
+        batches = []
+        executed = set()
+
+        while len(executed) < len(execution_order):
+            batch = []
+            for node in execution_order:
+                if node in executed:
+                    continue
+
+                # Check if all inputs are executed
+                if all(inp in executed or inp not in self.nodes.values() for inp in node.inputs):
+                    batch.append(node)
+
+            if not batch:
+                raise ValueError("Cannot create execution batches - workflow error")
+
+            batches.append(batch)
+            executed.update(batch)
+
+        return batches
+
+    async def execute_node(self, node: BaseNode, context: NodeContext) -> NodeContext:
+        """
+        Execute a single node with hooks and error handling.
+
+        Args:
+            node: Node to execute
+            context: Current context
+
+        Returns:
+            Updated context
+        """
+        logger.info(f"[{self.workflow_id}] Executing node: {node.node_id}")
+
+        # Call pre-hook
+        if self.on_node_start:
+            await self.on_node_start(node, context)
+
+        try:
+            # Execute with retries if configured
+            max_retries = node.get_config("max_retries", 0)
+            retry_delay = node.get_config("retry_delay", 1.0)
+
+            for attempt in range(max_retries + 1):
+                try:
+                    result_context = await node.run(context)
+                    break
+                except Exception as e:
+                    if attempt < max_retries:
+                        logger.warning(f"Node {node.node_id} failed (attempt {attempt + 1}/{max_retries + 1}), retrying...")
+                        await asyncio.sleep(retry_delay)
+                    else:
+                        raise
+
+            self._record_branch(node, result_context)
+
+            # Call post-hook
+            if self.on_node_complete:
+                await self.on_node_complete(node, result_context)
+
+            return result_context
+
+        except Exception as e:
+            logger.error(f"Node {node.node_id} failed: {e}")
+
+            # Call error hook
+            if self.on_error:
+                await self.on_error(node, e, context)
+
+            raise
+
+    def _record_branch(self, node: BaseNode, context: NodeContext) -> None:
+        """Remember the branch label a node reported, so edge conditions can be checked later."""
+        branch = context.state.get(f"{node.node_id}_branch")
+        if branch is not None:
+            self.branches[node.node_id] = str(branch)
+
+    def _edge_active(self, source: BaseNode, node: BaseNode) -> bool:
+        """True when `source` lets `node` run: it was not skipped and, if the edge has a condition, took that branch."""
+        if source.status == NodeStatus.SKIPPED:
+            return False
+        condition = node.input_conditions.get(source.node_id)
+        if condition is None:
+            return True
+        branch = self.branches.get(source.node_id)
+        if branch is None:
+            logger.warning(
+                f"[{self.workflow_id}] Edge {source.node_id} -> {node.node_id} needs branch '{condition}' "
+                f"but {source.node_id} reported none; treating the edge as inactive"
+            )
+            return False
+        return branch.lower() == str(condition).lower()
+
+    def _should_run(self, node: BaseNode) -> bool:
+        """A node runs if it has no inputs or at least one active incoming edge (OR-join)."""
+        if not node.inputs:
+            return True
+        return any(self._edge_active(inp, node) for inp in node.inputs)
+
+    def _skip(self, node: BaseNode) -> None:
+        node.status = NodeStatus.SKIPPED
+        logger.info(f"[{self.workflow_id}] Skipping node: {node.node_id} (no active incoming edge)")
+
+    async def _run_batch(self, batch: List[BaseNode], context: NodeContext) -> NodeContext:
+        """Skip the nodes whose incoming edges are all inactive, then execute the rest."""
+        runnable = []
+        for node in batch:
+            if self._should_run(node):
+                runnable.append(node)
+            else:
+                self._skip(node)
+        if not runnable:
+            return context
+        return await self.execute_batch(runnable, context)
+
+    async def execute_batch(self, batch: List[BaseNode], context: NodeContext) -> NodeContext:
+        """
+        Execute a batch of nodes in parallel.
+
+        Args:
+            batch: Nodes to execute
+            context: Current context
+
+        Returns:
+            Updated context (merged from all nodes)
+        """
+        if len(batch) == 1:
+            # Single node - execute directly
+            return await self.execute_node(batch[0], context)
+
+        # Multiple nodes - execute in parallel
+        logger.info(f"[{self.workflow_id}] Executing batch of {len(batch)} nodes in parallel")
+
+        tasks = [self.execute_node(node, context) for node in batch]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Check for errors
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                node = batch[i]
+                raise Exception(f"Node {node.node_id} failed in batch: {result}")
+
+        # Merge results (last node wins for conflicting keys)
+        merged_context = context
+        for result in results:
+            if isinstance(result, NodeContext):
+                merged_context.data.update(result.data)
+                merged_context.state.update(result.state)
+
+        return merged_context
+
+    async def run(
+        self,
+        initial_data: Optional[Dict] = None,
+        parallel: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Execute the entire workflow.
+
+        Args:
+            initial_data: Initial data to pass to workflow
+            parallel: Whether to execute independent nodes in parallel
+
+        Returns:
+            Final workflow context data
+
+        Raises:
+            Exception: If workflow execution fails
+        """
+        if self.is_running:
+            raise RuntimeError("Workflow is already running")
+
+        if not self.nodes:
+            raise ValueError("Workflow has no nodes")
+
+        self.is_running = True
+        self.start_time = datetime.now()
+
+        # Fresh run: statuses and branch labels from an earlier run must not influence routing
+        for node in self.nodes.values():
+            node.reset()
+        self.branches = {}
+
+        try:
+            # Initialize context
+            self.context = NodeContext(
+                data=initial_data or {},
+                metadata={
+                    "workflow_id": self.workflow_id,
+                    "start_time": self.start_time.isoformat(),
+                },
+                state={},
+            )
+
+            logger.info(f"[{self.workflow_id}] Starting workflow execution")
+
+            # Call start hook
+            if self.on_start:
+                await self.on_start(self.context)
+
+            # Execute workflow
+            if parallel:
+                # Parallel execution by batches
+                batches = self.get_parallel_batches()
+                logger.info(f"[{self.workflow_id}] Executing {len(batches)} batches")
+
+                for i, batch in enumerate(batches):
+                    logger.info(f"[{self.workflow_id}] Batch {i + 1}/{len(batches)}")
+                    self.context = await self._run_batch(batch, self.context)
+            else:
+                # Sequential execution
+                execution_order = self.get_execution_order()
+                for node in execution_order:
+                    self.context = await self._run_batch([node], self.context)
+
+            self.end_time = datetime.now()
+            duration = (self.end_time - self.start_time).total_seconds()
+
+            logger.info(f"[{self.workflow_id}] Workflow completed in {duration:.2f}s")
+
+            # Call completion hook
+            if self.on_complete:
+                await self.on_complete(self.context)
+
+            return self.context.data
+
+        except Exception as e:
+            self.end_time = datetime.now()
+            logger.error(f"[{self.workflow_id}] Workflow failed: {e}")
+            raise
+
+        finally:
+            self.is_running = False
+
+    async def execute(
+        self,
+        workflow: Any,
+        initial_data: Optional[Dict] = None,
+        parallel: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Execute a Workflow (or another WorkflowEngine) and return a result summary.
+
+        Unlike run(), this applies the engine's timeout, accepts an empty workflow,
+        and returns data, state, and a node count instead of only the data.
+
+        Args:
+            workflow: A Workflow (anything with an `engine` attribute) or a WorkflowEngine
+            initial_data: Initial data to pass to workflow
+            parallel: Whether to execute independent nodes in parallel
+
+        Returns:
+            Dict with status, workflow_id, data, state, nodes_executed, and duration
+
+        Raises:
+            TimeoutError: If the engine timeout elapses
+            Exception: Whatever a failing node raised
+        """
+        target = getattr(workflow, "engine", workflow)
+
+        if not target.nodes:
+            return {
+                "status": "success",
+                "workflow_id": target.workflow_id,
+                "data": dict(initial_data or {}),
+                "state": {},
+                "nodes_executed": 0,
+                "nodes_skipped": 0,
+                "duration": 0.0,
+            }
+
+        try:
+            if self.timeout is not None:
+                await asyncio.wait_for(target.run(initial_data, parallel), timeout=self.timeout)
+            else:
+                await target.run(initial_data, parallel)
+        except asyncio.TimeoutError:
+            # asyncio.TimeoutError is only an alias of TimeoutError from Python 3.11
+            raise TimeoutError(
+                f"Workflow '{target.workflow_id}' exceeded timeout of {self.timeout}s"
+            ) from None
+
+        duration = (target.end_time - target.start_time).total_seconds()
+        return {
+            "status": "success",
+            "workflow_id": target.workflow_id,
+            "data": target.context.data,
+            "state": target.context.state,
+            "nodes_executed": sum(1 for n in target.nodes.values() if n.status == NodeStatus.SUCCESS),
+            "nodes_skipped": sum(1 for n in target.nodes.values() if n.status == NodeStatus.SKIPPED),
+            "duration": duration,
+        }
+
+    def get_status(self) -> Dict[str, Any]:
+        """Get current workflow status."""
+        return {
+            "workflow_id": self.workflow_id,
+            "is_running": self.is_running,
+            "start_time": self.start_time.isoformat() if self.start_time else None,
+            "end_time": self.end_time.isoformat() if self.end_time else None,
+            "node_count": len(self.nodes),
+            "nodes": {node_id: node.status.value for node_id, node in self.nodes.items()},
+        }
+
+    def reset(self) -> None:
+        """Reset workflow for re-execution."""
+        for node in self.nodes.values():
+            node.reset()
+        self.branches = {}
+        self.context = None
+        self.is_running = False
+        self.start_time = None
+        self.end_time = None

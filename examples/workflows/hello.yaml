@@ -1,0 +1,18 @@
+# Minimal Workflow: pull a value out of the input, then pass it along.
+# Run: python -m src.workflow.run examples/workflows/hello.yaml
+#      python -m src.workflow.run examples/workflows/hello.yaml --input '{"user": {"name": "Zej"}}'
+name: hello
+timeout: 30
+input:
+  user:
+    name: zejzlAI
+nodes:
+  - id: pick_name
+    type: transform
+    config:
+      operation: jq
+      expression: ".user.name"
+  - id: done
+    type: noop
+edges:
+  - [pick_name, done]
