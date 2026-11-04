@@ -78,7 +78,7 @@ class ReasonerAgent:
             prior_runs = observation.get("prior_runs") or []
             prior_block = ""
             if prior_runs:
-                prior_block = "\nEarlier runs of this task, newest first (improve on them, do not repeat them):\n" + "\n".join(
+                prior_block = "\nEarlier runs of this task or a related one, best match first; each line says what that run produced. Improve on them, do not repeat them:\n" + "\n".join(
                     f"- {line}" for line in prior_runs[:5]
                 ) + "\n"
 

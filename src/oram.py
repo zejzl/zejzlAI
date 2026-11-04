@@ -550,6 +550,7 @@ class ORAMSystem:
         try:
             last = iterations[-1]
             insights = [insight for iteration in iterations for insight in (iteration.insights or [])]
+            from src.agents.memory import result_excerpt
             final_action = last.action.get("results", last.action) if isinstance(last.action, dict) else last.action
             summary_text = (
                 f"{summary['total_iterations']} iterations, average quality {summary['average_quality']:.2f}, "
@@ -569,7 +570,7 @@ class ORAMSystem:
                 "total_insights": summary["total_insights"],
                 "insights": insights[:6],
                 "summary": summary_text,
-                "result": json.dumps(final_action, ensure_ascii=False, default=str),
+                "result": json.dumps(result_excerpt(final_action), ensure_ascii=False, default=str),
             })
         except Exception as e:
             logger.warning(f"[ORAM] Storing the run failed: {e}")
