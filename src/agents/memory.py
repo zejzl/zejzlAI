@@ -290,11 +290,88 @@ class MemoryAgent:
         return self.recall_runs(task, limit=limit)
 
 
+EXCERPT_RESULTS = 3        # results kept in the stored excerpt
+EXCERPT_OUTCOME_CHARS = 200
+EXCERPT_STEP_CHARS = 120
+EXCERPT_STEPS = 3
+
+
+def _clip(value: Any, limit: int) -> str:
+    text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False, default=str)
+    return " ".join(text.split())[:limit]
+
+
+def result_excerpt(final_action: Any, limit: int = TEXT_CAP - 100) -> List[Dict[str, Any]]:
+    """A small, always-parseable list describing what the Actor produced: per result its subtask, expected outcome
+    and first steps, clipped. Dumping the whole action hit the 2000-character cap mid-JSON, so nothing could read it back.
+    """
+    results = final_action if isinstance(final_action, list) else [final_action]
+    excerpt: List[Dict[str, Any]] = []
+    for result in results[:EXCERPT_RESULTS]:
+        if isinstance(result, dict):
+            entry: Dict[str, Any] = {}
+            subtask = result.get("subtask")
+            if isinstance(subtask, dict):
+                subtask = subtask.get("description") or subtask.get("text")
+            if subtask:
+                entry["subtask"] = _clip(subtask, EXCERPT_STEP_CHARS)
+            outcome = result.get("expected_outcome") or result.get("outcome")
+            if outcome:
+                entry["outcome"] = _clip(outcome, EXCERPT_OUTCOME_CHARS)
+            steps = result.get("execution_plan") or result.get("steps") or []
+            if isinstance(steps, list) and steps:
+                entry["steps"] = [_clip(step, EXCERPT_STEP_CHARS) for step in steps[:EXCERPT_STEPS]]
+            if not entry:
+                entry["text"] = _clip(result, EXCERPT_OUTCOME_CHARS)
+            excerpt.append(entry)
+        elif result is not None:
+            excerpt.append({"text": _clip(result, EXCERPT_OUTCOME_CHARS)})
+    while excerpt and len(json.dumps(excerpt, ensure_ascii=False)) > limit:
+        if any("steps" in e for e in excerpt):
+            for e in excerpt:
+                e.pop("steps", None)
+        elif len(excerpt) > 1:
+            excerpt.pop()
+        else:
+            excerpt[0] = {k: v[:limit // 4] if isinstance(v, str) else v for k, v in excerpt[0].items()}
+            break
+    return excerpt
+
+
+def _content_of(run: Dict[str, Any]) -> str:
+    """What the run produced, for the prompt: expected outcome and first steps when the result excerpt has them,
+    else the old summary/result text."""
+    result = run.get("result")
+    parsed = None
+    if isinstance(result, str) and result.startswith("["):
+        try:
+            parsed = json.loads(result)
+        except json.JSONDecodeError:
+            parsed = None
+    elif isinstance(result, list):
+        parsed = result
+    if isinstance(parsed, list) and parsed and isinstance(parsed[0], dict):
+        first = parsed[0]
+        outcome = first.get("outcome") or first.get("expected_outcome")
+        steps = first.get("steps") or first.get("execution_plan") or []
+        parts = []
+        if outcome:
+            parts.append(f"expected: {_clip(outcome, EXCERPT_OUTCOME_CHARS)}")
+        if isinstance(steps, list) and steps:
+            parts.append("steps: " + " | ".join(_clip(step, EXCERPT_STEP_CHARS) for step in steps[:2]))
+        if not parts and first.get("text"):
+            parts.append(_clip(first["text"], EXCERPT_OUTCOME_CHARS))
+        if parts:
+            return "; ".join(parts)
+    text = run.get("summary") or (result if isinstance(result, str) else "") or ""
+    return _clip(text, TEXT_CAP)
+
+
 def format_prior_runs(runs: List[Dict[str, Any]], max_chars: int = 240, task: Optional[str] = None) -> List[str]:
-    """One short line per earlier run, for the reasoning prompt.
+    """One short line per earlier run, for the reasoning prompt: what it produced first, the stats last.
 
     With `task` given, a run of a different task (ranked recall) is prefixed with `[task: ...]` so the model knows
-    it is looking at a related run, not an earlier attempt at the same one.
+    it is looking at a related run, not an earlier attempt at the same one. The content is clipped, never the stats.
     """
     lines = []
     current = task_key(task) if task else None
@@ -302,11 +379,11 @@ def format_prior_runs(runs: List[Dict[str, Any]], max_chars: int = 240, task: Op
         ts = str(run.get("ts", ""))[:16].replace("T", " ")
         quality = run.get("best_quality", run.get("average_quality"))
         quality_text = f"{quality:.2f}" if isinstance(quality, (int, float)) else "?"
-        text = run.get("summary") or run.get("result") or ""
         prefix = ""
         run_task = run.get("task")
         if current and isinstance(run_task, str) and task_key(run_task) != current:
             prefix = f"[task: {' '.join(run_task.split())[:60]}] "
-        line = f"{prefix}{ts} quality {quality_text}, {run.get('iterations', '?')} iterations: {text}"
-        lines.append(line[:max_chars])
+        suffix = f" ({ts}, quality {quality_text}, {run.get('iterations', '?')} iterations)"
+        room = max(max_chars - len(prefix) - len(suffix), 20)
+        lines.append(f"{prefix}{_content_of(run)[:room]}{suffix}")
     return lines

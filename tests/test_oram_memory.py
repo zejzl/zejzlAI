@@ -224,10 +224,45 @@ def test_the_reasoner_puts_prior_runs_into_its_prompt(monkeypatch):
     assert "Earlier runs of this task" in bus.calls[1] and "did x" in bus.calls[1]
 
 
-def test_format_prior_runs_is_short_and_newest_first_as_given():
+def test_format_prior_runs_is_short_content_first_and_in_the_order_given():
     lines = format_prior_runs([
         {"ts": "2026-11-03T10:00:00+00:00", "best_quality": 0.95, "iterations": 1, "summary": "s" * 1000},
         {"ts": "bad", "iterations": 2},
     ])
-    assert lines[0].startswith("2026-11-03 10:00 quality 0.95, 1 iterations: s") and len(lines[0]) <= 240
-    assert lines[1] == "bad quality ?, 2 iterations: "
+    assert lines[0].startswith("sss") and lines[0].endswith(" (2026-11-03 10:00, quality 0.95, 1 iterations)")
+    assert len(lines[0]) <= 240
+    assert lines[1] == " (bad, quality ?, 2 iterations)"
+
+
+def test_format_prior_runs_leads_with_the_outcome_and_steps_of_the_result_excerpt():
+    excerpt = [{"subtask": "read", "outcome": "a three-bullet summary", "steps": ["open the file", "read it", "write"]}]
+    run_ = {"ts": "2026-11-04T17:15:00+00:00", "best_quality": 0.94, "iterations": 1,
+            "summary": "1 iterations, average quality 0.94; Reasoning: restated task", "result": json.dumps(excerpt)}
+    line = format_prior_runs([run_])[0]
+    assert line.startswith("expected: a three-bullet summary; steps: open the file | read it (2026-11-04 17:15")
+    assert "Reasoning: restated" not in line
+    old = {"ts": "2026-11-04T17:15:00+00:00", "iterations": 1, "result": "[{\"subtask\": {\"id\": 1"}  # pre-excerpt, cut mid-JSON
+    assert format_prior_runs([old])[0].startswith('[{"subtask": {"id": 1 (')
+
+
+def test_result_excerpt_is_small_and_always_parses():
+    from src.agents.memory import result_excerpt
+    results = [{"subtask": {"description": "read the file"}, "expected_outcome": "o" * 500,
+                "execution_plan": ["s" * 500, "two", "three", "four"], "tools_needed": ["x"]}] * 5
+    excerpt = result_excerpt(results)
+    assert len(excerpt) == 3 and excerpt[0]["subtask"] == "read the file"
+    assert len(excerpt[0]["outcome"]) == 200 and [len(s) for s in excerpt[0]["steps"]] == [120, 3, 5]
+    assert "tools_needed" not in excerpt[0]
+    assert result_excerpt(["step", None, 3]) == [{"text": "step"}, {"text": "3"}]
+    assert result_excerpt({"status": "done"}) == [{"text": '{"status": "done"}'}]
+    assert result_excerpt([]) == []
+    big = [{"expected_outcome": "o" * 200, "execution_plan": ["s" * 120] * 3}] * 3
+    small = result_excerpt(big, limit=300)
+    assert len(json.dumps(small)) <= 300 and small and "steps" not in small[0]
+
+
+def test_a_stored_result_parses_back(memory_dir):
+    run(real_memory_system().execute_oram_loop("Summarise the board"))
+    record = json.loads(next(memory_dir.glob("*.jsonl")).read_text().splitlines()[0])
+    excerpt = json.loads(record["result"])
+    assert excerpt == [{"outcome": GOOD_RESULTS[0]["expected_outcome"], "steps": GOOD_RESULTS[0]["execution_plan"]}]

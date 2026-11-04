@@ -162,7 +162,7 @@ def test_format_marks_runs_of_other_tasks_only_when_the_current_task_is_given():
     marked = format_prior_runs(runs, task="Summarise the README")
     assert not any(line.startswith("[task:") for line in plain)
     assert not marked[0].startswith("[task:")
-    assert marked[1].startswith("[task: list token savings] 2026-11-04 12:00 quality ?, 2 iterations: t")
+    assert marked[1] == "[task: list token savings] t (2026-11-04 12:00, quality ?, 2 iterations)"
 
 
 def test_flag_off_a_similar_task_gets_no_prior_runs(memory_dir):

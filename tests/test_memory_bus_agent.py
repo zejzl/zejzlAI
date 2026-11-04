@@ -63,7 +63,7 @@ def test_store_then_exact_recall_through_the_bus(memory_dir):
     reply = ask({"op": "recall", "task": "summarise the README"})
     assert reply["count"] == 1 and reply["ranked"] is False and reply["backend"] is True
     assert reply["runs"][0]["summary"] == "three bullets" and reply["runs"][0]["task"] == "summarise the README"
-    assert reply["lines"][0].endswith("1 iterations: three bullets") and not reply["lines"][0].startswith("[task:")
+    assert reply["lines"][0].startswith("three bullets (") and reply["lines"][0].endswith("quality ?, 1 iterations)")
     assert ask({"op": "recall", "task": "write a README summary"})["count"] == 0
 
 
