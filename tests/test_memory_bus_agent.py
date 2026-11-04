@@ -122,7 +122,7 @@ def test_secrets_in_a_stored_record_are_scrubbed(memory_dir):
 def test_a_run_stored_by_oram_is_recalled_on_the_bus_and_back(memory_dir):
     asyncio.run(real_memory_system().execute_oram_loop("summarise the README"))
     reply = ask({"op": "recall", "task": "summarise the README"})
-    assert reply["count"] == 1 and "quality 0.95" in reply["lines"][0]
+    assert reply["count"] == 1 and "quality 1.00" in reply["lines"][0]
 
     ask({"op": "store", "task": "summarise the README", "record": {"iterations": 1, "summary": "from a workflow"}})
     second = asyncio.run(real_memory_system().execute_oram_loop("summarise the README"))

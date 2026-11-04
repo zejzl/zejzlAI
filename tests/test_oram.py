@@ -10,7 +10,7 @@ import asyncio
 
 import pytest
 
-from src.oram import ORAMConfig, ORAMIterationType, ORAMSystem, execute_oram
+from src.oram import FALLBACK_PROVENANCE, action_quality, phase_provenance, quality_factors, reasoning_quality, ORAMConfig, ORAMIterationType, ORAMSystem, execute_oram
 
 
 class StubObserver:
@@ -22,11 +22,15 @@ class StubObserver:
 
 
 class StubReasoner:
-    def __init__(self, analysis=None):
+    def __init__(self, analysis=None, **fields):
         self.analysis = analysis
+        self.fields = fields
 
     async def reason(self, observation):
-        return {"analysis": self.analysis} if self.analysis else {}
+        plan = dict(self.fields)
+        if self.analysis:
+            plan["analysis"] = self.analysis
+        return plan
 
 
 class StubActor:
@@ -62,9 +66,14 @@ def run(coro):
     return asyncio.run(coro)
 
 
+GOOD_PLAN = {"subtasks": [{"description": "read the file"}, {"description": "write the summary"}]}
+GOOD_RESULTS = [{"expected_outcome": "a three-bullet summary of the file, each bullet one concrete fact",
+                 "execution_plan": ["read the file", "write the summary"]}]
+
+
 def good_system(**kw):
-    """Every phase succeeds with substance: quality 0.95, which clears every convergence threshold."""
-    return make_system(reasoner=StubReasoner("a" * 80), actor=StubActor(["step"]), **kw)
+    """Every phase succeeds with substance: quality 1.0, which clears every convergence threshold."""
+    return make_system(reasoner=StubReasoner("a" * 300, **GOOD_PLAN), actor=StubActor(GOOD_RESULTS), **kw)
 
 
 # --- configuration -------------------------------------------------------------------------------
@@ -96,7 +105,8 @@ def test_loop_stops_as_soon_as_quality_converges():
     system = good_system()
     iterations = run(system.execute_oram_loop("task", ORAMIterationType.BASIC))
     assert len(iterations) == 1
-    assert iterations[0].quality_score == pytest.approx(0.95)
+    assert iterations[0].quality_score == pytest.approx(1.0)
+    assert iterations[0].quality_factors == {"provenance": 1.0, "reasoning": 1.0, "action": 1.0, "total": 1.0}
     assert system.get_status()["iterations_executed"] == 1
 
 
@@ -104,7 +114,7 @@ def test_loop_stops_as_soon_as_quality_converges():
 def test_loop_runs_exactly_max_iterations_when_it_never_converges(limit):
     config = ORAMConfig()
     config.max_iterations = limit
-    system = make_system(config=config)                                 # empty reasoning/action: quality 0.775 < 0.85
+    system = make_system(config=config)                                 # empty reasoning/action: quality 0.133 < 0.85
     iterations = run(system.execute_oram_loop("task", ORAMIterationType.BASIC))
     assert len(iterations) == limit
     assert [i.iteration_id for i in iterations] == list(range(1, limit + 1))
@@ -146,14 +156,15 @@ def test_a_declining_quality_trend_stops_the_loop():
 def test_an_agent_error_lowers_the_quality_score():
     clean, _ = run(good_system().execute_oram_iteration("task"))
     failed, _ = run(good_system(observer=StubObserver(error="provider down", fallback=True)).execute_oram_iteration("task"))
-    assert clean.quality_score == pytest.approx(0.95)
+    assert clean.quality_score == pytest.approx(1.0)
     assert failed.quality_score < clean.quality_score
-    assert failed.quality_score == pytest.approx((0.3 + 0.9 + 0.9 + 1.0) / 4)
+    assert failed.quality_factors["provenance"] == pytest.approx(2 / 3, abs=1e-4)   # observer 0.0, the other two 1.0
+    assert failed.quality_score == pytest.approx(0.4 * 2 / 3 + 0.3 + 0.3, abs=1e-3)
 
 
 def test_an_error_nested_under_data_also_counts():
     failed, _ = run(good_system(observer=StubObserver(data={"error": "x"})).execute_oram_iteration("task"))
-    assert failed.quality_score < 0.95
+    assert failed.quality_score < 1.0
 
 
 def test_a_crashing_agent_is_recorded_as_a_fallback_not_a_crash():
@@ -163,7 +174,7 @@ def test_a_crashing_agent_is_recorded_as_a_fallback_not_a_crash():
 
     iteration, _ = run(good_system(observer=Boom()).execute_oram_iteration("task"))
     assert iteration.observation["fallback"] is True and "boom" in iteration.observation["error"]
-    assert iteration.quality_score < 0.95
+    assert iteration.quality_score < 1.0
 
 
 # --- memory and insights -------------------------------------------------------------------------
@@ -172,7 +183,7 @@ def test_every_iteration_is_stored_in_memory_and_summarised():
     system = good_system()
     config_limit = 2
     system.config.max_iterations = config_limit
-    system.config.convergence_threshold = 0.99
+    system.config.convergence_threshold = 1.01  # unreachable, so the cap decides
     run(system.execute_oram_loop("task"))
     kinds = [e["type"] for e in system.memory.events]
     assert kinds.count("oram_iteration") == config_limit and kinds[-1] == "oram_summary"
@@ -257,3 +268,46 @@ async def test_execute_oram_without_a_limit_uses_the_iteration_types_own_count(m
     assert seen["limit"] == expected
     await execute_oram("task", kind, max_iterations=3)
     assert seen["limit"] == 3
+
+
+# --- scoring: the factors ------------------------------------------------------------------------
+
+def test_a_rule_based_fallback_scores_below_a_model_answer_and_above_a_failure():
+    model = {"analysis": "x" * 300, "subtasks": [{"description": "a"}, {"description": "b"}], "ai_generated": True}
+    fallback = {**model, "ai_generated": False, "fallback_reason": "no key"}
+    unparsed = {**model, "raw_response": "```json ..."}
+    failed = {**model, "error": "provider down"}
+    assert phase_provenance(model) == 1.0
+    assert phase_provenance(fallback) == phase_provenance(unparsed) == FALLBACK_PROVENANCE
+    assert phase_provenance(failed) == 0.0 and phase_provenance({}) == 0.0 and phase_provenance("text") == 0.0
+
+
+def test_placeholders_and_thin_content_score_low():
+    assert reasoning_quality({"analysis": "AI response parsing failed", "subtasks": []}) == 0.0
+    assert reasoning_quality({"analysis": "Analysis not provided"}) == 0.0
+    assert reasoning_quality({"analysis": "a" * 150}) == pytest.approx(0.35)              # half length, no subtasks
+    assert reasoning_quality({"analysis": "a" * 300, "subtasks": [{"description": "one"}]}) == pytest.approx(0.85)
+    assert reasoning_quality({"analysis": {"task_type": "x"}}) == 0.0                     # the fallback's dict analysis
+    assert action_quality({"results": []}) == 0.0 and action_quality({}) == 0.0
+    assert action_quality({"results": [{"expected_outcome": "Outcome not specified", "execution_plan": []}]}) == 0.0
+    assert action_quality({"results": [{"expected_outcome": "AI response parsing failed", "execution_plan": ["x"],
+                                        "raw_response": "..."}]}) == 0.0
+    assert action_quality({"results": [{"expected_outcome": "o" * 60, "execution_plan": ["read", "write"]}]}) == 1.0
+    assert action_quality({"results": [{"expected_outcome": "o" * 30, "execution_plan": ["read"]}]}) == pytest.approx(0.5)
+    assert action_quality({"results": ["step"]}) == pytest.approx(0.5 * 4 / 60)            # a bare step string
+
+
+def test_the_total_is_the_weighted_sum_and_lands_on_the_iteration_and_in_the_stored_run(tmp_path, monkeypatch):
+    factors = quality_factors({"task": "t"}, {"analysis": "a" * 150}, {"results": [{"expected_outcome": "o" * 60,
+                                                                                    "execution_plan": ["read", "write"]}]})
+    assert factors == {"provenance": 1.0, "reasoning": 0.35, "action": 1.0, "total": pytest.approx(0.4 + 0.105 + 0.3)}
+    iteration, _ = run(good_system().execute_oram_iteration("task"))
+    assert iteration.quality_factors["total"] == iteration.quality_score == 1.0
+
+
+def test_a_mediocre_run_keeps_iterating_up_to_the_cap():
+    thin = make_system(reasoner=StubReasoner("a" * 100, subtasks=[{"description": "one"}]),
+                       actor=StubActor([{"expected_outcome": "done", "execution_plan": ["x"]}]))
+    thin.config.max_iterations = 3
+    iterations = run(thin.execute_oram_loop("task", ORAMIterationType.BASIC))
+    assert len(iterations) == 3 and all(0.4 < i.quality_score < 0.85 for i in iterations)

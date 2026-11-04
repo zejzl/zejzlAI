@@ -175,7 +175,7 @@ def test_flag_on_a_similar_task_gets_the_other_run_marked(memory_dir, ranked):
     run(real_memory_system().execute_oram_loop("summarise the README"))
     second = run(real_memory_system().execute_oram_loop("summarise the README again"))
     prior = second[0].reasoning["prior_runs"]
-    assert len(prior) == 1 and prior[0].startswith("[task: summarise the README] ") and "quality 0.95" in prior[0]
+    assert len(prior) == 1 and prior[0].startswith("[task: summarise the README] ") and "quality 1.00" in prior[0]
     assert second[0].observation["prior_runs"] == prior
 
 

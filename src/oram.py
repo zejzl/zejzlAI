@@ -10,6 +10,101 @@ logger = logging.getLogger("ORAM")
 
 CALLS_PER_ITERATION = 3          # Observer, Reasoner and Actor each make one provider call per iteration
 PRIOR_RUNS_LIMIT = 5             # earlier runs of the same task shown to the Reasoner (file backend only)
+
+# Quality scoring (see ORAMSystem._evaluate_iteration). Three factors, each 0..1, weighted:
+#   provenance  did each phase come from the model (1.0), from the rule-based fallback (0.4), or fail (0.0)?
+#               A model answer whose JSON could not be parsed (the agents keep it under "raw_response") counts 0.4.
+#   reasoning   how much the Reasoner actually said: analysis length (full credit at 300 characters) and subtasks
+#   action      what the Actor produced: per result, a real expected outcome (full credit at 60 characters) and plan steps
+# Placeholder strings the agents emit when they have nothing score 0. The old scorer gave every clean run 0.95
+# whatever the content, which made the score useless for convergence and for recall.
+QUALITY_WEIGHTS = {"provenance": 0.4, "reasoning": 0.3, "action": 0.3}
+FALLBACK_PROVENANCE = 0.4
+ANALYSIS_FULL_CHARS = 300
+OUTCOME_FULL_CHARS = 60
+STEPS_FULL_COUNT = 2
+QUALITY_PLACEHOLDERS = (
+    "ai response parsing failed", "analysis not provided", "outcome not specified", "approach not specified",
+    "no mitigation specified", "insight extraction encountered an error",
+)
+
+
+def _is_placeholder(text: str) -> bool:
+    lowered = text.strip().lower()
+    return not lowered or any(p in lowered for p in QUALITY_PLACEHOLDERS)
+
+
+def text_quality(text: Any, full_at: int) -> float:
+    """0 for missing or placeholder text, rising with length to 1.0 at `full_at` characters."""
+    if not isinstance(text, str) or _is_placeholder(text):
+        return 0.0
+    return min(len(text.strip()) / full_at, 1.0)
+
+
+def steps_quality(steps: Any, full_at: int = STEPS_FULL_COUNT) -> float:
+    """Share of `full_at` real steps present. A step is a non-placeholder string or a dict with a description/text."""
+    if not isinstance(steps, list):
+        return 0.0
+    real = 0
+    for step in steps:
+        if isinstance(step, dict):
+            step = step.get("description") or step.get("text") or step.get("step") or ""
+        if isinstance(step, str) and not _is_placeholder(step):
+            real += 1
+    return min(real / full_at, 1.0)
+
+
+def phase_failed(phase: Any) -> bool:
+    """Agents report a failure as a top-level "error" key (or one inside "data")."""
+    if not isinstance(phase, dict):
+        return False
+    data = phase.get("data")
+    return "error" in phase or (isinstance(data, dict) and "error" in data)
+
+
+def phase_provenance(phase: Any) -> float:
+    """1.0 model answer, 0.4 rule-based fallback or unparsed model answer, 0.0 failed or missing."""
+    if not isinstance(phase, dict) or not phase or phase_failed(phase):
+        return 0.0
+    if phase.get("ai_generated") is False or phase.get("fallback") or "raw_response" in phase:
+        return FALLBACK_PROVENANCE
+    return 1.0
+
+
+def reasoning_quality(reasoning: Any) -> float:
+    if not isinstance(reasoning, dict):
+        return 0.0
+    return 0.7 * text_quality(reasoning.get("analysis"), ANALYSIS_FULL_CHARS) + 0.3 * steps_quality(reasoning.get("subtasks"))
+
+
+def action_quality(action: Any) -> float:
+    """Average over the Actor's results: half for a real expected outcome, half for plan steps."""
+    results = action.get("results") if isinstance(action, dict) else None
+    if not isinstance(results, list) or not results:
+        return 0.0
+    scores = []
+    for result in results:
+        if isinstance(result, dict):
+            if "raw_response" in result:
+                scores.append(0.0)
+                continue
+            outcome = text_quality(result.get("expected_outcome"), OUTCOME_FULL_CHARS)
+            scores.append(0.5 * outcome + 0.5 * steps_quality(result.get("execution_plan")))
+        else:
+            scores.append(0.5 * text_quality(result, OUTCOME_FULL_CHARS))  # a bare step, no stated outcome
+    return sum(scores) / len(scores)
+
+
+def quality_factors(observation: Any, reasoning: Any, action: Any) -> Dict[str, float]:
+    """The three factors and their weighted total, each rounded to 4 places."""
+    provenance = (phase_provenance(observation) + phase_provenance(reasoning) + phase_provenance(action)) / 3
+    factors = {"provenance": provenance, "reasoning": reasoning_quality(reasoning), "action": action_quality(action)}
+    total = sum(QUALITY_WEIGHTS[name] * value for name, value in factors.items())
+    factors = {name: round(value, 4) for name, value in factors.items()}
+    factors["total"] = round(total, 4)
+    return factors
+
+
 FILE_MEMORY_MAX_ITERATIONS = 3   # execute_oram's default when ORAM_MEMORY_DIR is set and no limit is given
 
 
@@ -34,10 +129,13 @@ class ORAMIteration:
     timestamp: float
     quality_score: float = 0.0
     insights: Optional[List[str]] = None
+    quality_factors: Optional[Dict[str, float]] = None  # provenance, reasoning, action, total (see quality_factors())
     
     def __post_init__(self):
         if self.insights is None:
             self.insights = []
+        if self.quality_factors is None:
+            self.quality_factors = {}
 
 
 class ORAMConfig:
@@ -295,57 +393,23 @@ class ORAMSystem:
             return {"error": str(e), "iteration_id": iteration_id, "fallback": True}
     
     async def _evaluate_iteration(self, iteration: ORAMIteration):
-        """Evaluate iteration quality and extract insights."""
+        """Score the iteration (quality_factors() above, kept on the iteration) and extract insights."""
         try:
-            quality_factors = []
-            
-            # Check for errors in any phase. Agents report a failure as a top-level "error" key (or one inside
-            # "data"); the old check only looked inside "data", so a failed AI call still scored as clean.
-            def _failed(phase) -> bool:
-                if not isinstance(phase, dict):
-                    return False
-                data = phase.get("data")
-                return "error" in phase or (isinstance(data, dict) and "error" in data)
+            iteration.quality_factors = quality_factors(iteration.observation, iteration.reasoning, iteration.action)
+            iteration.quality_score = iteration.quality_factors["total"]
 
-            has_errors = any(_failed(p) for p in (iteration.observation, iteration.reasoning, iteration.action))
-
-            if has_errors:
-                quality_factors.append(0.3)  # Penalty for errors
-            else:
-                quality_factors.append(1.0)  # Full credit for no errors
-            
-            # Evaluate reasoning depth
-            if isinstance(iteration.reasoning, dict) and iteration.reasoning.get("analysis"):
-                quality_factors.append(0.9)
-            else:
-                quality_factors.append(0.5)
-            
-            # Evaluate action completeness
-            if isinstance(iteration.action, dict) and iteration.action.get("results"):
-                quality_factors.append(0.9)
-            else:
-                quality_factors.append(0.6)
-            
-            # Evaluate memory integration
-            if isinstance(iteration.memory_update, dict) and iteration.memory_update.get("stored"):
-                quality_factors.append(1.0)
-            else:
-                quality_factors.append(0.7)
-            
-            # Calculate overall quality score
-            iteration.quality_score = sum(quality_factors) / len(quality_factors)
-            
             # Extract insights
             iteration.insights = await self._extract_insights(iteration)
-            
+
             # Update insight repository
             self.insight_repository.extend(iteration.insights)
-            
+
         except Exception as e:
             logger.warning(f"[ORAM] Iteration evaluation failed: {e}")
             iteration.quality_score = 0.5
+            iteration.quality_factors = {}
             iteration.insights = ["Evaluation error occurred"]
-    
+
     async def _extract_insights(self, iteration: ORAMIteration) -> List[str]:
         """Extract insights from iteration results.
 
@@ -500,6 +564,7 @@ class ORAMSystem:
                 "calls": CALLS_PER_ITERATION * summary["total_iterations"],
                 "average_quality": round(summary["average_quality"], 4),
                 "best_quality": round(summary["best_quality"], 4),
+                "quality_factors": summary.get("quality_factors", {}),
                 "convergence_achieved": summary["convergence_achieved"],
                 "total_insights": summary["total_insights"],
                 "insights": insights[:6],
@@ -529,7 +594,8 @@ class ORAMSystem:
                 "best_quality": best_iteration.quality_score,
                 "total_insights": total_insights,
                 "convergence_achieved": best_iteration.quality_score >= self.config.convergence_threshold,
-                "iteration_type": iterations[0].iteration_type.value if iterations else "none"
+                "iteration_type": iterations[0].iteration_type.value if iterations else "none",
+                "quality_factors": dict(best_iteration.quality_factors or {})
             }
             
             logger.info(f"[ORAM] Summary: {summary}")

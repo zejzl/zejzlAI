@@ -296,6 +296,11 @@ Modes that call an AI provider need at least one API key in `.env`; without one 
 
 Each iteration runs Observe, Reason, Act, then stores the result in Memory, scores it (0 to 1) and extracts up to three insights.
 The loop stops when the score reaches the convergence threshold, when the quality trend declines, or at `max_iterations`.
+The score is three weighted factors, each 0 to 1, kept on the iteration as `quality_factors` and in the stored run: *provenance*
+(0.4: each phase a model answer 1.0, a rule-based fallback or an unparsed model answer 0.4, a failure 0), *reasoning* (0.3: analysis
+length, full credit at 300 characters, plus subtasks) and *action* (0.3: per result a real expected outcome, full credit at 60
+characters, plus plan steps). The agents' placeholder strings ("Outcome not specified" and the like) score 0, so a thin run keeps
+iterating up to the cap instead of converging on the first pass.
 Iteration types set defaults: basic 5 iterations at 0.85, deep analysis 7 at 0.9, creative 6 at 0.8, problem solving 8 at 0.85,
 optimization 5 at 0.9. A `max_iterations` you set yourself (menu prompt, or the `max_iterations` argument of `execute_oram`) wins
 over the type's default. If a provider fails, the agents fall back to rule-based output (`ai_generated: False` with a
