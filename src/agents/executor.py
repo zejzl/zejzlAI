@@ -232,65 +232,84 @@ class ExecutorAgent:
                 "critical": step.get('critical', False)  # Check if step is marked as critical
             }
 
+    # Cap captured stdout/stderr so a chatty runaway script cannot exhaust memory.
+    _OUTPUT_CAP = 20_000
+
     async def _execute_code_step(self, step: Dict[str, Any], timeout: int) -> Dict[str, Any]:
-        """Execute Python code in a safe environment."""
+        """Execute Python code in a separate, genuinely terminable process.
+
+        F14 fix: the code used to run via exec() inside this process with a
+        `timeout` parameter that was never enforced, so an infinite loop (or
+        any long-running snippet) blocked the event loop forever. Now the
+        code runs in its own subprocess (python -I -S, no site customization,
+        isolated from this process' environment) under asyncio.wait_for; on
+        timeout the subprocess is killed so it cannot keep running.
+        """
         code = step.get('code', '')
         language = step.get('language', 'python')
 
-        if language.lower() == 'python':
-            # Execute Python code in a restricted environment
-            start_time = asyncio.get_event_loop().time()
-
-            try:
-                # Create a safe execution environment
-                safe_globals = {
-                    '__builtins__': {
-                        'print': print,
-                        'len': len,
-                        'str': str,
-                        'int': int,
-                        'float': float,
-                        'bool': bool,
-                        'list': list,
-                        'dict': dict,
-                        'tuple': tuple,
-                        'range': range,
-                        'enumerate': enumerate,
-                        'zip': zip,
-                        'sum': sum,
-                        'max': max,
-                        'min': min,
-                        'abs': abs,
-                        'round': round,
-                        # Add other safe builtins as needed
-                    }
-                }
-
-                # Execute the code
-                local_vars = {}
-                exec(code, safe_globals, local_vars)
-
-                end_time = asyncio.get_event_loop().time()
-
-                return {
-                    "status": "success",
-                    "output": local_vars,
-                    "execution_time": end_time - start_time
-                }
-
-            except Exception as e:
-                end_time = asyncio.get_event_loop().time()
-                return {
-                    "status": "failed",
-                    "message": f"Code execution failed: {str(e)}",
-                    "execution_time": end_time - start_time
-                }
-
-        else:
+        if language.lower() != 'python':
             return {
                 "status": "warning",
                 "message": f"Unsupported language: {language}",
                 "execution_time": 0
+            }
+
+        start_time = asyncio.get_event_loop().time()
+        process = None
+        try:
+            process = await asyncio.create_subprocess_exec(
+                sys.executable, "-I", "-S", "-c", code,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=tempfile.gettempdir(),
+            )
+
+            try:
+                stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
+            except asyncio.TimeoutError:
+                # The process is genuinely killed here, unlike the old in-process
+                # exec() whose unused `timeout` parameter let it run forever.
+                process.kill()
+                await process.wait()
+                end_time = asyncio.get_event_loop().time()
+                return {
+                    "status": "failed",
+                    "message": f"Code execution timed out after {timeout} seconds and was killed",
+                    "execution_time": end_time - start_time,
+                    "execution_environment": "subprocess"
+                }
+
+            end_time = asyncio.get_event_loop().time()
+            out_text = (stdout or b"").decode("utf-8", errors="ignore")[:self._OUTPUT_CAP]
+            err_text = (stderr or b"").decode("utf-8", errors="ignore")[:self._OUTPUT_CAP]
+
+            if process.returncode != 0:
+                return {
+                    "status": "failed",
+                    "message": f"Code execution failed: {err_text.strip() or f'exit code {process.returncode}'}",
+                    "output": out_text,
+                    "execution_time": end_time - start_time,
+                    "execution_environment": "subprocess"
+                }
+
+            return {
+                "status": "success",
+                "output": out_text,
+                "stderr": err_text,
+                "execution_time": end_time - start_time,
+                "execution_environment": "subprocess"
+            }
+
+        except Exception as e:
+            if process is not None and process.returncode is None:
+                process.kill()
+            end_time = asyncio.get_event_loop().time()
+            return {
+                "status": "failed",
+                "message": f"Code execution failed: {str(e)}",
+                "execution_time": end_time - start_time,
+                "execution_environment": "subprocess"
             }
 
     async def _execute_command_step(self, step: Dict[str, Any], timeout: int) -> Dict[str, Any]:

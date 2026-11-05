@@ -506,7 +506,7 @@ zejzlAI/
 - [x] Docker containerization (Phase 5)
 - [x] Multi-provider consensus mode (Phase 5)
 - [x] Agent personalization framework (Phase 5)
-- [x] Comprehensive test coverage (11/11 tests passing)
+- [x] Comprehensive test coverage (offline pytest suite; run `.venv/bin/python -m pytest -q` for the current count)
 - [x] Full documentation (Architecture, Redis Setup, Phase 1-5 summaries)
 - [x] Redis setup and inter-agent pub/sub
 - [x] Learning loop optimization with pattern analysis
@@ -563,9 +563,9 @@ zejzlAI/
 
 ### Phase 10 Enhancements (Complete) ✅
 - [x] **MCP Security Layer**: Authorization, rate limiting, audit logging with web dashboard API endpoints
-- [x] **MCP Testing Suite**: Comprehensive integration tests with real server testing (15 tests passing)
+- [x] **MCP Testing Suite**: covered by the offline pytest suite; run `.venv/bin/python -m pytest -q` for the current count
 - [x] **Web Dashboard MCP**: Full UI integration with server management, tool execution, and real-time monitoring
-- [x] **Custom MCP Servers**: Domain-specific servers for code analysis and data science operations
+- [x] **Custom MCP Servers**: removed 2026-11-05 as unused dead code (see MCP_SERVERS_GUIDE.md); the base dashboard/security layer above does not depend on them
 - [ ] MCP tool composition and workflows
 - [ ] Vector database integration for semantic memory
 - [ ] Distributed agent deployment (multi-node)
@@ -631,7 +631,7 @@ python -m compileall -q .         # Syntax check (see 'Running Tests' for more)
 
 ## Performance
 
-- **Test Coverage**: 11/11 tests passing (all tests including Redis)
+- **Test Coverage**: offline pytest suite green; run `.venv/bin/python -m pytest -q` for the current pass count
 - **MessageBus Throughput**: 407,911 msg/sec (204x faster than Redis) [Updated 2026-01-30]
 - **MessageBus Latency**: 0.007ms P95 (sub-millisecond, 987x lower than Redis) [Updated 2026-01-30]
 - **Pantheon Pipeline**: 0.072ms for full 9-agent cycle (was 67.5ms) - 937x faster [Updated 2026-01-30]

@@ -25,9 +25,7 @@ ROOT_MODULES = [
 
 # Modules that need packages not listed in requirements.txt. They are skipped
 # (not failed) when the package is missing.
-OPTIONAL_DEPS = {
-    "src.mcp_servers.data_science": ["pandas", "numpy"],
-}
+OPTIONAL_DEPS = {}
 
 
 def _src_modules():

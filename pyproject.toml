@@ -1,4 +1,4 @@
-# /c/PortableApps/zejzl/zejzl_net/pyproject.toml
+# pyproject.toml
 
 [build-system]
 requires = ["setuptools>=61.0"]

@@ -1,8 +1,15 @@
 # MCP Servers Guide for ZEJZL.NET
 
-## Overview
+> **Status 2026-11-05**: the server implementations this guide walks through
+> (`src/mcp_servers/{filesystem,github,websearch,code_analysis,data_science,base_server,database}.py`)
+> were removed as dead code -- grepped across the whole repo, nothing
+> imported or ran them. This file is kept as historical design reference
+> only; the commands and code samples below no longer have a matching file
+> in `src/mcp_servers/`.
 
-ZEJZL.NET includes 4 production-ready MCP (Model Context Protocol) servers providing 24 tools for agent operations:
+## Overview (historical)
+
+ZEJZL.NET included 4 MCP (Model Context Protocol) servers providing 24 tools for agent operations:
 
 1. **Filesystem Server** (7 tools) - File system operations
 2. **Database Server** (6 tools) - SQLite database access
