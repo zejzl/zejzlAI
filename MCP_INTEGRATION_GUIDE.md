@@ -1,5 +1,9 @@
 # MCP Integration Guide for ZEJZL.NET Agents
 
+> **Status 2026-11-05**: the standalone MCP server scripts referenced below
+> were removed as dead code (unused, verified by grep). Kept as historical
+> design reference only.
+
 ## Overview
 
 The MCP (Model Context Protocol) integration provides ZEJZL.NET agents with external tool capabilities including:
