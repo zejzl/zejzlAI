@@ -11,7 +11,7 @@ For any AI agent working in this repo. Owner: Zejzl. Read `README.md` first for 
 
 ## Git
 - Work on a branch off `main`; open a PR; never push to `main` directly.
-- Zejzl's rule for every repo (`~/CLAUDE.md`, Git section): agents may merge green PRs that another agent reviewed, **except** repos that deploy to production on merge. zejzlAI is on that list, so **merging here needs Zejzl's yes**.
+- zejzlAI does **not** deploy on merge: `.github/workflows/ci-cd.yml` has had no deploy step since 2026-10-27, and merges do not update the Render service. Merge under Zejzl's current rule (since 2026-10-31: green CI, no review gate; `~/CLAUDE.md`, item 0). Force-push, credentials, spending and DNS still need his yes.
 - Never force-push or rewrite history.
 
 ## Working in the code
