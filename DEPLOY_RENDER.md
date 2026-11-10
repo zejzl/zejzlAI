@@ -14,7 +14,7 @@ Go to Render Dashboard → zejzlai service → Environment
 
 **1. ZEJZL_API_KEY_1** (Secret)
 ```
-zejzl_vMq1NhMpPHyAqAivX1pilXD9URjHneEm:pro:Production API Key
+YOUR_ZEJZL_API_KEY:pro:Production API Key
 ```
 
 **2. CORS_ORIGINS** (Variable)
@@ -42,7 +42,7 @@ production
 
 | Key | Value | Type |
 |-----|-------|------|
-| `ZEJZL_API_KEY_1` | `zejzl_vMq1NhMpPHyAqAivX1pilXD9URjHneEm:pro:Production API Key` | Secret |
+| `ZEJZL_API_KEY_1` | `YOUR_ZEJZL_API_KEY:pro:Production API Key` | Secret |
 | `CORS_ORIGINS` | `https://zejzl-net.vercel.app,https://zejzl.net` | Variable |
 | `ENVIRONMENT` | `production` | Variable |
 
@@ -93,7 +93,7 @@ curl https://zejzlai.onrender.com/api/chat
 **Test 3: Protected Endpoint With Auth (Should Work)**
 ```bash
 curl -X POST https://zejzlai.onrender.com/api/chat \
-  -H "X-API-Key: zejzl_vMq1NhMpPHyAqAivX1pilXD9URjHneEm" \
+  -H "X-API-Key: $ZEJZL_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"message": "Hello", "provider": "grok-3"}'
 ```
@@ -133,7 +133,7 @@ Strict-Transport-Security: max-age=31536000
 Add API key for frontend to call backend:
 
 ```bash
-NEXT_PUBLIC_ZEJZL_API_KEY=zejzl_vMq1NhMpPHyAqAivX1pilXD9URjHneEm
+NEXT_PUBLIC_ZEJZL_API_KEY=YOUR_ZEJZL_API_KEY
 ```
 
 **OR** create a separate frontend key:
